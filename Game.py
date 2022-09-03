@@ -1,9 +1,12 @@
+import queue
 import utils
 import Player
+from typing import List
+import threading
 
 class MoskaGame:
-    players = []
-    triumph = ""
+    players : List[Player.MoskaPlayerBase] = []
+    triumph : str = ""
     triumph_card = None
     cards_to_fall = []
     fell_cards = []
@@ -16,19 +19,23 @@ class MoskaGame:
         """ Add a player to the list and to the turncycle"""
         self.players.append(player)
         self.turnCycle.add_to_population(player)
-        
+    
     def __repr__(self):
         """ Print the status of the game"""
         s = f"Triumph card: {self.triumph_card}\n"
         for pl in self.players:
-            s += f"{pl.name}{'*' if self.turnCycle.ptr % len(self.players) == pl.pid else ''} : {pl.hand}\n"
+            s += f"{pl.name}{'*' if pl is self.get_active_player() else ''} : {pl.hand}\n"
         s += f"Cards to fall : {self.cards_to_fall}\n"
         s += f"Fell cards : {self.fell_cards}\n"
         return s
     
     def get_initiating_player(self):
         active = self.get_active_player()
-        return self.turnCycle.get_prev_condition(cond = lambda x : x.rank is None and x is not active,incr_ptr=False)
+        ptr = int(self.turnCycle.ptr)
+        out = self.turnCycle.get_prev_condition(cond = lambda x : x.rank is None and x is not active,incr_ptr=False)
+        self.turnCycle.set_pointer(ptr)
+        assert self.turnCycle.ptr == ptr
+        return out
     
     def get_players_condition(self,cond = lambda x : True):
         """ get players that match the condition """
@@ -72,7 +79,8 @@ class MoskaGame:
         player = self.get_active_player()
         player._play_fall_card_from_hand()
         print(self)
-        
+    
+    """
     def start(self):
         self.set_triumph()
         print("Started a game of Moska")
@@ -104,110 +112,46 @@ class MoskaGame:
             print(f"P{pid} : {rank}")
             
         print(f"Total amount of turns (lifting or falling cards): {turn_count}")
-                
-
-            
-            
+    """   
+class MoskaGameThreaded(MoskaGame):
+    threads = []
+    main_lock : threading.RLock = None
     
+    def _create_locks(self):
+        self.main_lock = threading.RLock()
     
-    
-"""
-class MoskaGame:
-    players = []
-    triumph = ""
-    triumph_card = None
-    cards_to_fall = []
-    fell_cards = []
-    turnCycle = utils.TurnCycle([],ptr = 0)
-    deck = None
-    current_turn = 0
-    def __init__(self, deck):
-        self.deck = deck
-    
-    def add_players(self,*players):
-        for pl in players:
-            self.players.append(pl)
-    
-    def __repr__(self):
-        "" Print the status of the game""
-        s = f"Triumph card: {self.triumph_card}\n"
+    def init_player_threads(self):
         for pl in self.players:
-            s += f"#{pl.pid}{'*' if self.turn_pid == pl.pid else ''} : {pl.hand}\n"
-        s += f"Cards to fall : {self.cards_to_fall}\n"
-        s += f"Fell cards : {self.fell_cards}\n"
-        return s
+            pl.start()
+            self.threads.append(pl.thread)
     
-    def get_players(self,cond = lambda x : True):
-        return list(filter(cond,self.players))
+    def join_threads(self):
+        for trh in self.threads:
+            trh.join()
     
-    def get_active_players(self):
-        return self.get_players(cond = lambda x : x.rank is None)
+    def start_player_threads(self):
+        for thr in self.threads:
+            thr.start()
     
-    def add_cards_to_fall(self,add):
-        self.cards_to_fall += add
-    
-    def fall_card(self,played_card, fall_card):
-        success = False
-        # Jos kortit ovat samaa maata ja pelattu kortti on suurempi
-        if played_card.suit == fall_card.suit and played_card.value > fall_card.value:
-            success = True
-        # Jos pelattu kortti on valttia, ja kaadettava kortti ei ole valttia
-        elif played_card.suit == self.triumph and fall_card.suit != self.triumph:
-                success = True
-        return success
-    
-    def get_active_player(self):
-        return self.get_players(cond = lambda x : x.pid == self.moskaTable.turn_pid)[0]     # Get the player to whom the cards are played to
-    
-    def next_turn_automatic(self,initial=False):
-        print(self)
-        turn_pid = self.turn_pid
-        player = self.get_active_player()
-        if player.rank is not None:
-            self._end_turn()
-            return
-        # If no cards have been played to player in turn
-        if initial:
-            prev_player = player.get_prev_player()  # The previous player gets to make a free first move
-            prev_player.play_to_another_automatic(initial=True,fits=len(player.hand))
-            print(moskaTable)
-        other_players = lambda : moskaTable.get_players(cond = lambda x : x.pid != turn_pid and x.rank is None)
-        players_left = lambda : len(self.moskaTable.get_players(cond=lambda x : x.rank is None))
-        played = True
-        # The other players play cards to the target
-        while played:
-            played = False
-            # If there is only one person with cards, he lost
-            if players_left() <= 1:
-                self.moskaTable.get_players(cond = lambda x : x.rank is None)[0].set_rank()
-                break
-            # If the table is full
-            fits = len(player.hand) - len(self.moskaTable.cards_to_fall)
-            if fits <= 0:
-                break
-            for ot_pl in other_players():
-                res = ot_pl.play_to_another_automatic(fits=fits)
-                played = played if played else res
-            print(self.moskaTable)
-        played = player.fell_cards_automatic()
-        print(self.moskaTable)
-        if played:
-            self.next_turn_automatic()
-        elif initial:
-            self._end_turn()
-            
+    def start(self):
+        self.set_triumph()
+        self._create_locks()
+        print("Starting a game of Threaded Moska...")
+        self.init_player_threads()
+        self.start_player_threads()
+        assert self.check_players_threaded(), "Some of the players in the game are not of type MoskaPlayerThreadedBase."
+        while len(self.get_players_condition(cond = lambda x : x.rank is None)) > 1:
+            pass
+        self.join_threads()
+        print("Final Ranking: ")
+        ranks = [(p.name, p.rank) for p in self.players]
+        ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
+        for p,rank in ranks:
+            print(f"#{rank} - {p}")
+        exit()
         
-    def _end_turn(self):
-        player = self.get_active_player()
-        lifted = False
-        if self.moskaTable.cards_to_fall:
-            lifted = True
-            player.hand.add(self.moskaTable.cards_to_fall)
-        self.moskaTable.cards_to_fall = []
-        self.moskaTable.fell_cards = []
-        if not lifted:
-            self.moskaTable.turn_pid = player.get_next_player().pid
-        else:
-            self.moskaTable.turn_pid = player.get_next_player().get_next_player().pid
-        player.hand.draw(6-len(player.hand))
-"""
+     
+    def check_players_threaded(self):
+        return all((isinstance(pl,Player.MoskaPlayerThreadedBase) for pl in self.players))
+        
+        
