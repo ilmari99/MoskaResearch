@@ -1,4 +1,5 @@
 from __future__ import annotations
+import threading
 from typing import Iterable, TYPE_CHECKING
 if TYPE_CHECKING:
     from Game import MoskaGame
@@ -6,10 +7,12 @@ if TYPE_CHECKING:
 
 class MoskaHand:
     cards = []
+    #cards_lock : threading.RLock = None
     moskaGame = None
     def __init__(self,moskaGame : MoskaGame):
         self.cards = moskaGame.deck.pop_cards(6)
         self.moskaGame = moskaGame
+        #self.cards_lock = threading.RLock()
     
     def draw(self,n):
         """ Draw n cards from the deck"""
@@ -41,3 +44,14 @@ class MoskaHand:
     
     def __len__(self):
         return len(self.cards)
+    
+    def copy(self):
+        return _MoskaHandCopy([card for card in self.cards],self.moskaGame)
+    
+
+class _MoskaHandCopy(MoskaHand):
+    def __init__(self, cards, moskaGame):
+        self.moskaGame = moskaGame
+        self.cards = cards
+        
+        
