@@ -1,3 +1,5 @@
+from functools import wraps
+
 CARD_VALUES = tuple(range(2,15))                            # Initialize the standard deck
 CARD_SUITS = ("C","D","H","S") 
 CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion table
@@ -18,6 +20,23 @@ def check_can_fall_card(played_card, fall_card,triumph):
     elif played_card.suit == triumph and fall_card.suit != triumph:
             success = True
     return success
+
+def announce_new_card(self):
+    for pl in self.moskaGame.players:
+        pl.ready = False
+    print("NEW VALUES AT THE TABLE", flush = True)
+
+def check_new_card(func):
+    wraps(func)
+    def wrap(*args,**kwargs):
+        #assert isinstance(args[0],MoskaPlayerBase), "The decorated function must have a reference to an instance of MoskaPlayerBase as the first positional argument."
+        state = args[0]._playable_values_to_table()
+        func(*args,**kwargs)
+        new_state = args[0]._playable_values_to_table()
+        if len(state) != len(new_state):
+            announce_new_card(args[0])
+        return
+    return wrap
 
 class TurnCycle:
     population = []
@@ -48,7 +67,7 @@ class TurnCycle:
         """ Returns the previous element in the cycle, that matches the condition"""
         count = 1
         og_count = int(self.ptr)
-        nxt = self.get_prev()
+        nxt = self.get_at_index()
         while not cond(nxt):
             nxt = self.get_prev()
             if count == len(self.population):
@@ -61,7 +80,7 @@ class TurnCycle:
     
     def add_to_population(self,val,ptr=None):
         self.population.append(val)
-        self.ptr += 1
+        self.ptr += 0
         if ptr:
             self.ptr = ptr
     
@@ -89,5 +108,5 @@ if __name__ == "__main__":
     print(tc.get_at_index())
     print(tc.get_next_condition(lambda x : x ==4))
     print(tc.ptr)
-    print(tc.get_prev_condition(lambda x : x == 0))
+    print(tc.get_prev_condition(lambda x : x == 1))
     print(tc.ptr)
