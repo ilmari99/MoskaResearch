@@ -18,6 +18,7 @@ class _PlayToPlayer:
         self.moskaGame = moskaGame
         self.player = player
         
+        
     def check_cards_available(self):
         """ Check that the cards are playable"""
         return all([card in self.player.hand.cards for card in self.play_cards])
@@ -65,7 +66,7 @@ class PlayToOther(_PlayToPlayer):
     def check_in_table(self):
         """ Check that the cards have already been played by either the player or an opponent"""
         playable_values = self._playable_values()
-        return all([card.value in playable_values for card in self.play_cards])
+        return all((card.value in playable_values for card in self.play_cards))
 
 
 class PlayFallCardFromHand:
@@ -77,11 +78,15 @@ class PlayFallCardFromHand:
     def __call__(self,play_fall : dict):
         self.play_fall = play_fall
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
+        assert self.check_player_has_turn(), "The player does not have the turn."
         self.play()
         
     def check_cards_fall(self):
         """Returns whether all the pairs are correctly played"""
         return all([utils.check_can_fall_card(pc,fc,self.moskaGame.triumph) for pc,fc in self.play_fall.items()])
+    
+    def check_player_has_turn(self):
+        return self.moskaGame.get_active_player() is self.player
         
     def play(self):
         for pc,fc in self.play_fall.items():
@@ -145,15 +150,15 @@ class EndTurn:
         self.pick_the_cards()
     
     def clear_table(self):
-        self.moskaGame.cards_to_fall = []
-        self.moskaGame.fell_cards = []
+        self.moskaGame.cards_to_fall.clear()
+        self.moskaGame.fell_cards.clear()
         
     def check_can_pick_none(self):
         """ Check if there are cards to fall"""
         return len(self.moskaGame.cards_to_fall) == 0
     
     def check_turn(self):
-        return self.moskaGame.get_active_player() == self.player
+        return self.moskaGame.get_active_player() is self.player
     
     def check_pick_cards_to_fall(self):
         """ Check if every pick_card equals cards_to_fall"""
@@ -172,8 +177,12 @@ class EndTurn:
     def pick_the_cards(self):
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
-        self.clear_table()
         self.player._set_rank()
+        self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
+        print(f"Lifted cards {self.pick_cards}", flush=True)
+        if len(self.pick_cards) > 0 or self.player.rank is not None:
+            self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
+        self.clear_table()
     
     
     
