@@ -142,11 +142,11 @@ class EndTurn:
     def __call__(self,pick_cards : list = []):
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
-        assert self.check_turn(), "It is not this players turn to lift the cards"
         if not pick_cards:
             assert self.check_can_pick_none(), "There are cards on the table, and they must fall or be lifted."
         else:
             assert self.check_pick_all_cards() or self.check_pick_cards_to_fall()
+            assert self.check_turn(), "It is not this players turn to lift the cards"
         self.pick_the_cards()
     
     def clear_table(self):
