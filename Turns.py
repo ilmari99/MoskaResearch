@@ -35,7 +35,7 @@ class _PlayToPlayer:
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
         self.player.hand.draw(len(self.play_cards))                 # Draw the amount of cards played, from the deck
-        self.player._set_rank()
+        #self.player._set_rank()
         
 
 class InitialPlay(_PlayToPlayer):
@@ -94,7 +94,7 @@ class PlayFallCardFromHand:
             self.moskaGame.fell_cards.append(fc)                                            # Add to fell cards
             self.player.hand.pop_cards(cond = lambda x : x == pc)                           # Remove card from hand
             self.moskaGame.fell_cards.append(pc)                                            # Add card to fell cards
-            self.player._set_rank()
+            #self.player._set_rank()
         
             
 class PlayFallFromDeck:
@@ -120,6 +120,9 @@ class PlayFallFromDeck:
         """ Check that there are cards on the table, from which to draw"""
         return len(self.moskaGame.deck) > 0
     
+    def check_not_already_kopled(self):
+        return any((c.kopled for c in self.moskaGame.cards_to_fall))
+    
     def play_card(self):
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         if self.check_can_fall():
@@ -143,7 +146,7 @@ class EndTurn:
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
         if not pick_cards:
-            assert self.check_can_pick_none(), "There are cards on the table, and they must fall or be lifted."
+            assert self.check_can_pick_none() or self.check_finished(), "There are cards on the table, and they must fall or be lifted."
         else:
             assert self.check_pick_all_cards() or self.check_pick_cards_to_fall()
             assert self.check_turn(), "It is not this players turn to lift the cards"
@@ -156,6 +159,9 @@ class EndTurn:
     def check_can_pick_none(self):
         """ Check if there are cards to fall"""
         return len(self.moskaGame.cards_to_fall) == 0
+    
+    def check_finished(self):
+        return self.player.rank is not None
     
     def check_turn(self):
         return self.moskaGame.get_active_player() is self.player
@@ -177,8 +183,9 @@ class EndTurn:
     def pick_the_cards(self):
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
-        self.player._set_rank()
+        #self.player._set_rank()
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
+        print(f"All players have played the desired cards. Ending {self.player.name} turn.", flush=True)
         print(f"Lifted cards {self.pick_cards}", flush=True)
         if len(self.pick_cards) > 0 or self.player.rank is not None:
             self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
