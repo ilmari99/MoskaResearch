@@ -9,6 +9,7 @@ import utils
 class Card:
     value : int
     suit : str
+    kopled : bool = False
     
     def __repr__(self) -> str:
         return str(f"{utils.suit_to_symbol(self.suit)}{self.value}")
