@@ -1,3 +1,4 @@
+import multiprocessing
 import queue
 import utils
 import Player
@@ -148,10 +149,8 @@ class MoskaGameThreaded(MoskaGame):
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             print(f"#{rank} - {p}")
-        exit()
+        return True
         
      
     def check_players_threaded(self):
         return all((isinstance(pl,Player.MoskaPlayerThreadedBase) for pl in self.players))
-        
-        
