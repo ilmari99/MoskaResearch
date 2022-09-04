@@ -79,7 +79,6 @@ class MoskaPlayerBase:
     
     def play_initial(self):
         """ Return a list of cards that will be played to target on an initiating turn"""
-        target = self.moskaGame.get_active_player()
         min_card = min([c.value for c in self.hand])
         hand = self.hand.copy()
         play_cards = hand.pop_cards(cond=lambda x : x.value == min_card,max_cards = self._fits_to_table())
@@ -87,8 +86,8 @@ class MoskaPlayerBase:
     
     def deck_lift_fall_method(self, deck_card):
         """ A function to determine which card will fall, if a random card from the deck is lifted.
-        Function should take a card -instance as argument, and return a pair (card_from_deck , card_on_table) in the same order.
-        Determining which card to fall."""
+        Function should take a card -instance as argument, and return a pair (card_from_deck , card_on_table) in the same order,
+        determining which card on the table to fall."""
         for card in self.moskaGame.cards_to_fall:
             if utils.check_can_fall_card(deck_card,card):
                 return (deck_card,card)
@@ -145,26 +144,19 @@ class MoskaPlayerThreadedBase(MoskaPlayerBase):
     moskaGame : MoskaGameThreaded = None
     
     def start(self):
-        #self.thread = threading.Thread(target=self._continuous_play,name=self.name)
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
     
     def _continuous_play(self):
         print(f"{self.name} started playing...",flush=True)
-        time.sleep(0.01)
-        initiating_player = None
         while self.rank is None:
             with self.moskaGame.main_lock as ml:
-                #current_initiating_player = self.moskaGame.get_initiating_player().pid
-                #if current_initiating_player is not initiating_player:
-                #    initiating_player = current_initiating_player
-                #    initiated = False
                 initiated = False
                 if self.ready and not self.moskaGame.get_active_player() is self:
                     continue
                 try:
-                    self.ready = True
                     print(f"{self.name} playing...",flush=True)
                     print([pl.ready for pl in self.moskaGame.players],flush=True)
+                    self.ready = True
                     if len(self.moskaGame.cards_to_fall + self.moskaGame.fell_cards) > 0:
                         initiated = True
                     if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
