@@ -80,7 +80,6 @@ class MoskaGame:
         player._play_fall_card_from_hand()
         print(self)
     
-    """
     def start(self):
         self.set_triumph()
         print("Started a game of Moska")
@@ -112,7 +111,8 @@ class MoskaGame:
             print(f"P{pid} : {rank}")
             
         print(f"Total amount of turns (lifting or falling cards): {turn_count}")
-    """   
+
+
 class MoskaGameThreaded(MoskaGame):
     threads = []
     main_lock : threading.RLock = None
