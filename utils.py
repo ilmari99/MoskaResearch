@@ -37,6 +37,8 @@ def check_new_card(func):
             announce_new_card(args[0])
         return
     return wrap
+    
+    
 
 class TurnCycle:
     population = []
