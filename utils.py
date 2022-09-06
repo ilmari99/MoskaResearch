@@ -24,7 +24,6 @@ def check_can_fall_card(played_card, fall_card,triumph):
 def announce_new_card(self):
     for pl in self.moskaGame.players:
         pl.ready = False
-    print("NEW VALUES AT THE TABLE", flush = True)
 
 def check_new_card(func):
     wraps(func)
