@@ -29,7 +29,7 @@ class _PlayToPlayer:
     
     def check_target_active(self,tg : MoskaPlayerBase):
         """ Check that the target is the active player """
-        return tg is self.moskaGame.get_active_player()
+        return tg is self.moskaGame.get_target_player()
     
     def play(self):
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
@@ -86,7 +86,7 @@ class PlayFallCardFromHand:
         return all([utils.check_can_fall_card(pc,fc,self.moskaGame.triumph) for pc,fc in self.play_fall.items()])
     
     def check_player_has_turn(self):
-        return self.moskaGame.get_active_player() is self.player
+        return self.moskaGame.get_target_player() is self.player
         
     def play(self):
         for pc,fc in self.play_fall.items():
@@ -164,7 +164,7 @@ class EndTurn:
         return self.player.rank is not None
     
     def check_turn(self):
-        return self.moskaGame.get_active_player() is self.player
+        return self.moskaGame.get_target_player() is self.player
     
     def check_pick_cards_to_fall(self):
         """ Check if every pick_card equals cards_to_fall"""
