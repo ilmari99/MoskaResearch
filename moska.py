@@ -54,6 +54,6 @@ def play_games(n=1):
 
 if __name__ == "__main__":
     n = 5
-    play_games(8)
+    play_games(7)
     
     
