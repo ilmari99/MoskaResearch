@@ -1,7 +1,9 @@
-from concurrent.futures import process
-import Deck
-from Game import MoskaGame, MoskaGameThreaded
-from Player import MoskaPlayerBase, MoskaPlayerThreadedBase
+
+#from Game import MoskaGame, MoskaGameThreaded
+#from Player import MoskaPlayerBase, MoskaPlayerThreadedBase
+from Moska import Deck
+from Moska.Game import MoskaGame, MoskaGameThreaded
+from Moska.Player import MoskaPlayerBase, MoskaPlayerThreadedBase
 import sys
 import multiprocessing
 
