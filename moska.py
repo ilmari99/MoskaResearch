@@ -1,6 +1,3 @@
-
-#from Game import MoskaGame, MoskaGameThreaded
-#from Player import MoskaPlayerBase, MoskaPlayerThreadedBase
 from Moska import Deck
 from Moska.Game import MoskaGame, MoskaGameThreaded
 from Moska.Player import MoskaPlayerBase, MoskaPlayerThreadedBase
