@@ -1,6 +1,6 @@
 from Moska import Deck
 from Moska.Game import MoskaGame
-from Moska.Player import MoskaPlayer
+from Moska.Player import HumanPlayer, MoskaPlayer
 import sys
 import multiprocessing
 
@@ -16,6 +16,7 @@ def start_threaded_moska(file = "moskafile_threaded.txt"):
     deck = Deck.StandardDeck()
     moskaGame = MoskaGame(deck)
     players = []
+    #moskaGame.add_player(HumanPlayer(moskaGame,pid=11,name = "ilmari"))
     for i in range(5):
         players.append(MoskaPlayer(moskaGame,pid=i))
     for player in players:
@@ -38,7 +39,7 @@ def play_games(n=1):
     
 
 if __name__ == "__main__":
-    n = 5
-    play_games(7)
+    #n = 5
+    play_games(1)
     
     
