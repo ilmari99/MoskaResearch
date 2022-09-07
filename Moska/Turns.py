@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
+
+from Moska.Deck import Card
 if TYPE_CHECKING:
     from .Game import MoskaGame
     from .Player import MoskaPlayer
@@ -40,7 +42,7 @@ class _PlayToPlayer:
         """
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
-        self.player.hand.draw(len(self.play_cards))                 # Draw the amount of cards played, from the deck
+        self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards
         #self.player._set_rank()
         
 
@@ -131,6 +133,7 @@ class PlayFallFromDeck:
         and return an indexable with two values: The played card, and the card which should be fallen"""
         if fall_method is not None:
             self.fall_method = fall_method
+        assert self.check_not_already_kopled(), "There is already a kopled card on the table"
         assert self.fall_method is not None, "No fall_method specified"
         assert self.check_cards_on_table(), "There are no cards on the table which should be fell"
         assert self.check_cards_in_deck(), "There are no cards from which to draw"
@@ -145,13 +148,14 @@ class PlayFallFromDeck:
         return len(self.moskaGame.deck) > 0
     
     def check_not_already_kopled(self):
-        return any((c.kopled for c in self.moskaGame.cards_to_fall))
+        return not any((c.kopled for c in self.moskaGame.cards_to_fall))
     
     def play_card(self):
         """ Pop a card from deck, if the card can fall a card on the table, use fall_method to select the card.
         If the card can't fall any card, add it to table.
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
+        self.card = Card(self.card.value,self.card.suit,True)
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(play_fall[1]))
