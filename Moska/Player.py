@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List
 from .Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from .Game import MoskaGame, MoskaGameThreaded
+    from .Game import MoskaGame
 from .Hand import MoskaHand
 from . import utils
 from .Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
@@ -10,17 +10,17 @@ import threading
 import time
 
 
-class MoskaPlayerBase:
+class MoskaPlayer:
     """ The base class of a moska player. This by itself is deprecated. This should not be subclassed by it self.
     To create custom play styles, one should instead subclass MoskaPlayerThreadedBase -class.
     """
-    hand = None
-    pid = 0
-    moskaGame = None
-    rank = None
-    thread = None
-    name = ""
-    ready = False
+    hand : MoskaHand = None
+    pid : int = 0
+    moskaGame : MoskaGame = None
+    rank : int = None
+    thread : threading.Thread = None
+    name : str = ""
+    ready : bool = False
     def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = ""):
         """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
         Here we initialize the distinct possible plays from Turns.py.
@@ -207,6 +207,35 @@ class MoskaPlayerBase:
             self._end_turn()
         return
     
+    def _start(self) -> None:
+        """ Initializes the Thread"""
+        self.thread = threading.Thread(target=self._continuous_play,name=self.name)
+    
+    
+    def _continuous_play(self) -> None:
+        """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
+        This function starts a while loop, that runs as long as the players rank is None and there are atleast 2 players in the game.
+        
+        """
+        print(f"{self.name} started playing...",flush=True)
+        while self.rank is None:
+            # Acquire the lock for moskaGame
+            with self.moskaGame.main_lock as ml:
+                try:
+                    print(f"{self.name} playing...",flush=True)
+                    print([pl.ready for pl in self.moskaGame.players],flush=True)
+                    # If there is only 1 active player in the game, break
+                    if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
+                        break
+                    self._play_turn()
+                except AssertionError as msg:
+                    print(msg, flush=True)
+                print(self.moskaGame,flush=True)
+            time.sleep(0.00001)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock
+        print(f"{self.name} finished as {self.rank}",flush=True)
+        return
+    
+    
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
         Default: pick all cards that cannot be fallen.
@@ -295,37 +324,3 @@ class MoskaPlayerBase:
             hand = self.hand.copy()     # Create a copy of the game.
             play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values,max_cards = self._fits_to_table())
         return play_cards
-            
-
-class MoskaPlayerThreadedBase(MoskaPlayerBase):
-    """Subclassing this class, and writing new methods for:
-    play_to_target() -> List of cards to play to a target
-    play_initial() -> List of cards to play to a target, when you are initiating the turn
-    deck_lift_fall_method(card_from_deck) -> (card_from_deck, to_which_card_on_table_you_want_to_play)
-    play_fall_card_from_hand() -> Return a dictionary of values {card_from_hand : card_on_table}
-    end_turn() -> List of cards that you want to pick from the table, when ending your turn.
-    """
-    thread : threading.Thread = None
-    moskaGame : MoskaGameThreaded = None
-    
-    def start(self):
-        self.thread = threading.Thread(target=self._continuous_play,name=self.name)
-    
-    
-    def _continuous_play(self):
-        print(f"{self.name} started playing...",flush=True)
-        while self.rank is None:
-            # Acquire the lock for moskaGame
-            with self.moskaGame.main_lock as ml:
-                try:
-                    print(f"{self.name} playing...",flush=True)
-                    print([pl.ready for pl in self.moskaGame.players],flush=True)
-                    if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
-                        break
-                    self._play_turn()
-                except AssertionError as msg:
-                    print(msg, flush=True)
-                print(self.moskaGame,flush=True)
-            time.sleep(0.00001)
-        print(f"{self.name} finished as {self.rank}",flush=True)
-        return

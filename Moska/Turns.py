@@ -2,12 +2,12 @@ from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
 if TYPE_CHECKING:
     from .Game import MoskaGame
-    from .Player import MoskaPlayerBase
+    from .Player import MoskaPlayer
 from . import utils
 
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves."""
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayerBase):
+    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
         """
         Args:
             moskaGame (MoskaGame): _description_
@@ -27,7 +27,7 @@ class _PlayToPlayer:
         """ Check that the cards fit in the table """
         return len(self.target_player.hand) - len(self.moskaGame.cards_to_fall) >= len(self.play_cards)
     
-    def check_target_active(self,tg : MoskaPlayerBase):
+    def check_target_active(self,tg : MoskaPlayer):
         """ Check that the target is the active player """
         return tg is self.moskaGame.get_target_player()
     
@@ -40,7 +40,7 @@ class _PlayToPlayer:
 
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
-    def __call__(self,target_player : MoskaPlayerBase, play_cards : list):
+    def __call__(self,target_player : MoskaPlayer, play_cards : list):
         self.target_player = target_player
         self.play_cards = play_cards
         assert self.check_cards_available(), "Some of the played cards are not available"
@@ -50,7 +50,7 @@ class InitialPlay(_PlayToPlayer):
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play"""
-    def __call__(self, target_player : MoskaPlayerBase, play_cards : list):
+    def __call__(self, target_player : MoskaPlayer, play_cards : list):
         #self.__init__(moskaGame,player,target_player,play_cards)
         self.target_player = target_player
         self.play_cards = play_cards
@@ -71,7 +71,7 @@ class PlayToOther(_PlayToPlayer):
 
 class PlayFallCardFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayerBase):
+    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
         self.moskaGame = moskaGame
         self.player = player
 
@@ -94,7 +94,6 @@ class PlayFallCardFromHand:
             self.moskaGame.fell_cards.append(fc)                                            # Add to fell cards
             self.player.hand.pop_cards(cond = lambda x : x == pc)                           # Remove card from hand
             self.moskaGame.fell_cards.append(pc)                                            # Add card to fell cards
-            #self.player._set_rank()
         
             
 class PlayFallFromDeck:
@@ -137,7 +136,7 @@ class PlayFallFromDeck:
         return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in self.moskaGame.cards_to_fall])
 
 class EndTurn:
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayerBase):
+    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
         self.moskaGame = moskaGame
         self.player = player
     
@@ -183,7 +182,6 @@ class EndTurn:
     def pick_the_cards(self):
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
-        #self.player._set_rank()
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         print(f"All players have played the desired cards. Ending {self.player.name} turn.", flush=True)
         print(f"Lifted cards {self.pick_cards}", flush=True)

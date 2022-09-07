@@ -1,17 +1,19 @@
 from . import utils
-from . import Player
+from .Player import MoskaPlayer
 from typing import Callable, List, TYPE_CHECKING
 from .Deck import Card, StandardDeck
 import threading
 
 class MoskaGame:
-    players : List[Player.MoskaPlayerBase] = []
+    players : List[MoskaPlayer] = []
     triumph : str = ""
     triumph_card = None
     cards_to_fall = []
     fell_cards = []
     turnCycle = utils.TurnCycle([],ptr = 0)
     deck = None
+    threads = []
+    main_lock : threading.RLock = None
     def __init__(self,deck : StandardDeck):
         """Create a MoskaGame -instance.
 
@@ -19,9 +21,42 @@ class MoskaGame:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
         self.deck = deck
+        
+    def _create_locks(self) -> None:
+        """ Initialize the RLock for the game. """
+        self.main_lock = threading.RLock()
+        return
+        
+    def __repr__(self) -> str:
+        """ What to print when calling print(self) """
+        s = f"Triumph card: {self.triumph_card}\n"
+        for pl in self.players:
+            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''} : {pl.hand}\n"
+        s += f"Cards to fall : {self.cards_to_fall}\n"
+        s += f"Fell cards : {self.fell_cards}\n"
+        return s
+    
+    def _start_player_threads(self) -> None:
+        """ Starts all player threads. """
+        if not self.threads:
+            self._init_player_threads()
+        for thr in self.threads:
+            thr.start()
+        return
+    
+    def _init_player_threads(self) -> None:
+        """ initialize the player threads. After this, the threads are ready to be run. """
+        for pl in self.players:
+            pl._start()
+            self.threads.append(pl.thread)
+    
+    def _join_threads(self) -> None:
+        """ Join all threads. """
+        for trh in self.threads:
+            trh.join()
 
     
-    def add_player(self,player : Player.MoskaPlayerBase) -> None:
+    def add_player(self,player : MoskaPlayer) -> None:
         """Add a player to this MoskaGame -instance.
         Adds the player to the list of players, and to the TurnCycle -instance attribute
 
@@ -32,16 +67,8 @@ class MoskaGame:
         self.turnCycle.add_to_population(player)
         return
     
-    def __repr__(self) -> str:
-        """ What to print when calling print(self) """
-        s = f"Triumph card: {self.triumph_card}\n"
-        for pl in self.players:
-            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''} : {pl.hand}\n"
-        s += f"Cards to fall : {self.cards_to_fall}\n"
-        s += f"Fell cards : {self.fell_cards}\n"
-        return s
     
-    def get_initiating_player(self) -> Player.MoskaPlayerBase:
+    def get_initiating_player(self) -> MoskaPlayer:
         """ Return the player, whose turn it is/was to initiate the turn aka. play to an empty table. """
         active = self.get_target_player()
         ptr = int(self.turnCycle.ptr)
@@ -50,7 +77,7 @@ class MoskaGame:
         assert self.turnCycle.ptr == ptr
         return out
     
-    def get_players_condition(self, cond : Callable = lambda x : True) -> List[Player.MoskaPlayerBase]:
+    def get_players_condition(self, cond : Callable = lambda x : True) -> List[MoskaPlayer]:
         """ Get a list of players that return True when condition is applied.
 
         Args:
@@ -70,7 +97,7 @@ class MoskaGame:
         self.cards_to_fall += add
         return
         
-    def get_target_player(self) -> Player.MoskaPlayerBase:
+    def get_target_player(self) -> MoskaPlayer:
         """Return the player, who is currently the target; To who cards are played to.
 
         Returns:
@@ -78,7 +105,7 @@ class MoskaGame:
         """
         return self.turnCycle.get_at_index()
     
-    def set_triumph(self) -> None:
+    def _set_triumph(self) -> None:
         """Sets the triumph card of the MoskaGame.
         Takes the top-most card, checks the suit, and checks if any player has the 2 of that suit in hand.
         If some player has, then it swaps the cards.
@@ -96,35 +123,8 @@ class MoskaGame:
         self.triumph_card = triumph_card
         self.deck.place_to_bottom(self.triumph_card)
         return
-
-
-class MoskaGameThreaded(MoskaGame):
-    threads = []
-    main_lock : threading.RLock = None
     
-    def _create_locks(self) -> None:
-        """ Initialize the RLock for the game. """
-        self.main_lock = threading.RLock()
-    
-    def init_player_threads(self) -> None:
-        """ initialize the player threads. After this, the threads are ready to be run. """
-        for pl in self.players:
-            pl.start()
-            self.threads.append(pl.thread)
-    
-    def join_threads(self) -> None:
-        """ Join all threads. """
-        for trh in self.threads:
-            trh.join()
-    
-    def start_player_threads(self) -> None:
-        """ Starts all player threads. """
-        for thr in self.threads:
-            thr.start()
-            
-    
-    
-    def start(self):
+    def start(self) -> bool:
         """The main method of MoskaGame. Sets the triumph card, locks the game to avoid race conditions between players,
         initializes and starts the player threads.
         After that, the players play the game, only one modifying the state of the game at a time.
@@ -132,22 +132,16 @@ class MoskaGameThreaded(MoskaGame):
         Returns:
             True when finished
         """
-        self.set_triumph()
+        self._set_triumph()
         self._create_locks()
         print("Starting a game of Threaded Moska...")
-        self.init_player_threads()
-        self.start_player_threads()
-        assert self.check_players_threaded(), "Some of the players in the game are not of type MoskaPlayerThreadedBase."
+        self._start_player_threads()
         #while len(self.get_players_condition(cond = lambda x : x.rank is None)) > 1:
         #    pass
-        self.join_threads()
+        self._join_threads()
         print("Final Ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             print(f"#{rank} - {p}")
         return True
-        
-     
-    def check_players_threaded(self):
-        return all((isinstance(pl,Player.MoskaPlayerThreadedBase) for pl in self.players))
