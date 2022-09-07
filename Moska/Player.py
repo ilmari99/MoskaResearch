@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List
-from Deck import Card
-if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechekcing
-    from Game import MoskaGame, MoskaGameThreaded
-from Hand import MoskaHand
-import utils
-from Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
+from .Deck import Card
+if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
+    from .Game import MoskaGame, MoskaGameThreaded
+from .Hand import MoskaHand
+from . import utils
+from .Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
 import threading
 import time
 

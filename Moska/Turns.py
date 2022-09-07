@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
 if TYPE_CHECKING:
-    from Game import MoskaGame
-    from Player import MoskaPlayerBase
-import utils
+    from .Game import MoskaGame
+    from .Player import MoskaPlayerBase
+from . import utils
 
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves."""

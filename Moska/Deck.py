@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import itertools as it
 import random
 from typing import Iterable
-import utils
+from . import utils
 
 @dataclass(frozen=True, eq=True)
 class Card:

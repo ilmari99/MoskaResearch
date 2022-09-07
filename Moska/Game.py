@@ -1,7 +1,7 @@
-import utils
-import Player
+from . import utils
+from . import Player
 from typing import Callable, List, TYPE_CHECKING
-from Deck import Card, StandardDeck
+from .Deck import Card, StandardDeck
 import threading
 
 class MoskaGame:
