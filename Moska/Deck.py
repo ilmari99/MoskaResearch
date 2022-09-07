@@ -44,7 +44,7 @@ class StandardDeck:
         Args:
             shuffle (bool, optional): Whether to shuffle the deck. Defaults to True. Else the deck is in the order of a Kartesian product.
         """
-        self.cards = deque((Card(v,s) for v,s in it.product(utils.CARD_VALUES,utils.CARD_SUITS)))
+        self.cards = deque((Card(v,s,False) for v,s in it.product(utils.CARD_VALUES,utils.CARD_SUITS)))
         if shuffle:
             self.shuffle()
         return None
