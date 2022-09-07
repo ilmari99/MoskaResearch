@@ -6,32 +6,38 @@ if TYPE_CHECKING:
 from . import utils
 
 class _PlayToPlayer:
-    """ This is the class of plays, that players can make, when they play cards to someone else or to themselves."""
+    """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
+    """
     def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
-        """
+        """ Initialize
         Args:
-            moskaGame (MoskaGame): _description_
-            player (MoskaPlayerBase): _description_
-            target_player (MoskaPlayerBase): _description_
-            play_cards (list): _description_
+            moskaGame (MoskaGame): MoskaGame -instance
+            player (MoskaPlayer): MoskaPlayer -instance
         """
         self.moskaGame = moskaGame
         self.player = player
         
         
-    def check_cards_available(self):
-        """ Check that the cards are playable"""
+    def check_cards_available(self) -> bool:
+        """ Check that the cards are playable.
+        Return whether the player has the play_cards in hand.
+        """
         return all([card in self.player.hand.cards for card in self.play_cards])
     
-    def check_fits(self):
-        """ Check that the cards fit in the table """
+    def check_fits(self) -> bool:
+        """ Check that the cards fit in the table.
+        Return whether the cards fit to the table.
+        """
         return len(self.target_player.hand) - len(self.moskaGame.cards_to_fall) >= len(self.play_cards)
     
-    def check_target_active(self,tg : MoskaPlayer):
+    def check_target_active(self,tg : MoskaPlayer) -> bool:
         """ Check that the target is the active player """
         return tg is self.moskaGame.get_target_player()
     
-    def play(self):
+    def play(self) -> None:
+        """Play the play_cards to the table;
+        Modify the players hand, add cards to the table, and draw cards from the deck.
+        """
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
         self.player.hand.draw(len(self.play_cards))                 # Draw the amount of cards played, from the deck
@@ -41,6 +47,13 @@ class _PlayToPlayer:
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
     def __call__(self,target_player : MoskaPlayer, play_cards : list):
+        """This is called when the instance is called with brackets.
+        Performs checks, assigns self variables and calls the play() method of super
+
+        Args:
+            target_player (MoskaPlayer): The target for who to play
+            play_cards (list): The list of cards to play to the table
+        """
         self.target_player = target_player
         self.play_cards = play_cards
         assert self.check_cards_available(), "Some of the played cards are not available"
@@ -49,9 +62,14 @@ class InitialPlay(_PlayToPlayer):
         self.play()
         
 class PlayToOther(_PlayToPlayer):
-    """ This is the play, that players can constantly make when playing cards to an opponent after the initial play"""
+    """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
     def __call__(self, target_player : MoskaPlayer, play_cards : list):
-        #self.__init__(moskaGame,player,target_player,play_cards)
+        """This method is called when this instance is called with brackets.
+
+        Args:
+            target_player (MoskaPlayer): The target for who to play
+            play_cards (list): The cards to play
+        """
         self.target_player = target_player
         self.play_cards = play_cards
         assert self.check_cards_available(), "Some of the played cards are not available"
@@ -72,10 +90,12 @@ class PlayToOther(_PlayToPlayer):
 class PlayFallCardFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
     def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
+        """ Initialize the instance """
         self.moskaGame = moskaGame
         self.player = player
 
     def __call__(self,play_fall : dict):
+        
         self.play_fall = play_fall
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
         assert self.check_player_has_turn(), "The player does not have the turn."
@@ -89,6 +109,10 @@ class PlayFallCardFromHand:
         return self.moskaGame.get_target_player() is self.player
         
     def play(self):
+        """For played_card, fall_card -pair, modify the game state;
+        Remove cards to fall from table and add them to fell_cards.
+        Remove the played cards from hand.
+        """
         for pc,fc in self.play_fall.items():
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(fc))        # Remove from cards_to_fall
             self.moskaGame.fell_cards.append(fc)                                            # Add to fell cards
@@ -97,6 +121,7 @@ class PlayFallCardFromHand:
         
             
 class PlayFallFromDeck:
+    """ Koplaus"""
     def __init__(self,moskaGame : MoskaGame,fall_method : Callable = None):
         self.moskaGame = moskaGame
         self.fall_method = fall_method
@@ -123,6 +148,9 @@ class PlayFallFromDeck:
         return any((c.kopled for c in self.moskaGame.cards_to_fall))
     
     def play_card(self):
+        """ Pop a card from deck, if the card can fall a card on the table, use fall_method to select the card.
+        If the card can't fall any card, add it to table.
+        """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
@@ -133,15 +161,22 @@ class PlayFallFromDeck:
             self.moskaGame.add_cards_to_fall([self.card])
             
     def check_can_fall(self):
+        """ Return if the card can fall a card on the table """
         return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in self.moskaGame.cards_to_fall])
 
 class EndTurn:
+    """ Class representing ending a turn. """
     def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
         self.moskaGame = moskaGame
         self.player = player
     
     
     def __call__(self,pick_cards : list = []):
+        """Called at the end of a turn. Pick selected cards.
+
+        Args:
+            pick_cards (list, optional): _description_. Defaults to [].
+        """
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
         if not pick_cards:
@@ -180,6 +215,9 @@ class EndTurn:
         return bool(self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)
     
     def pick_the_cards(self):
+        """ End the turn by picking selected cards, drawing from the deck to fill hand,
+        Turn the TurnCycle instance once if no cards picked, twice else
+        """
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
