@@ -1,4 +1,5 @@
 from __future__ import annotations
+from shutil import ExecError
 from typing import TYPE_CHECKING, List
 from .Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
@@ -87,7 +88,9 @@ class MoskaPlayer:
     
     def _can_end_turn(self):
         """ Return True if the player CAN end their turn now. Which is true, when all the other players are ready"""
-        return all((pl.ready for pl in self.moskaGame.players if (pl is not self) and (pl.rank is None)))
+        players_ready = all((pl.ready for pl in self.moskaGame.players if (pl is not self) and (pl.rank is None)))
+        cards_in_table = len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) > 0
+        return players_ready and cards_in_table
     
     
     def _will_end_turn(self) -> bool:
@@ -121,7 +124,7 @@ class MoskaPlayer:
         if playable == 0 and not_ready_players == 0 and not self.want_to_play_from_deck():
             return True
         # If the player wants to end turn and the player can end their turn
-        if self.want_to_end_turn() and self._can_end_turn():
+        if self._can_end_turn() and self.want_to_end_turn():
             return True
         return False
     
@@ -183,11 +186,11 @@ class MoskaPlayer:
         """
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
-        if self.ready and self is not self.moskaGame.get_target_player():
-            return
+        #if self.ready and self is not self.moskaGame.get_target_player():
+        #    return
         self.ready = True
         # If there are cards on the table; the game is already initiated
-        initiated = (len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards)) != 0
+        initiated = int(len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards)) != 0
         # If player is the target
         if self is self.moskaGame.get_target_player():
             # If the player will end their turn; They must by the rules, cant/wont koplata, or they want to and can end the rule
@@ -229,9 +232,10 @@ class MoskaPlayer:
                         break
                     self._play_turn()
                 except AssertionError as msg:
+                    # TODO: create custom errors
                     print(msg, flush=True)
                 print(self.moskaGame,flush=True)
-            time.sleep(0.00001)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock
+            time.sleep(0.00000001)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
         print(f"{self.name} finished as {self.rank}",flush=True)
         return
     
@@ -324,3 +328,59 @@ class MoskaPlayer:
             hand = self.hand.copy()     # Create a copy of the game.
             play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values,max_cards = self._fits_to_table())
         return play_cards
+    
+class HumanPlayer(MoskaPlayer):
+    def _check_no_input(self,inp):
+        if not inp:
+            return True
+        if isinstance(inp,list) and inp[0] in ["", " "]:
+            return True
+        return False
+    
+    def end_turn(self) -> List[Card]:
+        print(self.moskaGame)
+        pick_fallen = input("Pick all cards (y/n): ",)
+        if pick_fallen == "y":
+            return self.moskaGame.cards_to_fall + self.moskaGame.fell_cards
+        else:
+            return self.moskaGame.cards_to_fall
+    
+    def want_to_end_turn(self):
+        a = input("End turn (y/n):\n")
+        return True if a == "y" else False
+    
+    def want_to_play_from_deck(self):
+        a = input("Do you want to play from deck (y/n):\n")
+        return True if a == "y" else False
+    
+    def play_initial(self):
+        indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n").split(" ")
+        if self._check_no_input(indices):
+            return []
+        indices = [int(d) for d in indices]
+        return [self.hand.cards[i] for i in indices]
+    
+    def play_to_target(self) -> List[Card]:
+        indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n ").split(" ")
+        if self._check_no_input(indices):
+            return []
+        indices = [int(d) for d in indices]
+        return [self.hand.cards[i] for i in indices]
+    
+    def play_fall_card_from_hand(self):
+        pairs = input("Give card pairs; Which cards are used to fall which cards (as index tuples'(a,b)'):\n").strip()
+        if self._check_no_input(pairs):
+            return {}
+        pairs = pairs.split(" ")
+        pairs = [p.strip("()") for p in pairs]
+        hand_indices = [int(p[0]) for p in pairs]
+        table_indices = [int(p[-1]) for p in pairs]
+        return {self.hand.cards[ih] : self.moskaGame.cards_to_fall[iff] for ih,iff in zip(hand_indices,table_indices)}
+    
+    def deck_lift_fall_method(self, deck_card: Card):
+        print(f"Card from deck: {deck_card}")
+        fall_index = int(input("Select which card you want to fall from table (index): "))
+        if not fall_index:
+            return []
+        return (deck_card, self.moskaGame.cards_to_fall[fall_index])
+    
