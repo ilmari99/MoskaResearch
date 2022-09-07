@@ -1,18 +1,42 @@
 from functools import wraps
-from typing import Any, Callable, List
+from typing import Any, Callable, Iterable, List, TYPE_CHECKING
+if TYPE_CHECKING:
+    from Moska.Deck import Card
 
 CARD_VALUES = tuple(range(2,15))                            # Initialize the standard deck
 CARD_SUITS = ("C","D","H","S") 
 CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion table
 MAIN_DECK = None                                            # The main deck
 
-def suit_to_symbol(suits):
+def suit_to_symbol(suits : Iterable or str) -> List or str:
+    """Convert a suit to a symbol according to CARD_SUIT_SYMBOLS
+    If suits is str, returns a string
+    if suits is an iterable, returns a list
+
+    Args:
+        suits (Iterable or str): The suits to convert to symbols
+
+    Returns:
+        List or str
+    """
     if isinstance(suits,str):
         return CARD_SUIT_SYMBOLS[suits]
     return [CARD_SUIT_SYMBOLS[s] for s in suits]
 
-def check_can_fall_card(played_card, fall_card,triumph):
-    """ Returns true, if the played_card, can fall the fall_card"""
+def check_can_fall_card(played_card : Card, fall_card : Card,triumph : str) -> bool:
+    """Returns true, if the played_card, can fall the fall_card.
+    The played card can fall fall_card, if:
+    - The played card has the same suit and is greater than fall_card
+    - If the played_card is triumph suit, and the fall_card is not.
+
+    Args:
+        played_card (Card): The card played from hand
+        fall_card (Card): The card on the table
+        triumph (str): The triumph suit of the current game
+
+    Returns:
+        bool: True if played_card can fall fall_card, false otherwise
+    """
     success = False
     # Jos kortit ovat samaa maata ja pelattu kortti on suurempi
     if played_card.suit == fall_card.suit and played_card.value > fall_card.value:
@@ -22,11 +46,25 @@ def check_can_fall_card(played_card, fall_card,triumph):
             success = True
     return success
 
-def announce_new_card(self):
+def announce_new_card(self) -> None:
+    """Change all players ready -state to False.
+    This is called, when new values are played to the table.
+    """
     for pl in self.moskaGame.players:
         pl.ready = False
 
-def check_new_card(func):
+def check_new_card(func : Callable) -> Callable:
+    """A wrapper, that checks the state of the game before the function is applied and after the function is applied.
+    If the length of playable cards (set of values in the table) has changed, then changes all the players ready -states to False.
+    
+    NOTE: This wrapper is in a weird place, and it can only be wrapped to methods of MoskaPlayer.
+
+    Args:
+        func (Callable): The function to wrap
+
+    Returns:
+        Callable: The wrapped function
+    """
     wraps(func)
     def wrap(*args,**kwargs):
         #assert isinstance(args[0],MoskaPlayerBase), "The decorated function must have a reference to an instance of MoskaPlayerBase as the first positional argument."
