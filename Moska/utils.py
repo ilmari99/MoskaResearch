@@ -1,7 +1,8 @@
+from __future__ import annotations
 from functools import wraps
 from typing import Any, Callable, Iterable, List, TYPE_CHECKING
 if TYPE_CHECKING:
-    from Moska.Deck import Card
+    from .Deck import Card
 
 CARD_VALUES = tuple(range(2,15))                            # Initialize the standard deck
 CARD_SUITS = ("C","D","H","S") 
