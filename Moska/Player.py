@@ -1,5 +1,4 @@
 from __future__ import annotations
-from shutil import ExecError
 from typing import TYPE_CHECKING, List
 from .Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
@@ -22,7 +21,8 @@ class MoskaPlayer:
     thread : threading.Thread = None
     name : str = ""
     ready : bool = False
-    def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = ""):
+    delay = 10**-6
+    def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = "", delay=10**-6):
         """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
         Here we initialize the distinct possible plays from Turns.py.
         
@@ -51,6 +51,7 @@ class MoskaPlayer:
         self._playToOther = PlayToOther(self.moskaGame,self)
         self._initialPlay = InitialPlay(self.moskaGame,self)
         self._endTurn = EndTurn(self.moskaGame,self)
+        self.delay = delay
         
         
     def _set_pid(self,pid) -> None:
@@ -83,8 +84,6 @@ class MoskaPlayer:
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
         self._initialPlay(target,play_cards)
-    
-    
     
     def _can_end_turn(self):
         """ Return True if the player CAN end their turn now. Which is true, when all the other players are ready"""
@@ -214,7 +213,6 @@ class MoskaPlayer:
         """ Initializes the Thread"""
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
     
-    
     def _continuous_play(self) -> None:
         """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
         This function starts a while loop, that runs as long as the players rank is None and there are atleast 2 players in the game.
@@ -235,7 +233,7 @@ class MoskaPlayer:
                     # TODO: create custom errors
                     print(msg, flush=True)
                 print(self.moskaGame,flush=True)
-            time.sleep(0.00000001)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
+            time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
         print(f"{self.name} finished as {self.rank}",flush=True)
         return
     
@@ -330,6 +328,10 @@ class MoskaPlayer:
         return play_cards
     
 class HumanPlayer(MoskaPlayer):
+    
+    def __init__(self, moskaGame: MoskaGame, pid: int = 0, name: str = "", delay=1):
+        super().__init__(moskaGame, pid, name, delay)
+        
     def _check_no_input(self,inp):
         if not inp:
             return True
