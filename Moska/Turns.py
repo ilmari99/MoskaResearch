@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Callable, TYPE_CHECKING
-
+from collections import Counter
 from Moska.Deck import Card
 if TYPE_CHECKING:
     from .Game import MoskaGame
@@ -58,10 +58,16 @@ class InitialPlay(_PlayToPlayer):
         """
         self.target_player = target_player
         self.play_cards = play_cards
+        assert self.check_single_or_multiple(), "Selected values could not be played. Only pairs or greater, cards of same values can be played."
         assert self.check_cards_available(), "Some of the played cards are not available"
         assert self.check_fits(), "Attempted to play too many cards."
         assert self.check_target_active(self.target_player), "Target is not active"
         self.play()
+        
+    def check_single_or_multiple(self):
+        c = Counter([c.value for c in self.play_cards])
+        return len(self.play_cards) == 1 or all((count >= 2 for count in c.values()))
+        
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
@@ -75,9 +81,16 @@ class PlayToOther(_PlayToPlayer):
         self.target_player = target_player
         self.play_cards = play_cards
         assert self.check_cards_available(), "Some of the played cards are not available"
-        assert self.check_fits(), "Attempted to play too many cards."
+        if self.player is not target_player:
+            assert self.check_fits(), "Attempted to play too many cards."
+        else:
+            assert self.check_deck_left(), "There is no deck left, and playing to self is not possible."
         assert self.check_in_table(), "Some of the cards you tried to play, are not playable, because they haven't yet been played by another player."
         self.play()
+        
+    def check_deck_left(self):
+        """ Returns True if there is still deck left. Else False """
+        return len(self.player.moskaGame.deck) > 0
     
     def _playable_values(self):
         """ Return a set of values, that can be played to target"""
