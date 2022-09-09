@@ -16,9 +16,8 @@ def start_threaded_moska(file = "moskafile_threaded.txt"):
     deck = Deck.StandardDeck()
     moskaGame = MoskaGame(deck)
     players = []
-    moskaGame.add_player(HumanPlayer(moskaGame,pid=11,name = "ilmari"))
     for i in range(5):
-        players.append(MoskaPlayer(moskaGame,pid=i))
+        players.append(MoskaPlayer(moskaGame,pid=i,debug=True))
     for player in players:
         moskaGame.add_player(player)
     moskaGame.start()
@@ -49,7 +48,7 @@ def play_games(n=1):
 
 if __name__ == "__main__":
     #n = 5
-    #play_games(1)
-    play_as_human(4)
+    play_games(1)
+    #play_as_human(4)
     
     
