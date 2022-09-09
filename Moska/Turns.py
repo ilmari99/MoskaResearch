@@ -42,7 +42,8 @@ class _PlayToPlayer:
         """
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
-        self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards
+        if self.player is not self.target_player:
+            self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards, if you are not playing to self
         #self.player._set_rank()
         
 
