@@ -53,6 +53,7 @@ def announce_new_card(self) -> None:
     """
     for pl in self.moskaGame.players:
         pl.ready = False
+    print(self.moskaGame,flush=True)
 
 def check_new_card(func : Callable) -> Callable:
     """A wrapper, that checks the state of the game before the function is applied and after the function is applied.
