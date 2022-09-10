@@ -9,7 +9,6 @@ from .Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialP
 import threading
 import time
 
-
 class MoskaPlayer:
     """ The base class of a moska player. This by itself is deprecated. This should not be subclassed by it self.
     To create custom play styles, one should instead subclass MoskaPlayerThreadedBase -class.
@@ -21,9 +20,9 @@ class MoskaPlayer:
     thread : threading.Thread = None
     name : str = ""
     ready : bool = False
-    delay = 10**-6
-    requires_graphic = False
-    debug = False
+    delay : float = 10**-6
+    requires_graphic : bool = False
+    debug : bool = False
     def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = "", delay=10**-6, requires_graphic : bool = False, debug : bool = False):
         """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
         Here we initialize the distinct possible plays from Turns.py.
@@ -36,13 +35,13 @@ class MoskaPlayer:
         - Modify the state of other players
         
         This will very likely lead to problems in the game. Looking at the hand, and getting the values is necessary to make play decisions.
-        However modifying the state of the game is not necessary, since all modifications are made implicitly in the Turns -classes.
+        However modifying the state of the game is not necessary and will lead to problems, since all modifications are made implicitly in the Turns -classes.
         Refer to the documentation of functions that are not prefixed with "_" for instructions on how to succesfully overwrite these methods.
 
         Args:
             moskaGame (MoskaGame): The MoskaGame instance in which the player is participating.
             pid (int, optional): The ID if the player. Defaults to 0. For future use.
-            name (str, optional): Name of the player. Defaults to "P{pid}".
+            name (str, optional): Name of the player. Defaults to f"P{pid}".
         """
         self.moskaGame = moskaGame
         self.hand = MoskaHand(moskaGame)
@@ -91,9 +90,6 @@ class MoskaPlayer:
         if self.debug:
             print(f"{self.name} playing {play_cards} to self")
         self._playToOther(self,play_cards)
-        
-    def want_to_play_to_self(self):
-        return bool(self.play_to_self())
     
     
     def _play_initial(self):
@@ -171,16 +167,17 @@ class MoskaPlayer:
         2. play cards to self
         3. play cards from hand
         """
-        if len(self.moskaGame.cards_to_fall) > 0 and len(self.moskaGame.deck) > 0 and not any((c.kopled for c in self.moskaGame.cards_to_fall)) and self.want_to_play_from_deck():
-            self._play_fall_from_deck()
-        if self._playable_values_from_hand() and len(self.moskaGame.deck) > 0 and self.want_to_play_to_self():
-            self._play_to_self()
-        if self.moskaGame.cards_to_fall and self._can_fall_cards() and self.want_to_fall_cards():
-            self._play_fall_card_from_hand()
-        return
-    
-    def want_to_fall_cards(self):
-        return bool(self.play_fall_card_from_hand())    
+        #played = 1
+        while True:
+            if len(self.moskaGame.cards_to_fall) > 0 and len(self.moskaGame.deck) > 0 and not any((c.kopled for c in self.moskaGame.cards_to_fall)) and self.want_to_play_from_deck():
+                self._play_fall_from_deck()
+            elif self._playable_values_from_hand() and len(self.moskaGame.deck) > 0 and self.want_to_play_to_self():
+                self._play_to_self()
+            elif self.moskaGame.cards_to_fall and self._can_fall_cards() and self.want_to_fall_cards():
+                self._play_fall_card_from_hand()
+            else:
+                break
+        return   
 
     def _play_fall_from_deck(self):
         """ This method is called, when the player decides to koplata. """
@@ -289,6 +286,31 @@ class MoskaPlayer:
         print(f"{self.name} finished as {self.rank}",flush=True)
         return
     
+    def want_to_fall_cards(self) -> bool:
+        """Whether the player wants to fall cards from their hand.
+        
+        Default: Whether play_fall_card_from_hand() returns empty dict.
+        This might be slow, but it is correct if play_fall_card_from_hand is deterministic.
+        
+        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
+
+        Returns:
+            bool: Whether the player wants to fall cards from hand
+        """
+        return bool(self.play_fall_card_from_hand()) 
+    
+    def want_to_play_to_self(self) -> bool:
+        """ Whether the player wants to play cards to self.
+        
+        Default: Whether play_to_self() returns cards.
+        Default might be slower, but it is correct if play_to_self() is deterministic.
+        
+        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
+        
+        Returns:
+            bool: whether the player wants to play cards to self
+        """
+        return bool(self.play_to_self())
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
@@ -350,10 +372,16 @@ class MoskaPlayer:
         else:
             False
             
-    def play_to_self(self):
+    def play_to_self(self) -> List[Card]:
+        """Which cards from hand to play to table.
+        Default play all playable values, except triumphs
+
+        Returns:
+            List[Card]: list of cards played to self
+        """
         pv = self._playable_values_from_hand()
         chand = self.hand.copy()
-        cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit == self.moskaGame.triumph)
+        cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
         return cards
             
     def play_initial(self):
@@ -386,7 +414,6 @@ class MoskaPlayer:
         return play_cards
     
 class HumanPlayer(MoskaPlayer):
-    
     def __init__(self, moskaGame: MoskaGame, pid: int = 0, name: str = "", delay=1, requires_graphic : bool = True, debug=True):
         super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug)
         
