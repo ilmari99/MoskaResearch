@@ -26,9 +26,9 @@ def start_threaded_moska(file = "moskafile_threaded.txt"):
 def play_as_human(nopponents):
     deck = Deck.StandardDeck()
     moskaGame = MoskaGame(deck)
-    moskaGame.add_player(HumanPlayer(moskaGame,pid = 101010, name = "human"))
+    moskaGame.add_player(HumanPlayer(moskaGame,pid = 101010, name = "human", debug=True))
     for i in range(nopponents):
-        player = MoskaPlayer(moskaGame,pid=i)
+        player = MoskaPlayer(moskaGame,pid=i,debug=True,delay=1)
         moskaGame.add_player(player)
     moskaGame.start()
     
