@@ -8,6 +8,7 @@ from . import utils
 from .Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
 import threading
 import time
+import logging
 
 class MoskaPlayer:
     """ The base class of a moska player. This by itself is deprecated. This should not be subclassed by it self.
@@ -23,7 +24,15 @@ class MoskaPlayer:
     delay : float = 10**-6
     requires_graphic : bool = False
     debug : bool = False
-    def __init__(self,moskaGame : MoskaGame, pid : int = 0, name : str = "", delay=10**-6, requires_graphic : bool = False, debug : bool = False):
+    plog = None
+    def __init__(self,moskaGame : MoskaGame, 
+                 pid : int = 0, 
+                 name : str = "", 
+                 delay=10**-6, 
+                 requires_graphic : bool = False, 
+                 debug : bool = False, 
+                 log_level = logging.INFO,
+                 log_file = ""):
         """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
         Here we initialize the distinct possible plays from Turns.py.
         
@@ -55,10 +64,18 @@ class MoskaPlayer:
         self.delay = delay
         self.requires_graphic = requires_graphic if not debug else True
         self.debug = debug
-        
+        self.plog = logging
+        if log_file:
+            self.plog = logging.getLogger(self.name)
+            self.plog.setLevel(log_level)
+            fh = logging.FileHandler(log_file,mode="w")
+            formatter = logging.Formatter("%(name)s:%(message)s")
+            fh.setFormatter(formatter)
+            self.plog.addHandler(fh)
         
     def _set_pid(self,pid) -> None:
         """ Set the players pid. Currently no use."""
+        self.plog.debug(f"Set pid to {pid}")
         self.pid = pid
     
     def _playable_values_to_table(self):
@@ -81,14 +98,12 @@ class MoskaPlayer:
         """ This method is invoked to play the cards, chosen in 'play_to_target' """
         play_cards = self.play_to_target()
         target = self.moskaGame.get_target_player()
-        if self.debug:
-            print(f"{self.name} playing {play_cards} to {target.name}")
+        self.plog.info(f"Playing {play_cards} to {target.name}")
         self._playToOther(target,play_cards)
         
     def _play_to_self(self):
         play_cards = self.play_to_self()
-        if self.debug:
-            print(f"{self.name} playing {play_cards} to self")
+        self.plog.info(f"Playing {play_cards} to self")
         self._playToOther(self,play_cards)
     
     
@@ -96,8 +111,7 @@ class MoskaPlayer:
         """ This function is called, when self is the initiating player, and gets to play to an empty table."""
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
-        if self.debug:
-            print(f"{self.name} playing {play_cards} to {target.name}")
+        self.plog.info(f"Playing {play_cards} to {target.name}")
         self._initialPlay(target,play_cards)
     
     def _can_end_turn(self):
@@ -157,8 +171,6 @@ class MoskaPlayer:
             if self._can_fall_cards() and self.want_to_fall_cards():
                 msg = "Player wants to fall cards"
                 out = False
-        if self.debug:
-            print(msg)
         return out
     
     def _play_fall_cards(self) -> None:
@@ -176,20 +188,18 @@ class MoskaPlayer:
             elif self.moskaGame.cards_to_fall and self._can_fall_cards() and self.want_to_fall_cards():
                 self._play_fall_card_from_hand()
             else:
+                self.plog.debug(f"Player has played the desired moves")
                 break
-        return   
+        return
 
-    def _play_fall_from_deck(self):
+    def _play_fall_from_deck(self) -> None:
         """ This method is called, when the player decides to koplata. """
-        if self.debug:
-            print(f"{self.name} koplaus")
         self._playFallFromDeck(fall_method=self.deck_lift_fall_method)
 
     def _play_fall_card_from_hand(self):
         """ This method is called, when the player has decided to play cards from their hand."""
         play_cards = self.play_fall_card_from_hand()
-        if self.debug:
-            print(f"{self.name} falling cards: {play_cards}")
+        self.plog.info(f"Falling cards: {play_cards}")
         self._playFallCardFromHand(play_cards)
     
     
@@ -200,8 +210,7 @@ class MoskaPlayer:
             bool: True if cards were picked, false otherwise
         """
         pick_cards = self.end_turn()
-        if self.debug:
-            print(f"{self.name} ending turn and picking {pick_cards}")
+        self.plog.info(f"Ending turn and picking {pick_cards}")
         self._endTurn(pick_cards)
         return bool(pick_cards)
         
@@ -212,6 +221,7 @@ class MoskaPlayer:
         if self.rank is None:   # if the player hasn't already finished
             if not self.hand and len(self.moskaGame.deck) == 0: # If the player doesn't have a hand and there are no cards left
                 self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
+        self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
     
@@ -252,6 +262,7 @@ class MoskaPlayer:
         elif self._fits_to_table() > 0 and self._playable_values_from_hand():
             self._play_to_target()
         self._set_rank()
+        # If the player finishes as a target
         if self.rank is not None and self is self.moskaGame.get_target_player():
             self._end_turn()
         return
@@ -259,12 +270,17 @@ class MoskaPlayer:
     def _start(self) -> None:
         """ Initializes the Thread"""
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
+        self.plog.info("Initialized thread")
     
     def _continuous_play(self) -> None:
         """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
         This function starts a while loop, that runs as long as the players rank is None and there are atleast 2 players in the game.
         
         """
+        tb_info = {"players" : len(self.moskaGame.players),
+                   "Triumph card" : self.moskaGame.triumph_card,
+                   }
+        self.plog.info(f"Table info: {tb_info}")
         print(f"{self.name} started playing...",flush=True)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
@@ -279,10 +295,20 @@ class MoskaPlayer:
                     # If there is only 1 active player in the game, break
                     if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
                         break
+                    msgd = {
+                        "target" : self.moskaGame.get_target_player().name,
+                        "cards_to_fall" : self.moskaGame.cards_to_fall,
+                        "fell_cards" : self.moskaGame.fell_cards,
+                        "hand" : self.hand,
+                        "Deck" : len(self.moskaGame.deck),
+                            }
+                    self.plog.info(f"{msgd}")
                     self._play_turn()
                 except AssertionError as msg:
                     # TODO: create custom errors
+                    self.plog.error(msg)
                     print(msg, flush=True)
+            self.plog.info("")
         print(f"{self.name} finished as {self.rank}",flush=True)
         return
     
@@ -414,8 +440,8 @@ class MoskaPlayer:
         return play_cards
     
 class HumanPlayer(MoskaPlayer):
-    def __init__(self, moskaGame: MoskaGame, pid: int = 0, name: str = "", delay=1, requires_graphic : bool = True, debug=True):
-        super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug)
+    def __init__(self, moskaGame: MoskaGame, pid: int = 0, name: str = "", delay=1, requires_graphic : bool = True, debug=True,log_level=logging.INFO,log_file=""):
+        super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug,log_level=log_level, log_file=log_file)
         
     def _check_no_input(self,inp):
         if not inp:
