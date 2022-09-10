@@ -43,6 +43,7 @@ class _PlayToPlayer:
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
         if self.player is not self.target_player:
+            self.player.plog.debug(f"Drew {6 - len(self.player.hand)} cards from deck")
             self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards, if you are not playing to self
         #self.player._set_rank()
         
@@ -170,12 +171,15 @@ class PlayFallFromDeck:
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         self.card = Card(self.card.value,self.card.suit,True)
+        self.player = self.moskaGame.get_target_player()
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
+            self.player.plog.info(f"Playing kopled card {play_fall[0]} to {play_fall[1]}")
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(play_fall[1]))
             self.moskaGame.fell_cards.append(play_fall[1])
             self.moskaGame.fell_cards.append(play_fall[0])
         else:
+            self.player.plog.debug(f"Adding {self.card} to cards_to_fall")
             self.moskaGame.add_cards_to_fall([self.card])
             
     def check_can_fall(self):
