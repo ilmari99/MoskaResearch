@@ -1,5 +1,4 @@
 from __future__ import annotations
-import threading
 from typing import Iterable, TYPE_CHECKING
 if TYPE_CHECKING:
     from Game import MoskaGame
