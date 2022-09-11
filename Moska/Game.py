@@ -144,4 +144,4 @@ class MoskaGame:
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             print(f"#{rank} - {p}")
-        return True
+        return ranks
