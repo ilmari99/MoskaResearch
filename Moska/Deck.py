@@ -5,7 +5,7 @@ import random
 from typing import Iterable
 from . import utils
 
-@dataclass(frozen=True, eq=True)
+@dataclass(frozen=True, eq=False,unsafe_hash=True)
 class Card:
     """ A class representing a card.
     This is sort of like a named tuple, but with more freedom to customize
@@ -16,6 +16,7 @@ class Card:
     value : int
     suit : str
     kopled : bool = False
+    score : int = None
     
     def __repr__(self) -> str:
         """ How to represent the card when printing"""
@@ -31,13 +32,14 @@ class Card:
         """ How to compare the card to others"""
         return self.value < other.value
     
+    def __eq__(self,other):
+        return self.value == other.value and self.suit == other.suit
+    
 
 
 # Could probably be converted to a subclass of deque
 class StandardDeck:
     """ The class representing a standard deck implementation as a deque, to mitigate some risks """
-    locks = {}      # Currently only supports locking one card at the bottom
-    # TODO: deprecate locks
     def __init__(self,shuffle : bool=True):
         """Initilize the deck with the combinations of card values and card suits
 
@@ -102,11 +104,4 @@ class StandardDeck:
             card (Card): Card to insert to the bottom
         """
         self.cards.append(card)
-    
-    def insert(self,pos,card,lock = False):
-        """ Insert a card to a position in the deck.
-        TODO: Make deprecated"""
-        self.cards.insert(pos,card)
-        if lock:
-            self.locks[pos] = card
         
