@@ -1,3 +1,4 @@
+import logging
 from Moska import Deck
 from Moska.Game import MoskaGame
 from Moska.Player import HumanPlayer, MoskaPlayer
@@ -26,7 +27,7 @@ def start_threaded_moska(file = "moskafile_threaded.txt"):
 def play_as_human(nopponents):
     deck = Deck.StandardDeck()
     moskaGame = MoskaGame(deck)
-    moskaGame.add_player(HumanPlayer(moskaGame,pid = 101010, name = "human", debug=True,log_file="human.log"))
+    moskaGame.add_player(HumanPlayer(moskaGame,pid = 101010, name = "human", debug=True,log_file="human.log",log_level = logging.DEBUG))
     for i in range(nopponents):
         player = MoskaPlayer(moskaGame,pid=i,debug=True,delay=1)
         moskaGame.add_player(player)
@@ -48,7 +49,7 @@ def play_games(n=1):
 
 if __name__ == "__main__":
     #n = 5
-    play_games(1)
-    #play_as_human(4)
+    #play_games(1)
+    play_as_human(4)
     
     
