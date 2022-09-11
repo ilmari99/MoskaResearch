@@ -182,10 +182,13 @@ class MoskaPlayer:
         #played = 1
         while True:
             if len(self.moskaGame.cards_to_fall) > 0 and len(self.moskaGame.deck) > 0 and not any((c.kopled for c in self.moskaGame.cards_to_fall)) and self.want_to_play_from_deck():
+                self.plog.debug(f"Playing from deck")
                 self._play_fall_from_deck()
             elif self._playable_values_from_hand() and len(self.moskaGame.deck) > 0 and self.want_to_play_to_self():
+                self.plog.debug("Playing to self")
                 self._play_to_self()
             elif self.moskaGame.cards_to_fall and self._can_fall_cards() and self.want_to_fall_cards():
+                self.plog.debug("Falling from table")
                 self._play_fall_card_from_hand()
             else:
                 self.plog.debug(f"Player has played the desired moves")
@@ -204,12 +207,15 @@ class MoskaPlayer:
     
     
     def _end_turn(self) -> bool:
-        """Called when the player must or wants to and can end their turn.
+        """Called when the player must or wants to and can end their turn, or when finishing the game
 
         Returns:
             bool: True if cards were picked, false otherwise
         """
-        pick_cards = self.end_turn()
+        pick_cards = []
+        # If the player didn't finish fully, ask which cards to pick to hand
+        if self.rank is None:
+            pick_cards = self.end_turn()
         self.plog.info(f"Ending turn and picking {pick_cards}")
         self._endTurn(pick_cards)
         return bool(pick_cards)
@@ -309,6 +315,7 @@ class MoskaPlayer:
                     self.plog.error(msg)
                     print(msg, flush=True)
             self.plog.info("")
+        self.plog.info(f"Finished as {self.rank}")
         print(f"{self.name} finished as {self.rank}",flush=True)
         return
     
@@ -514,4 +521,3 @@ class HumanPlayer(MoskaPlayer):
         indices = [int(d) for d in indices]
         return [self.hand.cards[i] for i in indices]
         
-    
