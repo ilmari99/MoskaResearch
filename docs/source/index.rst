@@ -9,6 +9,7 @@ Welcome to Moska's documentation!
 **Moska** is a python library for everything related to the Moska card game (Finnish here: https://korttipeliopas.fi/moska).
 
 
+.. include:: Moska.rst
 
 .. toctree::
    :maxdepth: 2
