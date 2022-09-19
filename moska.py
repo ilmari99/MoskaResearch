@@ -64,7 +64,7 @@ def play_games(n=1):
 
 if __name__ == "__main__":
     #n = 5
-    play_games(1)
+    play_as_human(4)
     #play_as_human(4)
     
     
