@@ -70,7 +70,7 @@ class MoskaPlayer:
         if log_file:
             self.plog = logging.getLogger(self.name)
             self.plog.setLevel(log_level)
-            fh = logging.FileHandler(log_file,mode="w")
+            fh = logging.FileHandler(log_file,mode="w",encoding="utf-8")
             formatter = logging.Formatter("%(name)s:%(message)s")
             fh.setFormatter(formatter)
             self.plog.addHandler(fh)
@@ -294,28 +294,29 @@ class MoskaPlayer:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
             with self.moskaGame.main_lock as ml:
+                if self.requires_graphic:
+                    print(f"{self.name} playing...",flush=True)
+                    print(self.moskaGame)
+                if self.debug:
+                    print([pl.ready for pl in self.moskaGame.players],flush=True)
+                # If there is only 1 active player in the game, break
+                if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
+                    break
+                msgd = {
+                    "target" : self.moskaGame.get_target_player().name,
+                    "cards_to_fall" : self.moskaGame.cards_to_fall,
+                    "fell_cards" : self.moskaGame.fell_cards,
+                    "hand" : self.hand,
+                    "Deck" : len(self.moskaGame.deck),
+                        }
+                self.plog.info(f"{msgd}")
                 try:
-                    if self.requires_graphic:
-                        print(f"{self.name} playing...",flush=True)
-                        print(self.moskaGame)
-                    if self.debug:
-                        print([pl.ready for pl in self.moskaGame.players],flush=True)
-                    # If there is only 1 active player in the game, break
-                    if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
-                        break
-                    msgd = {
-                        "target" : self.moskaGame.get_target_player().name,
-                        "cards_to_fall" : self.moskaGame.cards_to_fall,
-                        "fell_cards" : self.moskaGame.fell_cards,
-                        "hand" : self.hand,
-                        "Deck" : len(self.moskaGame.deck),
-                            }
-                    self.plog.info(f"{msgd}")
                     self._play_turn()
                 except AssertionError as msg:
                     # TODO: create custom errors
                     self.plog.error(msg)
-                    raise AssertionError(msg)
+                    self.ready = False
+                    #raise AssertionError(msg)
                     print(msg, flush=True)
             self.plog.info("")
         self.plog.info(f"Finished as {self.rank}")
@@ -550,11 +551,16 @@ class MoskaBot1(MoskaPlayer):
         else:
             return 12 - (14 - card.value)
     
-    def _assign_scores(self, cards : Iterable[Card]):
-        """Assign a score if the current score is None to cards in iterable.
+    def _assign_scores(self, cards : Iterable[Card]) -> List[Card]:
+        """Create new Card instances, with the Card instances from Iterable.
+        Return the new cards
+        Create
 
         Args:
-            cards (Iterable[Card]): The cards for which a score is assigned to
+            cards (Iterable[Card]): The cards which are copied to the new list of cards, along with the score
+            
+        Returns:
+            List[Card]: list of the same cards, with a score -attribute
         """
         new_cards = []
         for card in cards:
@@ -599,7 +605,17 @@ class MoskaBot1(MoskaPlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
-    def _map_to_list(self,card : Card, to : Iterable[Card] = None):
+    def _map_to_list(self,card : Card, to : Iterable[Card] = None) -> List[Card]:
+        """Return a list of Card -instances from to (default self.moskaGame.cards_to_fall),
+        that 'card' can fall.
+
+        Args:
+            card (Card): The card that is used to fall cards in 'to'
+            to (Iterable[Card], optional): Iterable containing Card -instances. Defaults to cards_on_table.
+
+        Returns:
+        List[Card]: List of Card -instances
+        """
         if not to:
             to = self.moskaGame.cards_to_fall
         out = []
@@ -609,6 +625,14 @@ class MoskaBot1(MoskaPlayer):
         return out
     
     def _get_sm_score_in_list(self,cards : List[Card]):
+        """Return the first Card with the smallest score in 'cards'.
+
+        Args:
+            cards (List[Card]): _description_
+
+        Returns:
+            _type_: _description_
+        """        
         if not cards:
             return None
         cards = self._assign_scores(cards)
@@ -629,11 +653,13 @@ class MoskaBot1(MoskaPlayer):
         self.moskaGame.cards_to_fall = self._assign_scores(self.moskaGame.cards_to_fall)
         self.hand.cards = self._assign_scores(self.hand.cards)
         
+        # Needed to refer to self.
         def map_to_list(card):
             return card,self._map_to_list(card)
         
         # Map each card in hand, to a list of cards on the table, that can be fallen
         can_fall = map(map_to_list,self.hand)
+        
         # Map each card in hand to the card with the smallest score
         def map_to_card(pc_li):
             li = pc_li[1]
@@ -642,16 +668,20 @@ class MoskaBot1(MoskaPlayer):
                 return pc_li[0],[]
             return pc_li[0],sm_card
         
-        # Create a dict an filter if card doesn't map to card to fall
+        # Create a dict with play_card : smallest fallable card
+        # and filter if card doesn't map to any card on the table
         play_cards = {pc:fc for pc,fc in map(map_to_card,can_fall) if fc}
         
-        # Create counter to count multiple mappings to a card
+        # Create a counter to count how many cards from hand are mapped to each card on the table
         counter = Counter(play_cards.values())
         for pc,fc in play_cards.copy().items():
+            # If there are multiple mappings to a card on the table, decrement counter and remove the card that is mapped
+            # to the card with multiple values
             if counter[fc] > 1:
                 counter[fc] -= 1
                 play_cards.pop(pc)
         return play_cards
+    
     
     def deck_lift_fall_method(self, deck_card : Card):
         """A function to determine which card will fall, if a random card from the deck is lifted.
@@ -671,10 +701,11 @@ class MoskaBot1(MoskaPlayer):
         """
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
+        # Get the card on the table with the smallest score
         sm_card = self._get_sm_score_in_list(mapping)
         return (deck_card,sm_card)
             
-    def want_to_end_turn(self):
+    def want_to_end_turn(self) -> bool:
         """ Return True if the player (as target) wants to prematurely end the turn by calling the _end_turn() method 
         which lifts the cards specified in end_turn()
         
@@ -694,7 +725,8 @@ class MoskaBot1(MoskaPlayer):
         chand = self.hand.copy()
         cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
         return cards
-            
+
+
     def play_initial(self):
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
