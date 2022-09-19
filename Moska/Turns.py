@@ -174,6 +174,7 @@ class PlayFallFromDeck:
         self.player = self.moskaGame.get_target_player()
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
+            assert self.check_can_fall(in_=[play_fall[1]]), f"The card {self.card} can not fall {play_fall[1]}"
             self.player.plog.info(f"Playing kopled card {play_fall[0]} to {play_fall[1]}")
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(play_fall[1]))
             self.moskaGame.fell_cards.append(play_fall[1])
@@ -181,10 +182,11 @@ class PlayFallFromDeck:
         else:
             self.player.plog.debug(f"Adding {self.card} to cards_to_fall")
             self.moskaGame.add_cards_to_fall([self.card])
-            
-    def check_can_fall(self):
+    
+    def check_can_fall(self,in_ = None):
         """ Return if the card can fall a card on the table """
-        return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in self.moskaGame.cards_to_fall])
+        in_ = self.moskaGame.cards_to_fall if not in_ else in_
+        return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in in_])
 
 class EndTurn:
     """ Class representing ending a turn. """
