@@ -1,11 +1,11 @@
 from . import utils
-from .Player import MoskaPlayer
+from .BasePlayer import BasePlayer
 from typing import Callable, List, TYPE_CHECKING
 from .Deck import Card, StandardDeck
 import threading
 
 class MoskaGame:
-    players : List[MoskaPlayer] = []
+    players : List[BasePlayer] = []
     triumph : str = ""
     triumph_card = None
     cards_to_fall = []
@@ -56,7 +56,7 @@ class MoskaGame:
             trh.join()
 
     
-    def add_player(self,player : MoskaPlayer) -> None:
+    def add_player(self,player : BasePlayer) -> None:
         """Add a player to this MoskaGame -instance.
         Adds the player to the list of players, and to the TurnCycle -instance attribute
 
@@ -68,7 +68,7 @@ class MoskaGame:
         return
     
     
-    def get_initiating_player(self) -> MoskaPlayer:
+    def get_initiating_player(self) -> BasePlayer:
         """ Return the player, whose turn it is/was to initiate the turn aka. play to an empty table. """
         active = self.get_target_player()
         ptr = int(self.turnCycle.ptr)
@@ -77,11 +77,11 @@ class MoskaGame:
         assert self.turnCycle.ptr == ptr
         return out
     
-    def get_players_condition(self, cond : Callable = lambda x : True) -> List[MoskaPlayer]:
+    def get_players_condition(self, cond : Callable = lambda x : True) -> List[BasePlayer]:
         """ Get a list of players that return True when condition is applied.
 
         Args:
-            cond (Callable): The condition to be applied to each MoskaPlayer -instance. Defaults to lambda x : True.
+            cond (Callable): The condition to be applied to each BasePlayer -instance. Defaults to lambda x : True.
 
         Returns:
             List of players who satisfy condition.
@@ -97,7 +97,7 @@ class MoskaGame:
         self.cards_to_fall += add
         return
         
-    def get_target_player(self) -> MoskaPlayer:
+    def get_target_player(self) -> BasePlayer:
         """Return the player, who is currently the target; To who cards are played to.
 
         Returns:
