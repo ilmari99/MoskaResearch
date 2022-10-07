@@ -4,17 +4,17 @@ from collections import Counter
 from Moska.Deck import Card
 if TYPE_CHECKING:
     from .Game import MoskaGame
-    from .Player import MoskaPlayer
+    from .BasePlayer import BasePlayer
 from . import utils
 
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
+    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         """ Initialize
         Args:
             moskaGame (MoskaGame): MoskaGame -instance
-            player (MoskaPlayer): MoskaPlayer -instance
+            player (BasePlayer): BasePlayer -instance
         """
         self.moskaGame = moskaGame
         self.player = player
@@ -32,7 +32,7 @@ class _PlayToPlayer:
         """
         return len(self.target_player.hand) - len(self.moskaGame.cards_to_fall) >= len(self.play_cards)
     
-    def check_target_active(self,tg : MoskaPlayer) -> bool:
+    def check_target_active(self,tg : BasePlayer) -> bool:
         """ Check that the target is the active player """
         return tg is self.moskaGame.get_target_player()
     
@@ -50,12 +50,12 @@ class _PlayToPlayer:
 
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
-    def __call__(self,target_player : MoskaPlayer, play_cards : list):
+    def __call__(self,target_player : BasePlayer, play_cards : list):
         """This is called when the instance is called with brackets.
         Performs checks, assigns self variables and calls the play() method of super
 
         Args:
-            target_player (MoskaPlayer): The target for who to play
+            target_player (BasePlayer): The target for who to play
             play_cards (list): The list of cards to play to the table
         """
         self.target_player = target_player
@@ -73,11 +73,11 @@ class InitialPlay(_PlayToPlayer):
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
-    def __call__(self, target_player : MoskaPlayer, play_cards : list):
+    def __call__(self, target_player : BasePlayer, play_cards : list):
         """This method is called when this instance is called with brackets.
 
         Args:
-            target_player (MoskaPlayer): The target for who to play
+            target_player (BasePlayer): The target for who to play
             play_cards (list): The cards to play
         """
         self.target_player = target_player
@@ -106,7 +106,7 @@ class PlayToOther(_PlayToPlayer):
 
 class PlayFallCardFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
+    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         """ Initialize the instance """
         self.moskaGame = moskaGame
         self.player = player
@@ -190,7 +190,7 @@ class PlayFallFromDeck:
 
 class EndTurn:
     """ Class representing ending a turn. """
-    def __init__(self,moskaGame : MoskaGame, player : MoskaPlayer):
+    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         self.moskaGame = moskaGame
         self.player = player
     
