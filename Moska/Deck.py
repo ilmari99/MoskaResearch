@@ -5,18 +5,34 @@ import random
 from typing import Iterable
 from . import utils
 
-@dataclass(frozen=True, eq=False,unsafe_hash=True)
+@dataclass(frozen=False, eq=False,unsafe_hash=False)
 class Card:
     """ A class representing a card.
     This is sort of like a named tuple, but with more freedom to customize
-    
-    This might be subclassed to make creating algorithms easier. Eq. Adding a moska_value -attribute,
-    that stores how many cards the card can fall.
     """
-    value : int
-    suit : str
+    value : int = None
+    suit : str = None
     kopled : bool = False
     score : int = None
+    _frozen : bool = False
+    
+    def __init__(self,value,suit,kopled=False,score=None):
+        self.value = value
+        self.suit = suit
+        self.kopled = kopled
+        self.score = score
+        self._frozen = True
+    
+    def __setattr__(self, name, value):
+        ## TODO
+        if name in ["value","suit"] and self._frozen:
+            raise TypeError(f"{name} can not be set, as it is frozen.")
+        super.__setattr__(self,name, value)
+    
+    def __hash__(self):
+        """ Only hash by value and suit """
+        return hash((self.value,self.suit))
+        
     
     def __repr__(self) -> str:
         """ How to represent the card when printing"""
@@ -46,7 +62,7 @@ class StandardDeck:
         Args:
             shuffle (bool, optional): Whether to shuffle the deck. Defaults to True. Else the deck is in the order of a Kartesian product.
         """
-        self.cards = deque((Card(v,s,False) for v,s in it.product(utils.CARD_VALUES,utils.CARD_SUITS)))
+        self.cards = deque((Card(v,s) for v,s in it.product(utils.CARD_VALUES,utils.CARD_SUITS)))
         if shuffle:
             self.shuffle()
         return None
