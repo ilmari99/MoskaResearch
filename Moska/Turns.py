@@ -170,7 +170,8 @@ class PlayFallFromDeck:
         If the card can't fall any card, add it to table.
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
-        self.card = Card(self.card.value,self.card.suit,True)
+        self.card.kopled = True
+        #self.card = Card(self.card.value,self.card.suit,True)
         self.player = self.moskaGame.get_target_player()
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
