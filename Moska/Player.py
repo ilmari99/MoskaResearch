@@ -159,8 +159,9 @@ class MoskaBot1(BasePlayer):
         """
         new_cards = []
         for card in cards:
-            if card.score is None:
-                card = Card(card.value,card.suit,card.kopled,self._count_score(card))
+            #if card.score is None:
+                #card = Card(card.value,card.suit,card.kopled,self._count_score(card))
+            card.score = self._count_score(card)
             new_cards.append(card)
         return new_cards
          
