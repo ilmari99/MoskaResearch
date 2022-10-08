@@ -65,7 +65,7 @@ def play_games(n=1,nplayers=5):
 
 if __name__ == "__main__":
     n = 5
-    #play_as_human(4)
+    #play_as_human(n)
     play_games(n,nplayers=7)
     
     
