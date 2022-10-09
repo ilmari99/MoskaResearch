@@ -16,7 +16,8 @@ import logging
     
 class HumanPlayer(BasePlayer):
     """ Class for letting a human player to play Moska."""
-    def __init__(self, moskaGame: MoskaGame, 
+    def __init__(self,
+                 moskaGame: MoskaGame = None, 
                  pid: int = 0, 
                  name: str = "", 
                  delay=1, 
@@ -116,10 +117,10 @@ class HumanPlayer(BasePlayer):
             return []
         indices = [int(d) for d in indices]
         return [self.hand.cards[i] for i in indices]
-        
 
 class MoskaBot1(BasePlayer):
-    def __init__(self, moskaGame: MoskaGame, 
+    def __init__(self,
+                 moskaGame: MoskaGame = None, 
                  pid: int = 0, 
                  name: str = "", 
                  delay=10 ** -6, 
@@ -129,6 +130,7 @@ class MoskaBot1(BasePlayer):
                  log_file=""):
         if not name:
             name = f"B1-{pid}"
+        #super().__init__()
         super().__init__(moskaGame, pid, name, delay, requires_graphic, debug, log_level, log_file)
     
     def _count_score(self,card : Card):
