@@ -178,7 +178,6 @@ class BasePlayer:
             bool: Whether the player will end their turn
         """
         # If the player can not end the turn (everyone not ready or not initialized), then they will not end the turn
-        k
         if not self._can_end_turn():
             self.plog.debug("Player can not end turn")
             return False
