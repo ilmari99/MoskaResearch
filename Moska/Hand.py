@@ -13,7 +13,6 @@ class MoskaHand:
     def __init__(self,moskaGame : MoskaGame):
         """Initialize a MoskaHand instance. This requires a reference to a MoskaGame instance.
         This immediately draws 6 cards from the deck associated with the MoskaGame -instance.
-
         Args:
             moskaGame (MoskaGame): _description_
         """
