@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections import Counter
 import itertools
-from abc import abstractmethod
 from typing import TYPE_CHECKING, Iterable, List
 from .Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
@@ -12,6 +11,9 @@ from .Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialP
 import threading
 import time
 import logging
+import sys
+import traceback
+
 
 class BasePlayer:
     """ The base class of a moska player. This by itself is deprecated. This should not be subclassed by it self.
@@ -28,12 +30,15 @@ class BasePlayer:
     requires_graphic : bool = False
     debug : bool = False
     plog = None
-    def __init__(self,moskaGame : MoskaGame, 
+    log_level = logging.INFO
+    log_file : str = "P"
+    def __init__(self,
+                 moskaGame : MoskaGame = None, 
                  pid : int = 0, 
                  name : str = "", 
-                 delay=10**-6, 
-                 requires_graphic : bool = False, 
-                 debug : bool = False, 
+                 delay=10**-6,
+                 requires_graphic : bool = False,
+                 debug : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
         """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
@@ -56,30 +61,52 @@ class BasePlayer:
             name (str, optional): Name of the player. Defaults to f"P{pid}".
         """
         self.moskaGame = moskaGame
-        self.hand = MoskaHand(moskaGame)
         self.pid = pid
+        self.log_level = log_level
         self.name = name if name else f"B0-{str(pid)}"
+        self.log_file = log_file# if log_file else self.log_file+str(self.pid)+".log"
+        self.delay = delay
+        self.requires_graphic = requires_graphic if not debug else True
+        self.debug = debug
+        #log_file = log_file if log_file else f"{self.name}"+".log"
+    
+    def _set_plogger(self):
+        """Configure this players logger.
+        Must be done after starting this games process.
+        """
+        #self.plog = logging.Logger(self.name + "T")
+        #assert self.plog is None,"plog must be none"
+        plog = logging.getLogger(self.name)
+        plog.setLevel(self.log_level)
+        fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
+        formatter = logging.Formatter("%(name)s:%(message)s")
+        fh.setFormatter(formatter)
+        plog.addHandler(fh)
+        self.plog = plog
+        assert self.plog.hasHandlers(), "Logger unsuccesful"
+        assert not self.plog.disabled, "Logger is disabled"
+        self.plog.debug("Logger succesful")
+        
+    def _set_moskaGame(self):
+        self.hand = MoskaHand(self.moskaGame)
         self._playFallCardFromHand = PlayFallCardFromHand(self.moskaGame,self)
         self._playFallFromDeck = PlayFallFromDeck(self.moskaGame)
         self._playToOther = PlayToOther(self.moskaGame,self)
         self._initialPlay = InitialPlay(self.moskaGame,self)
         self._endTurn = EndTurn(self.moskaGame,self)
-        self.delay = delay
-        self.requires_graphic = requires_graphic if not debug else True
-        self.debug = debug
-        self.plog = logging
-        if log_file:
-            self.plog = logging.getLogger(self.name)
-            self.plog.setLevel(log_level)
-            fh = logging.FileHandler(log_file,mode="w",encoding="utf-8")
-            formatter = logging.Formatter("%(name)s:%(message)s")
-            fh.setFormatter(formatter)
-            self.plog.addHandler(fh)
-        
+    
+    def __setattr__(self, name, value):
+        super.__setattr__(self, name, value)
+        #if name in ["log_file","log_level"] and value:
+        #    plog = self._set_plogger()
+        if name == "moskaGame" and value is not None:
+            self._set_moskaGame()
+    
+    
     def _set_pid(self,pid) -> None:
         """ Set the players pid. Currently no use."""
-        self.plog.debug(f"Set pid to {pid}")
         self.pid = pid
+        self.plog.debug(f"Set pid to {pid}")
     
     def _playable_values_to_table(self):
         """ Return a set of integer values that can be played to the table.
@@ -106,7 +133,7 @@ class BasePlayer:
         
     def _play_to_self(self):
         play_cards = self.play_to_self()
-        self.plog.info(f"Playing {play_cards} to self")
+        self.plog.info(f"Playing {play_cards} to self.")
         self._playToOther(self,play_cards)
     
     
@@ -151,7 +178,9 @@ class BasePlayer:
             bool: Whether the player will end their turn
         """
         # If the player can not end the turn (everyone not ready or not initialized), then they will not end the turn
+        k
         if not self._can_end_turn():
+            self.plog.debug("Player can not end turn")
             return False
         msg = ""
         out = True
@@ -174,6 +203,7 @@ class BasePlayer:
             if self._can_fall_cards() and self.want_to_fall_cards():
                 msg = "Player wants to fall cards"
                 out = False
+        self.plog.info(msg)
         return out
     
     def _play_fall_cards(self) -> None:
@@ -185,16 +215,16 @@ class BasePlayer:
         #played = 1
         while True:
             if len(self.moskaGame.cards_to_fall) > 0 and len(self.moskaGame.deck) > 0 and not any((c.kopled for c in self.moskaGame.cards_to_fall)) and self.want_to_play_from_deck():
-                self.plog.debug(f"Playing from deck")
+                self.plog.info(f"Playing from deck")
                 self._play_fall_from_deck()
             elif self._playable_values_from_hand() and len(self.moskaGame.deck) > 0 and self.want_to_play_to_self():
-                self.plog.debug("Playing to self")
+                self.plog.info("Playing to self")
                 self._play_to_self()
             elif self.moskaGame.cards_to_fall and self._can_fall_cards() and self.want_to_fall_cards():
-                self.plog.debug("Falling from table")
+                self.plog.info("Falling from table")
                 self._play_fall_card_from_hand()
             else:
-                self.plog.debug(f"Player has played the desired moves")
+                self.plog.info(f"Player has played the desired moves")
                 break
         return
 
@@ -278,6 +308,7 @@ class BasePlayer:
     
     def _start(self) -> None:
         """ Initializes the Thread"""
+        self._set_plogger()
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
         self.plog.info("Initialized thread")
     
@@ -290,7 +321,6 @@ class BasePlayer:
                    "Triumph card" : self.moskaGame.triumph_card,
                    }
         self.plog.info(f"Table info: {tb_info}")
-        print(f"{self.name} started playing...",flush=True)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
@@ -298,8 +328,6 @@ class BasePlayer:
                 if self.requires_graphic:
                     print(f"{self.name} playing...",flush=True)
                     print(self.moskaGame)
-                if self.debug:
-                    print([pl.ready for pl in self.moskaGame.players],flush=True)
                 # If there is only 1 active player in the game, break
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
                     break
@@ -309,19 +337,20 @@ class BasePlayer:
                     "fell_cards" : self.moskaGame.fell_cards,
                     "hand" : self.hand,
                     "Deck" : len(self.moskaGame.deck),
-                        }
+                    }
                 self.plog.info(f"{msgd}")
                 try:
                     self._play_turn()
                 except AssertionError as msg:
                     # TODO: create custom errors
-                    self.plog.error(msg)
+                    self.plog.warning(msg)
                     self.ready = False
                     #raise AssertionError(msg)
                     print(msg, flush=True)
-            self.plog.info("")
+                except Exception as e:
+                    self.plog.error(traceback.format_exc())
+                    sys.exit(e)
         self.plog.info(f"Finished as {self.rank}")
-        print(f"{self.name} finished as {self.rank}",flush=True)
         return
 
     def want_to_fall_cards(self) -> bool:
