@@ -5,7 +5,7 @@ import random
 from typing import Iterable
 from . import utils
 
-@dataclass(frozen=False, eq=False,unsafe_hash=False)
+#@dataclass(frozen=False, eq=False,unsafe_hash=False)
 class Card:
     """ A class representing a card.
     This is sort of like a named tuple, but with more freedom to customize
