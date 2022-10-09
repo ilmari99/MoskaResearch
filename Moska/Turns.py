@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from .BasePlayer import BasePlayer
 from . import utils
 
+
+
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
@@ -42,10 +44,11 @@ class _PlayToPlayer:
         """
         self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
         self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
+        self.moskaGame.glog.info(f"{self.player.name} played {self.play_cards} to {self.moskaGame.get_target_player().name}")
         if self.player is not self.target_player:
             self.player.plog.debug(f"Drew {6 - len(self.player.hand)} cards from deck")
             self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards, if you are not playing to self
-        #self.player._set_rank()
+        
         
 
 class InitialPlay(_PlayToPlayer):
@@ -131,6 +134,7 @@ class PlayFallCardFromHand:
         Remove the played cards from hand.
         """
         for pc,fc in self.play_fall.items():
+            self.moskaGame.glog.info(f"{self.player.name} falling {pc}:{fc}")
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(fc))        # Remove from cards_to_fall
             self.moskaGame.fell_cards.append(fc)                                            # Add to fell cards
             self.player.hand.pop_cards(cond = lambda x : x == pc)                           # Remove card from hand
@@ -173,15 +177,22 @@ class PlayFallFromDeck:
         self.card.kopled = True
         #self.card = Card(self.card.value,self.card.suit,True)
         self.player = self.moskaGame.get_target_player()
+        self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
-            assert self.check_can_fall(in_=[play_fall[1]]), f"The card {self.card} can not fall {play_fall[1]}"
+            if not self.check_can_fall(in_=[play_fall[1]]):
+                self.player.plog.error(f"The card {self.card} can not fall {play_fall[1]}. Falling a random card.")
+                for card in self.moskaGame.cards_to_fall:
+                    if utils.check_can_fall_card(self.card, card, self.moskaGame.triumph):
+                        play_fall = (self.card,card)
             self.player.plog.info(f"Playing kopled card {play_fall[0]} to {play_fall[1]}")
+            self.moskaGame.glog.info(f"{self.player.name} played {play_fall[0]}:{play_fall[1]}")
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(play_fall[1]))
             self.moskaGame.fell_cards.append(play_fall[1])
             self.moskaGame.fell_cards.append(play_fall[0])
         else:
             self.player.plog.debug(f"Adding {self.card} to cards_to_fall")
+            self.moskaGame.glog.info(f"Adding {self.card} to cards_to_fall")
             self.moskaGame.add_cards_to_fall([self.card])
     
     def check_can_fall(self,in_ = None):
@@ -246,8 +257,9 @@ class EndTurn:
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
-        print(f"All players have played the desired cards. Ending {self.player.name} turn.", flush=True)
-        print(f"Lifted cards {self.pick_cards}", flush=True)
+        self.moskaGame.glog.info(f"Ending {self.player.name} turn.")
+        self.player.plog.info(f"Lifted cards {self.pick_cards}")
+        self.moskaGame.glog.info(f"{self.player.name} lifted {self.pick_cards}")
         if len(self.pick_cards) > 0 or self.player.rank is not None:
             self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.clear_table()
