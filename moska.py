@@ -8,45 +8,30 @@ from Moska.Player import HumanPlayer, MoskaBot1
 import sys
 import multiprocessing
 import random
-    
-def start_threaded_moska(file = "moskafile_threaded.txt",nplayers=5):
-    fsplit = file.split(".")
-    file = fsplit[0]
-    ftype = fsplit[-1]
-    stdout = open(file + "."+ftype,"w",encoding="utf-8")
-    stderr = open(file + "_stderr"+"."+ftype, "w", encoding="utf-8")
-    sys.stdout = stdout
-    sys.stderr = stderr
-    deck = Deck.StandardDeck()
-    moskaGame = MoskaGame(deck)
-    players = []
-    for i in range(nplayers):
-        if random.random() > 0.5:
-            players.append(BasePlayer(moskaGame,pid=i,debug=True,log_file=f"P{i}_"+file+".log"))
-        else:
-            players.append(MoskaBot1(moskaGame,pid=i,debug=True,log_file=f"P{i}_"+file+".log"))
-    for player in players:
-        moskaGame.add_player(player)
-    ranks = moskaGame.start()
-    sys.stdout = sys.__stdout__
-    print(ranks[-1])
-    return True
+from typing import TextIO, List
 
-def play_as_human(nopponents):
-    deck = Deck.StandardDeck()
-    moskaGame = MoskaGame(deck)
-    moskaGame.add_player(HumanPlayer(moskaGame,pid = 101010, name = "human", debug=True,log_file="human.log",log_level = logging.DEBUG))
-    for i in range(nopponents):
-        player = BasePlayer(moskaGame,pid=i,debug=True,delay=1)
-        moskaGame.add_player(player)
+def start_threaded_moska(players : List[BasePlayer],file = ""):
+    moskaGame = MoskaGame(players=players,log_file=file,log_level=logging.DEBUG)
     moskaGame.start()
     
-def play_games(n=1,nplayers=5):
+def play_as_human(nopponents):
+    players = [HumanPlayer(pid=69,log_file="human.log")] + MoskaGame._get_random_players(nopponents)
+    for i,pl in enumerate(players):
+        pl.delay = 1
+        pl.log_file = f"{pl.name}_({i}).log"
+        pl.log_level = logging.DEBUG
+    moskaGame = MoskaGame(players = players)
+    moskaGame.start()
+
+def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
     processes = []
-    bfile = "moskafile_threaded"
     for i in range(n):
-        file = bfile + f"({i}).txt"
-        processes.append(multiprocessing.Process(target=start_threaded_moska,args=(file,nplayers)))
+        file = log_prefix + f"({i}).log"    # Name for the Games log file
+        players = MoskaGame._get_random_players(nplayers)   # n random players
+        for pl in players:
+            pl.log_file = f"{pl.name}_({i}).log"            # Set each players log files
+            pl.log_level = logging.DEBUG
+        processes.append(multiprocessing.Process(target=start_threaded_moska,args=(players,file)))
     for prc in processes:
         prc.start()
     print("Games running...")
@@ -61,11 +46,12 @@ def play_games(n=1,nplayers=5):
             prc.terminate()
             prc.join()
     print("Games finished")
-    
+
 
 if __name__ == "__main__":
     n = 5
     #play_as_human(n)
-    play_games(n,nplayers=7)
+    play_games(1,nplayers=5)
     
     
+
