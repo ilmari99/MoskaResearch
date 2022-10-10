@@ -50,8 +50,11 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
 
 if __name__ == "__main__":
     n = 5
-    #play_as_human(n)
-    play_games(1,nplayers=5)
+    if not os.path.isdir("Logs"):
+        os.mkdir("Logs")
+    os.chdir("Logs/")
+    play_as_human(n)
+    #play_games(5,nplayers=5,log_prefix="moskafile_")
     
     
 
