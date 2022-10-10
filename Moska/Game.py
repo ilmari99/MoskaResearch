@@ -19,7 +19,7 @@ class MoskaGame:
     threads = []
     log_file : str = "gamelog.log"
     log_level = logging.INFO
-    name : str = "Game"
+    name : str = __name__
     glog : logging.Logger = None
     main_lock : threading.RLock = None
     def __init__(self,
@@ -84,7 +84,7 @@ class MoskaGame:
         self.glog = logging.getLogger(self.name)
         self.glog.setLevel(self.log_level)
         fh = logging.FileHandler(log_file,mode="w",encoding="utf-8")
-        formatter = logging.Formatter("%(name)s:%(message)s")
+        formatter = logging.Formatter("%(name)s:%(levelname)s:%(message)s")
         fh.setFormatter(formatter)
         self.glog.addHandler(fh)
     
