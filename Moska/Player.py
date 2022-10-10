@@ -22,7 +22,7 @@ class HumanPlayer(BasePlayer):
                  name: str = "", 
                  delay=1, 
                  requires_graphic : bool = True, 
-                 debug=True,
+                 debug=False,
                  log_level=logging.INFO,
                  log_file=""):
         if not name:
