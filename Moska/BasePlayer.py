@@ -66,7 +66,7 @@ class BasePlayer:
         self.name = name if name else f"B0-{str(pid)}"
         self.log_file = log_file# if log_file else self.log_file+str(self.pid)+".log"
         self.delay = delay
-        self.requires_graphic = requires_graphic if not debug else True
+        self.requires_graphic = requires_graphic
         self.debug = debug
         #log_file = log_file if log_file else f"{self.name}"+".log"
     
@@ -79,11 +79,11 @@ class BasePlayer:
         plog = logging.getLogger(self.name)
         plog.setLevel(self.log_level)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
-        formatter = logging.Formatter("%(name)s:%(message)s")
+        formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
         fh.setFormatter(formatter)
         plog.addHandler(fh)
         self.plog = plog
-        assert self.plog.hasHandlers(), "Logger unsuccesful"
+        assert self.plog.hasHandlers(), "Logger has no handles"
         assert not self.plog.disabled, "Logger is disabled"
         self.plog.debug("Logger succesful")
         
@@ -324,12 +324,6 @@ class BasePlayer:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
             with self.moskaGame.main_lock as ml:
-                if self.requires_graphic:
-                    print(f"{self.name} playing...",flush=True)
-                    print(self.moskaGame)
-                # If there is only 1 active player in the game, break
-                if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
-                    break
                 msgd = {
                     "target" : self.moskaGame.get_target_player().name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,
@@ -337,7 +331,14 @@ class BasePlayer:
                     "hand" : self.hand,
                     "Deck" : len(self.moskaGame.deck),
                     }
-                self.plog.info(f"{msgd}")
+                if self.requires_graphic:
+                    print(f"{self.name} playing...",flush=True)
+                    print(self.moskaGame,flush=True)
+                    print(msgd, flush=True)
+                # If there is only 1 active player in the game, break
+                if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
+                    break
+                self.plog.debug(f"{msgd}")
                 try:
                     self._play_turn()
                 except AssertionError as msg:
