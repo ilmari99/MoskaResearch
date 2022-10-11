@@ -20,7 +20,7 @@ def play_as_human(nopponents):
         pl.delay = 1
         pl.log_file = f"{pl.name}_({i}).log"
         pl.log_level = logging.DEBUG
-    moskaGame = MoskaGame(players = players)
+    moskaGame = MoskaGame(players = players,log_level=logging.DEBUG)
     moskaGame.start()
 
 def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
@@ -53,8 +53,8 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
-    play_as_human(n)
-    #play_games(5,nplayers=5,log_prefix="moskafile_")
+    #play_as_human(n)
+    play_games(1,nplayers=5,log_prefix="moskafile_")
     
     
 

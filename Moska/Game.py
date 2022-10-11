@@ -1,3 +1,6 @@
+import contextlib
+import copy
+import queue
 from . import utils
 from .BasePlayer import BasePlayer
 from .Player import MoskaBot1
@@ -7,6 +10,7 @@ import threading
 import logging
 import random
 import time
+
 
 class MoskaGame:
     players : List[BasePlayer] = [] # List of players, with unique pids, and cards already in hand
@@ -51,9 +55,8 @@ class MoskaGame:
     def _set_players(self,players : List[BasePlayer]):
         """Here self.players is already set to players
         """
-        assert isinstance(players, list), f"'{name}' of MoskaGame attribute must be a list"
+        assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
         assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
-        deck = StandardDeck()
         self.deck = StandardDeck()
         for pl in players:
             pl.moskaGame = self
@@ -93,6 +96,25 @@ class MoskaGame:
         self.main_lock = threading.RLock()
         self.glog.debug("Created RLock")
         return
+    
+    @contextlib.contextmanager
+    def get_lock(self,player):
+        """A wrapper around getting the moskagames main_lock
+
+        Args:
+            player (_type_): _description_
+
+        Yields:
+            _type_: _description_
+        """
+        with self.main_lock as lock:
+            og_state = len(self.cards_to_fall + self.fell_cards)
+            yield True
+            state = len(self.cards_to_fall + self.fell_cards)
+            if og_state != state:
+                self.glog.info(f"{player.name}: new board: {self.cards_to_fall}")
+        return
+        
         
     def __repr__(self) -> str:
         """ What to print when calling print(self) """
