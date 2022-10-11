@@ -323,7 +323,7 @@ class BasePlayer:
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
-            with self.moskaGame.main_lock as ml:
+            with self.moskaGame.get_lock(self) as ml:
                 msgd = {
                     "target" : self.moskaGame.get_target_player().name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,
