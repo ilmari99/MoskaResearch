@@ -97,8 +97,6 @@ class BasePlayer:
     
     def __setattr__(self, name, value):
         super.__setattr__(self, name, value)
-        #if name in ["log_file","log_level"] and value:
-        #    plog = self._set_plogger()
         if name == "moskaGame" and value is not None:
             self._set_moskaGame()
     
@@ -202,7 +200,7 @@ class BasePlayer:
             if self._can_fall_cards() and self.want_to_fall_cards():
                 msg = "Player wants to fall cards"
                 out = False
-        self.plog.info(msg)
+        self.plog.debug(msg)
         return out
     
     def _play_fall_cards(self) -> None:
@@ -230,13 +228,14 @@ class BasePlayer:
     def _play_fall_from_deck(self) -> None:
         """ This method is called, when the player decides to koplata. """
         self._playFallFromDeck(fall_method=self.deck_lift_fall_method)
+        return
 
-    def _play_fall_card_from_hand(self):
+    def _play_fall_card_from_hand(self) -> None:
         """ This method is called, when the player has decided to play cards from their hand."""
         play_cards = self.play_fall_card_from_hand()
         self.plog.info(f"Falling cards: {play_cards}")
         self._playFallCardFromHand(play_cards)
-    
+        return
     
     def _end_turn(self) -> bool:
         """Called when the player must or wants to and can end their turn, or when finishing the game
@@ -310,6 +309,7 @@ class BasePlayer:
         self._set_plogger()
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
         self.plog.info("Initialized thread")
+        return
     
     def _continuous_play(self) -> None:
         """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
