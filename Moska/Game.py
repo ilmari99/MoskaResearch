@@ -51,9 +51,8 @@ class MoskaGame:
     def _set_players(self,players : List[BasePlayer]):
         """Here self.players is already set to players
         """
-        assert isinstance(players, list), f"'{name}' of MoskaGame attribute must be a list"
+        assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
         assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
-        deck = StandardDeck()
         self.deck = StandardDeck()
         for pl in players:
             pl.moskaGame = self
