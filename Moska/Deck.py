@@ -1,11 +1,9 @@
 from collections import deque
-from dataclasses import dataclass
 import itertools as it
 import random
 from typing import Iterable
 from . import utils
 
-#@dataclass(frozen=False, eq=False,unsafe_hash=False)
 class Card:
     """ A class representing a card.
     This is sort of like a named tuple, but with more freedom to customize
@@ -56,12 +54,13 @@ class Card:
 # Could probably be converted to a subclass of deque
 class StandardDeck:
     """ The class representing a standard deck implementation as a deque, to mitigate some risks """
-    def __init__(self,shuffle : bool=True):
+    def __init__(self,shuffle : bool=True, seed=None):
         """Initilize the deck with the combinations of card values and card suits
 
         Args:
             shuffle (bool, optional): Whether to shuffle the deck. Defaults to True. Else the deck is in the order of a Kartesian product.
         """
+        random.seed(seed if seed else random.randint(0,1000000))
         self.cards = deque((Card(v,s) for v,s in it.product(utils.CARD_VALUES,utils.CARD_SUITS)))
         if shuffle:
             self.shuffle()
