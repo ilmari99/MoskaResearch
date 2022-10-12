@@ -25,5 +25,9 @@ class TestDeck(unittest.TestCase):
     def test_len52(self):
         self.assertTrue(len(self.deck) == 51)
         
+    def test_all_unique_cards(self):
+        deck_list = self.deck.pop_cards(len(self.deck))
+        self.assertTrue(len(set(deck_list)) == 51,"All cards were not unique. Length of set is not 51.")
+        
 if __name__ == "__main__":
     unittest.main()
