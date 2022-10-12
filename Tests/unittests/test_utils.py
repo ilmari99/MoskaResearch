@@ -15,15 +15,9 @@ class TestUtils(unittest.TestCase):
         """For some reason this doesn't appear to be called before each 'test_'' method
         """
         self.deck = Deck.StandardDeck()
-        self.game = Game.MoskaGame(self.deck)
-        self.player = Player.MoskaPlayer(self.game,pid=1010,name="test")
-        if self.game.players:
-            self.player = self.game.players[0]
-            return
-        self.game.add_player(self.player)
-        for p in [Player.MoskaPlayer(self.game,pid=i) for i in range(3)]:
-            print([p.pid for p in self.game.turnCycle.population])
-            self.game.add_player(p)
+        self.game = Game.MoskaGame(deck=self.deck,nplayers=6)
+        self.player = self.game.players[0]
+        self.game.turnCycle.ptr = 0
     
     def tearDown(self) -> None:
         #del self.deck, self.game.turnCycle, self.game, self.player, self.game
@@ -63,7 +57,7 @@ class TestUtils(unittest.TestCase):
         
     def test_TurnCycle_increments_ptr(self):
         tc = self.game.turnCycle
-        tc.get_next_condition(lambda x : x.pid == 1)
+        tc.get_next_condition(lambda x : x.pid == 2)
         #ptr should be 2
         self.assertTrue(tc.ptr == 2)
         tc.ptr = 0  # Because setUp doesn't reset ptr :d
