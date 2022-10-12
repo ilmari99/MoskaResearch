@@ -13,7 +13,7 @@ class TestHand(unittest.TestCase):
     hand = None
     def setUp(self) -> None:
         self.deck = Deck.StandardDeck()
-        self.game = Game.MoskaGame(self.deck)
+        self.game = Game.MoskaGame(deck=self.deck)
         self.hand = Hand.MoskaHand(self.game)
     
     def test_iterating(self):
