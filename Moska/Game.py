@@ -2,8 +2,8 @@ import contextlib
 import copy
 import queue
 from . import utils
-from .BasePlayer import BasePlayer
-from .Player import MoskaBot1
+from .Player.BasePlayer import BasePlayer
+from .Player.MoskaBot1 import MoskaBot1
 from typing import Callable, List, TYPE_CHECKING
 from .Deck import Card, StandardDeck
 import threading
