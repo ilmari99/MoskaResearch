@@ -1,15 +1,12 @@
 import contextlib
-import copy
-import queue
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.MoskaBot1 import MoskaBot1
-from typing import Callable, List, TYPE_CHECKING
+from typing import Any, Callable, List, TYPE_CHECKING
 from .Deck import Card, StandardDeck
 import threading
 import logging
 import random
-import time
 
 
 class MoskaGame:
@@ -26,6 +23,7 @@ class MoskaGame:
     name : str = __name__
     glog : logging.Logger = None
     main_lock : threading.RLock = None
+    lock_holder = None
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[BasePlayer] = [],
@@ -51,6 +49,7 @@ class MoskaGame:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
+        return
     
     def _set_players(self,players : List[BasePlayer]):
         """Here self.players is already set to players
@@ -109,13 +108,30 @@ class MoskaGame:
         """
         with self.main_lock as lock:
             og_state = len(self.cards_to_fall + self.fell_cards)
-            yield True
+            
+            # Here we tell the player that they have the key
+            self.lock_holder = threading.get_ident()
+            yield lock
+            self.lock_holder = None
+            
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
                 self.glog.info(f"{player.name}: new board: {self.cards_to_fall}")
         return
-        
-        
+    
+    def _make_move(self,move : Callable) -> bool:
+        """ This is called from a BasePlayer -instance """
+        if self.lock_holder != threading.get_ident():
+            raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
+        # TODO: check whether move is actually a move
+        try:
+            move()  # Calls a class from Turns, which raises AssertionError if the move is not playable
+        except AssertionError as ae:
+            self.glog(ae)
+            return False
+        return True
+    
+    
     def __repr__(self) -> str:
         """ What to print when calling print(self) """
         s = f"Triumph card: {self.triumph_card}\n"
@@ -131,6 +147,7 @@ class MoskaGame:
             self._init_player_threads()
         for thr in self.threads:
             thr.start()
+            #TODO: returns the thread ids, they should be the keys to a dictionary.
         self.glog.debug("Started player threads")
         return
     
@@ -146,19 +163,6 @@ class MoskaGame:
             trh.join()
         self.glog.debug("All threads finished")
 
-    
-    def add_player(self,player : BasePlayer) -> None:
-        """Add a player to this MoskaGame -instance.
-        Adds the player to the list of players, and to the TurnCycle -instance attribute
-
-        Args:
-            player (Player.MoskaPlayerBase): The player to add to the MoskaGame -instance.
-        """
-        raise DeprecationWarning(f"The method 'add_player' is deprecated")
-        assert player.pid not in [pid_ for pid_ in self.players], f"A non-unique player id ('pid' attribute) found."
-        self.players.append(player)
-        self.turnCycle.add_to_population(player)
-        return
     
     
     def get_initiating_player(self) -> BasePlayer:
