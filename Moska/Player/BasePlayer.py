@@ -4,7 +4,7 @@ import itertools
 from typing import TYPE_CHECKING, Iterable, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from .Game import MoskaGame
+    from ..Game import MoskaGame
 from ..Hand import MoskaHand
 from .. import utils
 from ..Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
@@ -32,6 +32,7 @@ class BasePlayer:
     plog = None
     log_level = logging.INFO
     log_file : str = "P"
+    thread_id = None
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  pid : int = 0, 
@@ -128,11 +129,13 @@ class BasePlayer:
         target = self.moskaGame.get_target_player()
         self.plog.info(f"Playing {play_cards} to {target.name}")
         self._playToOther(target,play_cards)
+        return
         
     def _play_to_self(self):
         play_cards = self.play_to_self()
         self.plog.info(f"Playing {play_cards} to self.")
         self._playToOther(self,play_cards)
+        return
     
     
     def _play_initial(self):
@@ -141,6 +144,7 @@ class BasePlayer:
         play_cards = self.play_initial()
         self.plog.info(f"Playing {play_cards} to {target.name}")
         self._initialPlay(target,play_cards)
+        return
     
     def _can_end_turn(self):
         """ Return True if the player CAN end their turn now. Which is true, when all the other players are ready and there are cards on the table."""
@@ -305,11 +309,12 @@ class BasePlayer:
         return
     
     def _start(self) -> None:
-        """ Initializes the Thread"""
+        """ Initializes the Thread and returns and returns the threds identification """
         self._set_plogger()
         self.thread = threading.Thread(target=self._continuous_play,name=self.name)
+        self.thread_id = self.thread.ident
         self.plog.info("Initialized thread")
-        return
+        return self.thread_id
     
     def _continuous_play(self) -> None:
         """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
