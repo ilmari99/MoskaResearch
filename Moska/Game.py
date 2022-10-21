@@ -17,7 +17,7 @@ class MoskaGame:
     fell_cards = []                 # Cards that have fell during the last turn
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
     deck = None                             # The deck belonging to the moskaGame. 
-    threads = []
+    threads = {}
     log_file : str = "gamelog.log"
     log_level = logging.INFO
     name : str = __name__
@@ -124,12 +124,14 @@ class MoskaGame:
         if self.lock_holder != threading.get_ident():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
         # TODO: check whether move is actually a move
+        if move is None:
+            move = int  # TODO: make this an actual move, now int is just a placeholder for doing nothing
         try:
             move()  # Calls a class from Turns, which raises AssertionError if the move is not playable
         except AssertionError as ae:
-            self.glog(ae)
-            return False
-        return True
+            self.glog.warning(ae)
+            return False, str(ae)
+        return True, ""
     
     
     def __repr__(self) -> str:
@@ -143,26 +145,18 @@ class MoskaGame:
     
     def _start_player_threads(self) -> None:
         """ Starts all player threads. """
-        if not self.threads:
-            self._init_player_threads()
-        for thr in self.threads:
-            thr.start()
-            #TODO: returns the thread ids, they should be the keys to a dictionary.
+        for pl in self.players:
+            tid = pl._start()
+            self.threads[tid] = pl
         self.glog.debug("Started player threads")
         return
     
-    def _init_player_threads(self) -> None:
-        """ initialize the player threads. After this, the threads are ready to be run. """
-        for pl in self.players:
-            pl._start()
-            self.threads.append(pl.thread)
-    
     def _join_threads(self) -> None:
         """ Join all threads. """
-        for trh in self.threads:
-            trh.join()
+        for pl in self.players:
+            pl.thread.join()
         self.glog.debug("All threads finished")
-
+        return
     
     
     def get_initiating_player(self) -> BasePlayer:
