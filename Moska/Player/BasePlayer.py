@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import Counter
 import itertools
+import random
 from typing import TYPE_CHECKING, Iterable, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
@@ -33,6 +34,7 @@ class BasePlayer:
     log_level = logging.INFO
     log_file : str = "P"
     thread_id = None
+    moves = {}
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  pid : int = 0, 
@@ -65,11 +67,19 @@ class BasePlayer:
         self.pid = pid
         self.log_level = log_level
         self.name = name if name else f"B0-{str(pid)}"
-        self.log_file = log_file# if log_file else self.log_file+str(self.pid)+".log"
+        self.log_file = log_file
         self.delay = delay
         self.requires_graphic = requires_graphic
         self.debug = debug
-        #log_file = log_file if log_file else f"{self.name}"+".log"
+        self.moves = {
+            "end turn":self._end_turn,
+            "play initial":self._play_initial,
+            "play to target":self._play_to_target,
+            "play to self":self._play_to_self,
+            "kill from hand":self._play_fall_card_from_hand,
+            "kill from deck":self._play_fall_from_deck,
+            "skip":None,
+        }
     
     def _set_plogger(self):
         """Configure this players logger.
@@ -147,10 +157,19 @@ class BasePlayer:
         return
     
     def _can_end_turn(self):
-        """ Return True if the player CAN end their turn now. Which is true, when all the other players are ready and there are cards on the table."""
+        """ Return True if the player CAN end their turn now.
+        Which is true, when all the other players are ready and there are cards on the table."""
         players_ready = all((pl.ready for pl in self.moskaGame.players if (pl is not self) and (pl.rank is None)))
         cards_in_table = len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) > 0
         return players_ready and cards_in_table
+    
+    def _must_end_turn(self):
+        """Player must end their turn if:
+        - There are cards on the table, they have no playable cards, all players are ready, and the player cant koplata (there is no deck left or there is a kopled card already)
+        """
+        if self._can_end_turn() and not self._can_fall_cards() and not self._playable_values_from_hand() and (len(self.moskaGame.deck) == 0 or any(c.kopled for c in self.moskaGame.cards_to_fall)):
+            return True
+        return False
     
     def _can_fall_cards(self) -> bool:
         """ Returns True if the player can fall cards from table with cards in their hand
@@ -170,11 +189,11 @@ class BasePlayer:
         or they want_to_end_turn  and _can_end_turn.
         
         Player must end their turn if:
-        - They have no playable cards, all players are ready, and (there is no deck left or the player doesn't want to koplata)
+        - They have no playable cards, all players are ready, and there is no deck left or the player doesn't want to koplata
         
         This method calls the overwritable methods 'want_to_play_from_deck' and 'want_to_end_turn'.
         This method is called all the time, when the player is the target player.
-        If this method returns False, then the player plays from either deck, from hand, (or to self in the future)
+        If this method returns False, then the player plays from either deck, from hand, or to self
 
         Returns:
             bool: Whether the player will end their turn
@@ -265,61 +284,91 @@ class BasePlayer:
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
+    def choose_move(self,from_= None) -> str:
+        if from_ is None:
+            from_ = self.moves.keys()
+        from_ = list(from_)
+        move = random.choice(from_)
+        return move
     
     @utils.check_new_card
-    def _play_turn(self) -> None:
-        """The basic choice selector. If the player is ready, will return instantly, except
-        if the player is the current target, to accomodate playing to self and ending turn.
-        Everytime after playing this, the player will be marked as ready.
-        
-        If the player is target:
-            - Checks if the player _will_end_turn and end it if true.
-            - Else attempts to fall cards.
-        - If player finishes, then ends the turn.
-        
-        If the player is not the target:
-            - If there are no cards on the table, and the player is the initiating player, then _play_initial
-            - If there are cards on the table, attempts to play more cards to the target.
-            
-        If new values were played, sets all players ready status to False
+    def _play_move(self):
+        success = False
+        playable = self._playable_moves()
+        move = self.choose_move(playable)
+        success, msg  = self.moskaGame._make_move(self.moves[move])
+        return success, msg
+    
+    def _playable_moves(self) -> dict:
+        """Return the playable moves as a dictionary of move-name : play_function
+
+        Returns:
+            dict: shallow copy of self.moves with illegal moves removed
         """
+        playable = self.moves.copy()
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
         self.ready = True
         # If there are cards on the table; the game is already initiated
         initiated = int(len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards)) != 0
-        # If player is the target
-        if self is self.moskaGame.get_target_player():
-            # If the player will end their turn; They must by the rules, cant/wont koplata, or they want to and can end the rule
-            if self._will_end_turn():
-                self._end_turn()
-            # If the player doesn't want to, and doesn't have to end their turn, then play cards from either hand, deck, or to self.
+        # Special case: if the player has played all their cards in the previous turn, they must now end the turn and finish
+        if self.rank is not None:
+            if self is self.moskaGame.get_target_player():
+                playable = {"end turn" : self.moves["end turn"]}
             else:
-                self._play_fall_cards()
-        # If the player is the initiating player, and the game has not been initiated
-        elif not initiated and self is self.moskaGame.get_initiating_player():
-            self._play_initial()
-        # Else, if cards fit to table
-        elif self._fits_to_table() > 0 and self._playable_values_from_hand():
-            self._play_to_target()
-        self._set_rank()
-        # If the player finishes as a target
-        if self.rank is not None and self is self.moskaGame.get_target_player():
-            self._end_turn()
-        return
+                playable = {"skip":self.moves["skip"]}
+        # If player is the target
+        elif self is self.moskaGame.get_target_player():
+            # If the player is the target, they cant play these
+            playable.pop("play to target")
+            playable.pop("play initial")
+            # If the player can not end their turn, they cant end the turn, unless they are finished
+            if not self._can_end_turn():
+                playable.pop("end turn")
+            # If there are not values to play to self
+            if not self._playable_values_from_hand():
+                playable.pop("play to self")
+            # If there are no cards to play from hand
+            if not self._can_fall_cards():
+                playable.pop("kill from hand")
+            # If there is no deck left, or there is already a kopled card on the table
+            if any((c.kopled for c in self.moskaGame.cards_to_fall)) or len(self.moskaGame.deck) == 0:
+                playable.pop("kill from deck")
+            # If all players are ready and there are no other moves left
+            if self._must_end_turn():
+                playable.pop("skip")
+                assert len(playable) == 1, f"There should only be 'end turn' option left. Left options: {playable.keys()}"
+        else:
+            # If the player is not the target player
+            playable.pop("kill from hand")
+            playable.pop("kill from deck")
+            playable.pop("end turn")
+            playable.pop("play to self")
+            # If the player doesn't have cards to play from hand, or the table is full
+            if not self._playable_values_from_hand() or self._fits_to_table() <= 0:
+                playable.pop("play to target")
+            # If the player is the initiating player and the game is not initiated, they cant skip
+            if self is self.moskaGame.get_initiating_player() and not initiated:
+                playable.pop("skip")
+            # If the game is initiated, or the player isn't the initiating player, they cant initiate the turn
+            if initiated or not self is self.moskaGame.get_initiating_player():
+                playable.pop("play initial")
+        assert bool(playable), f"There must be something to play"
+        return playable
     
-    def _start(self) -> None:
-        """ Initializes the Thread and returns and returns the threds identification """
-        self._set_plogger()
-        self.thread = threading.Thread(target=self._continuous_play,name=self.name)
-        self.thread_id = self.thread.ident
-        self.plog.info("Initialized thread")
+    def _start(self) -> int:
+        """ Initializes the players thread, starts the thread and returns the threads identification get_ident() """
+        if self.thread is None or not self.thread.is_alive():
+            self._set_plogger()
+            self.thread = threading.Thread(target=self._continuous_play,name=self.name)
+            self.plog.info("Initialized thread")
+            self.thread.start()
+            self.thread_id = self.thread.ident
         return self.thread_id
     
     def _continuous_play(self) -> None:
         """ The main method of MoskaPlayer. This method is meant to be run indirectly, by starting the Thread associated with the player.
         This function starts a while loop, that runs as long as the players rank is None and there are atleast 2 players in the game.
-        
         """
         tb_info = {"players" : len(self.moskaGame.players),
                    "Triumph card" : self.moskaGame.triumph_card,
@@ -345,16 +394,16 @@ class BasePlayer:
                     break
                 self.plog.debug(f"{msgd}")
                 try:
-                    self._play_turn()
-                except AssertionError as msg:
-                    # TODO: create custom errors
-                    self.plog.warning(msg)
-                    self.ready = False
-                    #raise AssertionError(msg)
-                    print(msg, flush=True)
+                    success, msg = self._play_move()
+                    while not success:
+                        self.plog.warning(msg)
+                        self.ready = False
+                        print(msg, flush=True)
+                        success, msg = self._play_move()
                 except Exception as e:
                     self.plog.error(traceback.format_exc())
                     sys.exit(e)
+                self._set_rank()
         self.plog.info(f"Finished as {self.rank}")
         return
 
