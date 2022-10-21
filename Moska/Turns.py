@@ -180,6 +180,7 @@ class PlayFallFromDeck:
         self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
+            # If an incorrect card is selected to fall, then a random card is picked.
             if not self.check_can_fall(in_=[play_fall[1]]):
                 self.player.plog.error(f"The card {self.card} can not fall {play_fall[1]}. Falling a random card.")
                 for card in self.moskaGame.cards_to_fall:
