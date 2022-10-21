@@ -2,7 +2,7 @@ import contextlib
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.MoskaBot1 import MoskaBot1
-from typing import Any, Callable, List, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, TYPE_CHECKING
 from .Deck import Card, StandardDeck
 import threading
 import logging
@@ -12,12 +12,12 @@ import random
 class MoskaGame:
     players : List[BasePlayer] = [] # List of players, with unique pids, and cards already in hand
     triumph : str = ""              # Triumph suit, set when the moskaGame is started
-    triumph_card = None             # Triumph card
-    cards_to_fall = []              # Current cards on the table, for the target to fall
-    fell_cards = []                 # Cards that have fell during the last turn
+    triumph_card : Card = None             # Triumph card
+    cards_to_fall : List[Card] = []              # Current cards on the table, for the target to fall
+    fell_cards : List[Card] = []                 # Cards that have fell during the last turn
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
-    deck = None                             # The deck belonging to the moskaGame. 
-    threads = {}
+    deck  : StandardDeck = None                             # The deck belonging to the moskaGame. 
+    threads : Dict[int,BasePlayer] = {}
     log_file : str = "gamelog.log"
     log_level = logging.INFO
     name : str = __name__
@@ -129,7 +129,7 @@ class MoskaGame:
         try:
             move()  # Calls a class from Turns, which raises AssertionError if the move is not playable
         except AssertionError as ae:
-            self.glog.warning(ae)
+            self.glog.warning(f"{self.threads[threading.get_ident()].name}:{ae}")
             return False, str(ae)
         return True, ""
     
@@ -234,7 +234,5 @@ class MoskaGame:
         ranks = [(p.name, p.rank) for p in self.players]
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
-            if rank is None:
-                rank = len(self.players)
             self.glog.info(f"#{rank} - {p}")
         return ranks
