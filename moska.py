@@ -54,8 +54,8 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
-    #play_as_human(n)
-    play_games(1,nplayers=5,log_prefix="moskafile_")
+    play_as_human(n)
+    #play_games(1,nplayers=5,log_prefix="moskafile_")
     
     
 
