@@ -182,7 +182,6 @@ class BasePlayer:
                  if utils.check_can_fall_card(pc,fc,self.moskaGame.triumph):
                      return True
         return False
-    
 
     def _play_fall_from_deck(self) -> None:
         """ This method is called, when the player decides to koplata. """
