@@ -72,11 +72,11 @@ def check_new_card(func : Callable) -> Callable:
     def wrap(*args,**kwargs):
         #assert isinstance(args[0],MoskaPlayerBase), "The decorated function must have a reference to an instance of MoskaPlayerBase as the first positional argument."
         state = args[0]._playable_values_to_table()
-        func(*args,**kwargs)
+        out = func(*args,**kwargs)
         new_state = args[0]._playable_values_to_table()
         if len(state) != len(new_state):
             announce_new_card(args[0])
-        return
+        return out
     return wrap
     
     
