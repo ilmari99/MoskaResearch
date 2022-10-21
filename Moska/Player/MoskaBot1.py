@@ -3,7 +3,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Iterable, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from .Game import MoskaGame
+    from ..Game import MoskaGame
 from .. import utils
 from .BasePlayer import BasePlayer
 import logging
