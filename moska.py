@@ -55,7 +55,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     play_as_human(n)
-    #play_games(1,nplayers=5,log_prefix="moskafile_")
+    #play_games(10,nplayers=5,log_prefix="moskafile_")
     
     
 
