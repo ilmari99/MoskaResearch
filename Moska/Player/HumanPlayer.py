@@ -26,6 +26,8 @@ class HumanPlayer(BasePlayer):
     
     def choose_move(self, from_ : dict=None) -> str:
         choices = list(from_.keys())
+        if len(choices) == 1 and choices[0] == "skip":
+            return "skip"
         while True:
             for i,k in enumerate(choices):
                 print(f"{i}. {k}")
