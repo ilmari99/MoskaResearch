@@ -214,7 +214,8 @@ class BasePlayer:
         This is called after each turn.
         """
         if self.rank is None:   # if the player hasn't already finished
-            if not self.hand and len(self.moskaGame.deck) == 0: # If the player doesn't have a hand and there are no cards left
+            # If the player doesn't have a hand and there are no cards left, or there are no players left
+            if (not self.hand and len(self.moskaGame.deck) == 0) or len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is None)) <= 1:
                 self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
@@ -261,13 +262,13 @@ class BasePlayer:
             if not self._can_end_turn():
                 playable.pop("end turn")
             # If there are not values to play to self
-            if not self._playable_values_from_hand():
+            if not self._playable_values_from_hand() or len(self.moskaGame.deck) == 0:
                 playable.pop("play to self")
             # If there are no cards to play from hand
             if not self._can_fall_cards():
                 playable.pop("kill from hand")
-            # If there is no deck left, or there is already a kopled card on the table
-            if any((c.kopled for c in self.moskaGame.cards_to_fall)) or len(self.moskaGame.deck) == 0:
+            # If there is no deck left, or there is already a kopled card on the table, or there are no cards to fall
+            if any((c.kopled for c in self.moskaGame.cards_to_fall)) or len(self.moskaGame.deck) <= 0 or not self.moskaGame.cards_to_fall:
                 playable.pop("kill from deck")
             # If all players are ready and there are no other moves left
             if self._must_end_turn():
@@ -289,6 +290,7 @@ class BasePlayer:
             if initiated or not self is self.moskaGame.get_initiating_player():
                 playable.pop("play initial")
         assert bool(playable), f"There must be something to play"
+        self.plog.debug(f"Playable moves: {playable.keys()}")
         return playable
     
     def _start(self) -> int:
@@ -326,6 +328,7 @@ class BasePlayer:
                     print(msgd, flush=True)
                 # If there is only 1 active player in the game, break
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
+                    self._set_rank()
                     break
                 self.plog.debug(f"{msgd}")
                 try:
@@ -339,6 +342,8 @@ class BasePlayer:
                     self.plog.error(traceback.format_exc())
                     sys.exit(e)
                 self._set_rank()
+                if self.rank is not None and self is self.moskaGame.get_target_player():
+                    self.moskaGame._make_move(self.moves["end turn"])
         self.plog.info(f"Finished as {self.rank}")
         return
 
