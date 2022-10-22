@@ -6,7 +6,7 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
     from ..Game import MoskaGame
 from ..Hand import MoskaHand
 from .. import utils
-from ..Turns import PlayFallCardFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
+from ..Turns import PlayFallFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
 import threading
 import time
 import logging
@@ -101,7 +101,7 @@ class BasePlayer:
         """Sets the moskaGame instance. called from __setattr__.
         """
         self.hand = MoskaHand(self.moskaGame)
-        self._playFallCardFromHand = PlayFallCardFromHand(self.moskaGame,self)
+        self._playFallCardFromHand = PlayFallFromHand(self.moskaGame,self)
         self._playFallFromDeck = PlayFallFromDeck(self.moskaGame)
         self._playToOther = PlayToOther(self.moskaGame,self)
         self._initialPlay = InitialPlay(self.moskaGame,self)
