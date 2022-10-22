@@ -1,6 +1,6 @@
 from __future__ import annotations
 from functools import wraps
-from typing import Any, Callable, Iterable, List, TYPE_CHECKING
+from typing import Any, Callable, Iterable, List, TYPE_CHECKING, Sequence
 if TYPE_CHECKING:
     from .Deck import Card
 
@@ -8,6 +8,12 @@ CARD_VALUES = tuple(range(2,15))                            # Initialize the sta
 CARD_SUITS = ("C","D","H","S") 
 CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion table
 MAIN_DECK = None                                            # The main deck
+
+def check_signature(sig : Sequence, inp : Sequence) -> bool:
+    for s, i in zip(sig,inp):
+        if not isinstance(i,s):
+            return False
+    return True
 
 def suit_to_symbol(suits : Iterable or str) -> List or str:
     """Convert a suit to a symbol according to CARD_SUIT_SYMBOLS
