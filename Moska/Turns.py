@@ -2,12 +2,10 @@ from __future__ import annotations
 from typing import Callable, TYPE_CHECKING, Dict, List
 from collections import Counter
 from Moska.Deck import Card
+from .Player.BasePlayer import BasePlayer
 if TYPE_CHECKING:
     from .Game import MoskaGame
-    from .Player.BasePlayer import BasePlayer
 from . import utils
-
-
 
 
 class _PlayToPlayer:
@@ -66,6 +64,7 @@ class InitialPlay(_PlayToPlayer):
             target_player (BasePlayer): The target for who to play
             play_cards (list): The list of cards to play to the table
         """
+        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
         self.player = player
         self.target = target
         self.cards = cards
@@ -92,6 +91,7 @@ class PlayToOther(_PlayToPlayer):
             target_player (BasePlayer): The target for who to play
             play_cards (list): The cards to play
         """
+        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
         self.player = player
         self.target = target
         self.cards = cards
@@ -116,6 +116,9 @@ class PlayToOther(_PlayToPlayer):
         """ Check that the cards have already been played by either the player or an opponent"""
         playable_values = self._playable_values()
         return all((card.value in playable_values for card in self.cards))
+    
+class PlayToSelf(PlayToOther):
+    pass
 
 
 class PlayFallFromHand:
@@ -127,6 +130,7 @@ class PlayFallFromHand:
         self.moskaGame = moskaGame
 
     def __call__(self,player : BasePlayer, play_fall : Dict[Card,Card]):
+        assert utils.check_signature([BasePlayer,dict],[player,play_fall]), "Incorrect input signature"
         self.player = player
         self.play_fall = play_fall
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
@@ -165,15 +169,16 @@ class PlayFallFromDeck:
     moskaGame : MoskaGame = None
     fall_method : Callable = None
     card : Card = None
-    def __init__(self,moskaGame : MoskaGame,fall_method : Callable = None):
+    def __init__(self,moskaGame : MoskaGame):
         self.moskaGame = moskaGame
-        self.fall_method = fall_method
     
-    def __call__(self, fall_method : Callable = None):
+    def __call__(self, player : BasePlayer, fall_method : Callable):
         """ fall_method must accept one argument: the card that was drawn,
         and return an indexable with two values: The played card, and the card which should be fallen"""
-        if fall_method is not None:
-            self.fall_method = fall_method
+        assert utils.check_signature([BasePlayer,Callable],[player,fall_method]), "Incorrect input signature"
+        self.fall_method = fall_method
+        self.player = player
+        assert self.player is self.moskaGame.get_target_player(), "The player can't play from deck, since they are not the target."
         assert self.check_not_already_kopled(), "There is already a kopled card on the table"
         assert self.fall_method is not None, "No fall_method specified"
         assert self.check_cards_on_table(), "There are no cards on the table which should be fell"
@@ -197,7 +202,6 @@ class PlayFallFromDeck:
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         self.card.kopled = True
-        self.player = self.moskaGame.get_target_player()
         self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
@@ -236,6 +240,7 @@ class EndTurn:
         Args:
             pick_cards (list, optional): _description_. Defaults to [].
         """
+        assert utils.check_signature([BasePlayer,list],[player,pick_cards]), "Incorrect input signature"
         self.player = player
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
@@ -294,6 +299,7 @@ class Skip:
         self.moskaGame = moskaGame
     
     def __call__(self, player : BasePlayer):
+        assert utils.check_signature([BasePlayer],[player]), "Incorrect input signature"
         self.player = player
         assert not self.check_is_initiating() or self.check_initiated(), "The game must be initiated, and skipping is not possible."
         assert not self.check_target_must_end_turn(), "There are no plays left, and the turn must be ended."
