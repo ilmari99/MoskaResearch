@@ -68,16 +68,7 @@ class BasePlayer:
         self.delay = delay
         self.requires_graphic = requires_graphic
         self.debug = debug
-        self.move_map = {
-            "end turn":"EndTurn",
-            "play initial":"InitialPlay",
-            "play to target":"PlayToOther",
-            "play to self":"PlayToSelf",
-            "kill from hand":"PlayFallFromHand",
-            "kill from deck":"PlayFallFromDeck",
-            "skip":"Skip",
-        }
-        self.move_fun_map = {
+        self.moves = {
             "EndTurn" : self._end_turn,
             "InitialPlay" : self._play_initial,
             "PlayToOther" : self._play_to_target,
@@ -264,8 +255,7 @@ class BasePlayer:
         success = False
         playable = self._playable_moves()
         move = self.choose_move(playable)
-        move = self.move_map[move]
-        args = [self] + self.move_fun_map[move]()
+        args = [self] + self.moves[move]()
         success, msg  = self.moskaGame._make_move(move,args)
         return success, msg
     
@@ -275,7 +265,7 @@ class BasePlayer:
         Returns:
             list[str]: List of playable move identifiers
         """
-        playable = self.move_map.copy()
+        playable = list(self.moves.keys())
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
         self.ready = True
@@ -284,47 +274,46 @@ class BasePlayer:
         # Special case: if the player has played all their cards in the previous turn, they must now end the turn and finish
         if self.rank is not None:
             if self is self.moskaGame.get_target_player():
-                playable = {"end turn" : self.moves["end turn"]}
+                playable = ["EndTurn"]
             else:
-                playable = {"skip":self.moves["skip"]}
+                playable = ["Skip"]
         # If player is the target
         elif self is self.moskaGame.get_target_player():
             # If the player is the target, they cant play these
-            playable.pop("play to target")
-            playable.pop("play initial")
+            playable.remove("PlayToOther")
+            playable.remove("InitialPlay")
             # If the player can not end their turn, they cant end the turn, unless they are finished
             if not self._can_end_turn():
-                playable.pop("end turn")
+                playable.remove("EndTurn")
             # If there are not values to play to self
             if not self._playable_values_from_hand() or len(self.moskaGame.deck) == 0:
-                playable.pop("play to self")
+                playable.remove("PlayToSelf")
             # If there are no cards to play from hand
             if not self._can_fall_cards():
-                playable.pop("kill from hand")
+                playable.remove("PlayFallFromHand")
             # If there is no deck left, or there is already a kopled card on the table, or there are no cards to fall
             if any((c.kopled for c in self.moskaGame.cards_to_fall)) or len(self.moskaGame.deck) <= 0 or not self.moskaGame.cards_to_fall:
-                playable.pop("kill from deck")
+                playable.remove("PlayFallFromDeck")
             # If all players are ready and there are no other moves left
             if self._must_end_turn():
-                playable.pop("skip")
+                playable.remove("Skip")
                 assert len(playable) == 1, f"There should only be 'end turn' option left. Left options: {playable.keys()}"
         else:
             # If the player is not the target player
-            playable.pop("kill from hand")
-            playable.pop("kill from deck")
-            playable.pop("end turn")
-            playable.pop("play to self")
+            playable.remove("PlayFallFromDeck")
+            playable.remove("PlayFallFromHand")
+            playable.remove("EndTurn")
+            playable.remove("PlayToSelf")
             # If the player doesn't have cards to play from hand, or the table is full
             if not self._playable_values_from_hand() or self._fits_to_table() <= 0:
-                playable.pop("play to target")
+                playable.remove("PlayToOther")
             # If the player is the initiating player and the game is not initiated, they cant skip
             if self is self.moskaGame.get_initiating_player() and not initiated:
-                playable.pop("skip")
+                playable.remove("Skip")
             # If the game is initiated, or the player isn't the initiating player, they cant initiate the turn
             if initiated or not self is self.moskaGame.get_initiating_player():
-                playable.pop("play initial")
+                playable.remove("InitialPlay")
         assert bool(playable), f"There must be something to play"
-        playable = list(playable.keys())
         self.plog.debug(f"Playable moves: {playable}")
         return playable
     
