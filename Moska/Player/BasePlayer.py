@@ -6,7 +6,6 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
     from ..Game import MoskaGame
 from ..Hand import MoskaHand
 from .. import utils
-from ..Turns import PlayFallFromHand, PlayFallFromDeck, PlayToOther, InitialPlay, EndTurn
 import threading
 import time
 import logging
@@ -32,7 +31,7 @@ class BasePlayer:
     log_level = logging.INFO
     log_file : str = "P"
     thread_id = None
-    moves = {}
+    move_map = {}
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  pid : int = 0, 
@@ -69,14 +68,23 @@ class BasePlayer:
         self.delay = delay
         self.requires_graphic = requires_graphic
         self.debug = debug
-        self.moves = {
-            "end turn":self._end_turn,
-            "play initial":self._play_initial,
-            "play to target":self._play_to_target,
-            "play to self":self._play_to_self,
-            "kill from hand":self._play_fall_card_from_hand,
-            "kill from deck":self._play_fall_from_deck,
-            "skip":None,
+        self.move_map = {
+            "end turn":"EndTurn",
+            "play initial":"InitialPlay",
+            "play to target":"PlayToOther",
+            "play to self":"PlayToSelf",
+            "kill from hand":"PlayFallFromHand",
+            "kill from deck":"PlayFallFromDeck",
+            "skip":"Skip",
+        }
+        self.move_fun_map = {
+            "EndTurn" : self._end_turn,
+            "InitialPlay" : self._play_initial,
+            "PlayToOther" : self._play_to_target,
+            "PlayToSelf" : self._play_to_self,
+            "PlayFallFromHand" : self._play_fall_card_from_hand,
+            "PlayFallFromDeck" : self._play_fall_from_deck,
+            "Skip" : self._skip_turn,
         }
     
     def _set_plogger(self) -> None:
@@ -101,11 +109,6 @@ class BasePlayer:
         """Sets the moskaGame instance. called from __setattr__.
         """
         self.hand = MoskaHand(self.moskaGame)
-        self._playFallCardFromHand = PlayFallFromHand(self.moskaGame,self)
-        self._playFallFromDeck = PlayFallFromDeck(self.moskaGame)
-        self._playToOther = PlayToOther(self.moskaGame,self)
-        self._initialPlay = InitialPlay(self.moskaGame,self)
-        self._endTurn = EndTurn(self.moskaGame,self)
         return
     
     def __setattr__(self, name : str, value : Any) -> None:
@@ -159,16 +162,19 @@ class BasePlayer:
         play_cards = self.play_to_target()
         target = self.moskaGame.get_target_player()
         self.plog.info(f"Playing {play_cards} to {target.name}")
-        self._playToOther(target,play_cards)
-        return
+        #self._playToOther(target,play_cards)
+        return [target, play_cards]
+    
+    def _skip_turn(self):
+        return []
         
     def _play_to_self(self) -> None:
         """ Play cards selected in play_to_self to self
         """
         play_cards = self.play_to_self()
         self.plog.info(f"Playing {play_cards} to self.")
-        self._playToOther(self,play_cards)
-        return
+        #self._playToOther(self,play_cards)
+        return [self, play_cards]
     
     
     def _play_initial(self) -> None:
@@ -177,8 +183,8 @@ class BasePlayer:
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
         self.plog.info(f"Playing {play_cards} to {target.name}")
-        self._initialPlay(target,play_cards)
-        return
+        #self._initialPlay(target,play_cards)
+        return [target, play_cards]
     
     def _can_end_turn(self) -> bool:
         """ Return True if the player CAN end their turn now.
@@ -211,16 +217,16 @@ class BasePlayer:
     def _play_fall_from_deck(self) -> None:
         """ This method is called, when the player decides to koplata.
         """
-        self._playFallFromDeck(fall_method=self.deck_lift_fall_method)
-        return
+        #self._playFallFromDeck(fall_method=self.deck_lift_fall_method)
+        return [self.deck_lift_fall_method]
 
     def _play_fall_card_from_hand(self) -> None:
         """ This method is called, when the player has decided to play cards from their hand.
         """
         play_cards = self.play_fall_card_from_hand()
         self.plog.info(f"Falling cards: {play_cards}")
-        self._playFallCardFromHand(play_cards)
-        return
+        #self._playFallCardFromHand(play_cards)
+        return [play_cards]
     
     def _end_turn(self) -> bool:
         """Called when the player must or wants to and can end their turn, or when finishing the game
@@ -233,8 +239,8 @@ class BasePlayer:
         if self.rank is None:
             pick_cards = self.end_turn()
         self.plog.info(f"Ending turn and picking {pick_cards}")
-        self._endTurn(pick_cards)
-        return bool(pick_cards)
+        #self._endTurn(pick_cards)
+        return [pick_cards]
         
     def _set_rank(self) -> int:
         """Set the players rank. Rank is None, as long as the player is still in the game.
@@ -258,7 +264,9 @@ class BasePlayer:
         success = False
         playable = self._playable_moves()
         move = self.choose_move(playable)
-        success, msg  = self.moskaGame._make_move(self.moves[move])
+        move = self.move_map[move]
+        args = [self] + self.move_fun_map[move]()
+        success, msg  = self.moskaGame._make_move(move,args)
         return success, msg
     
     def _playable_moves(self) -> List[str]:
@@ -267,7 +275,7 @@ class BasePlayer:
         Returns:
             list[str]: List of playable move identifiers
         """
-        playable = self.moves.copy()
+        playable = self.move_map.copy()
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
         self.ready = True
@@ -372,7 +380,7 @@ class BasePlayer:
                 self._set_rank()
                 # Check if self is target and finished
                 if self.rank is not None and self is self.moskaGame.get_target_player():
-                    self.moskaGame._make_move(self.moves["end turn"])
+                    self.moskaGame._make_move("EndTurn",[self,[]])
         self.plog.info(f"Finished as {self.rank}")
         return
     
