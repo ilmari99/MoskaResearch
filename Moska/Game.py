@@ -120,11 +120,11 @@ class MoskaGame:
             # Here we tell the player that they have the key
             self.lock_holder = threading.get_ident()
             yield lock
-            self.lock_holder = None
             
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
                 self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
+            self.lock_holder = None
         return
     
     def _make_move(self,move : Callable) -> bool:
