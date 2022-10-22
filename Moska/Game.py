@@ -7,6 +7,7 @@ from .Deck import Card, StandardDeck
 import threading
 import logging
 import random
+from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip
 
 
 class MoskaGame:
@@ -24,6 +25,7 @@ class MoskaGame:
     glog : logging.Logger = None
     main_lock : threading.RLock = None
     lock_holder = None
+    turns : dict = {}
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[BasePlayer] = [],
@@ -39,6 +41,19 @@ class MoskaGame:
         self.log_file = log_file if log_file else self.log_file
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
+        self._set_turns()
+    
+    def _set_turns(self):
+        self.turns = {
+        "PlayFallFromHand" : PlayFallFromHand(self),
+        "PlayFallFromDeck" : PlayFallFromDeck(self),
+        "PlayToOther" : PlayToOther(self),
+        "PlayToSelf" : PlayToSelf(self),
+        "InitialPlay" : InitialPlay(self),
+        "EndTurn": EndTurn(self),
+        "Skip":Skip(self),
+        }
+        return
     
     def __setattr__(self, name, value):
         super.__setattr__(self, name, value)
@@ -127,17 +142,17 @@ class MoskaGame:
             self.lock_holder = None
         return
     
-    def _make_move(self,move : Callable) -> Tuple(bool,str):
+    def _make_move(self,move,args) -> Tuple[bool,str]:
         """ This is called from a BasePlayer -instance
         """
         if self.lock_holder != threading.get_ident():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
-        # TODO: check whether move is actually a move
-        # TODO: Propose moves as querys, rather than callables
-        if move is None:
-            move = int  # TODO: make this an actual move, now int is just a placeholder for doing nothing
+        if move not in self.turns.keys():
+            raise NameError(f"Attempted to make move '{move}' which is not recognized as a move in Turns.py")
+        move_call = self.turns[move]
+        self.glog.debug(f"Player {self.threads[self.lock_holder].name} called {move} with args {args}")
         try:
-            move()  # Calls a class from Turns, which raises AssertionError if the move is not playable
+            move_call(*args)  # Calls a class from Turns, which raises AssertionError if the move is not playable
         except AssertionError as ae:
             self.glog.warning(f"{self.threads[threading.get_ident()].name}:{ae}")
             return False, str(ae)
