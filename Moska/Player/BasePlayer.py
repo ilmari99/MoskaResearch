@@ -261,11 +261,11 @@ class BasePlayer:
         success, msg  = self.moskaGame._make_move(self.moves[move])
         return success, msg
     
-    def _playable_moves(self) -> list:
+    def _playable_moves(self) -> List[str]:
         """Return the playable moves as a dictionary of move-name : play_function
 
         Returns:
-            dict: shallow copy of self.moves with illegal moves removed
+            list[str]: List of playable move identifiers
         """
         playable = self.moves.copy()
         # If the player has already played the desired cards, and he is not the target
