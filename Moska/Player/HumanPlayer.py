@@ -23,7 +23,7 @@ class HumanPlayer(BasePlayer):
     
     
     def choose_move(self, playable) -> str:
-        if len(playable) == 1 and playable[0] == "skip":
+        if len(playable) == 1 and playable[0] == "Skip":
             return "Skip"
         while True:
             for i,k in enumerate(playable):
