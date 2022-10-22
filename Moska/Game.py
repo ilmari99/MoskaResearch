@@ -2,7 +2,7 @@ import contextlib
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.MoskaBot1 import MoskaBot1
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 import threading
 import logging
@@ -127,7 +127,7 @@ class MoskaGame:
             self.lock_holder = None
         return
     
-    def _make_move(self,move : Callable) -> bool:
+    def _make_move(self,move : Callable) -> Tuple(bool,str):
         """ This is called from a BasePlayer -instance
         """
         if self.lock_holder != threading.get_ident():
