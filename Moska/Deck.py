@@ -50,8 +50,6 @@ class Card:
         return self.value == other.value and self.suit == other.suit
     
 
-
-# Could probably be converted to a subclass of deque
 class StandardDeck:
     """ The class representing a standard deck implementation as a deque, to mitigate some risks """
     def __init__(self,shuffle : bool=True, seed=None):
