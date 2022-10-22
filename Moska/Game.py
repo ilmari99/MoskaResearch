@@ -2,7 +2,7 @@ import contextlib
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.MoskaBot1 import MoskaBot1
-from typing import Any, Callable, Dict, List, TYPE_CHECKING
+from typing import Callable, Dict, List
 from .Deck import Card, StandardDeck
 import threading
 import logging
@@ -51,7 +51,7 @@ class MoskaGame:
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
         return
     
-    def _set_players(self,players : List[BasePlayer]):
+    def _set_players(self,players : List[BasePlayer]) -> None:
         """Here self.players is already set to players
         """
         assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
@@ -60,9 +60,10 @@ class MoskaGame:
         for pl in players:
             pl.moskaGame = self
         self.turnCycle = utils.TurnCycle(players)
+        return
         
     @classmethod
-    def _get_random_players(cls,n, player_types = []):
+    def _get_random_players(cls,n, player_types : List[Callable] = []) -> List[BasePlayer]:
         """ Get a list of BasePlayer instances (or subclasses).
         The players will be dealt cards from 
 
@@ -82,13 +83,19 @@ class MoskaGame:
             players.append(player)
         return players
     
-    def _set_glogger(self,log_file):
+    def _set_glogger(self,log_file : str) -> None:
+        """Set the games logger `glog`.
+
+        Args:
+            log_file (str): Where to write the games log
+        """
         self.glog = logging.getLogger(self.name)
         self.glog.setLevel(self.log_level)
         fh = logging.FileHandler(log_file,mode="w",encoding="utf-8")
         formatter = logging.Formatter("%(name)s:%(levelname)s:%(message)s")
         fh.setFormatter(formatter)
         self.glog.addHandler(fh)
+        return
     
     def _create_locks(self) -> None:
         """ Initialize the RLock for the game. """
@@ -98,7 +105,8 @@ class MoskaGame:
     
     @contextlib.contextmanager
     def get_lock(self,player):
-        """A wrapper around getting the moskagames main_lock
+        """A wrapper around getting the moskagames main_lock.
+        Sets the lock_holder to the obtaining threads id
 
         Args:
             player (_type_): _description_
@@ -116,14 +124,16 @@ class MoskaGame:
             
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
-                self.glog.info(f"{player.name}: new board: {self.cards_to_fall}")
+                self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
         return
     
     def _make_move(self,move : Callable) -> bool:
-        """ This is called from a BasePlayer -instance """
+        """ This is called from a BasePlayer -instance
+        """
         if self.lock_holder != threading.get_ident():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
         # TODO: check whether move is actually a move
+        # TODO: Propose moves as querys, rather than callables
         if move is None:
             move = int  # TODO: make this an actual move, now int is just a placeholder for doing nothing
         try:

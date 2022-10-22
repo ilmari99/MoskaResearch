@@ -1,8 +1,6 @@
 from __future__ import annotations
-from collections import Counter
-import itertools
 import random
-from typing import TYPE_CHECKING, Iterable, List
+from typing import TYPE_CHECKING, Any, List, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -81,12 +79,12 @@ class BasePlayer:
             "skip":None,
         }
     
-    def _set_plogger(self):
-        """Configure this players logger.
-        Must be done after starting this games process.
-        """
-        #self.plog = logging.Logger(self.name + "T")
-        #assert self.plog is None,"plog must be none"
+    def _set_plogger(self) -> None:
+        """ Sets the logger for this player.
+        Can be called explicitly or with self.log_file=....
+        NOTE: This must be called AFTER starting the process in which this player is run in.
+        Currently this is called in the `_start` method, which is called from Game when the game begins.
+        """        
         plog = logging.getLogger(self.name)
         plog.setLevel(self.log_level)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
@@ -97,43 +95,66 @@ class BasePlayer:
         assert self.plog.hasHandlers(), "Logger has no handles"
         assert not self.plog.disabled, "Logger is disabled"
         self.plog.debug("Logger succesful")
+        return
         
-    def _set_moskaGame(self):
+    def _set_moskaGame(self) -> None:
+        """Sets the moskaGame instance. called from __setattr__.
+        """
         self.hand = MoskaHand(self.moskaGame)
         self._playFallCardFromHand = PlayFallCardFromHand(self.moskaGame,self)
         self._playFallFromDeck = PlayFallFromDeck(self.moskaGame)
         self._playToOther = PlayToOther(self.moskaGame,self)
         self._initialPlay = InitialPlay(self.moskaGame,self)
         self._endTurn = EndTurn(self.moskaGame,self)
+        return
     
-    def __setattr__(self, name, value):
+    def __setattr__(self, name : str, value : Any) -> None:
+        """Called when setting a variable in this instance.
+
+        Args:
+            name (str): value to set
+            value (Any): set value to what
+        """
         super.__setattr__(self, name, value)
         if name == "moskaGame" and value is not None:
             self._set_moskaGame()
-    
     
     def _set_pid(self,pid) -> None:
         """ Set the players pid. Currently no use."""
         self.pid = pid
         self.plog.debug(f"Set pid to {pid}")
     
-    def _playable_values_to_table(self):
-        """ Return a set of integer values that can be played to the table.
-        This equals the set of values, that have been played to the table."""
+    def _playable_values_to_table(self) -> set:
+        """Return a set of integer values that can be played to the table.
+        This equals the set of values, that have been played to the table.
+
+        Returns:
+            set: Which values have been played to the table
+        """
         return set([c.value for c in self.moskaGame.cards_to_fall + self.moskaGame.fell_cards])
     
-    def _playable_values_from_hand(self):
-        """ Return a set of values, that can be played to target.
-        This is the intersection of values between the values in the table, and in the players hand."""
+    def _playable_values_from_hand(self) -> set:
+        """Return a set of values, that can be played to target.
+        This is the intersection of values between the values in the table, and in the players hand.
+
+        Returns:
+            set: intersection of played values and values in the hand
+        """
         return self._playable_values_to_table().intersection([c.value for c in self.hand])
     
-    def _fits_to_table(self):
-        """ Return the number of cards playable to the active/target player. This equals the number of cards in the targets hand, minus the number of (unfallen) cards on the table."""
+    def _fits_to_table(self) -> int:
+        """Return the number of cards playable to the active/target player.
+        This equals the number of cards in the targets hand,
+        minus the number of (unfallen) cards on the table.
+
+        Returns:
+            int: How many cards can be played to the target
+        """
         target = self.moskaGame.get_target_player()
         return len(target.hand) - len(self.moskaGame.cards_to_fall)
     
     
-    def _play_to_target(self):
+    def _play_to_target(self) -> None:
         """ This method is invoked to play the cards, chosen in 'play_to_target' """
         play_cards = self.play_to_target()
         target = self.moskaGame.get_target_player()
@@ -141,29 +162,33 @@ class BasePlayer:
         self._playToOther(target,play_cards)
         return
         
-    def _play_to_self(self):
+    def _play_to_self(self) -> None:
+        """ Play cards selected in play_to_self to self
+        """
         play_cards = self.play_to_self()
         self.plog.info(f"Playing {play_cards} to self.")
         self._playToOther(self,play_cards)
         return
     
     
-    def _play_initial(self):
-        """ This function is called, when self is the initiating player, and gets to play to an empty table."""
+    def _play_initial(self) -> None:
+        """ This function is called, when self is the initiating player, and gets to play to an empty table.
+        """
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
         self.plog.info(f"Playing {play_cards} to {target.name}")
         self._initialPlay(target,play_cards)
         return
     
-    def _can_end_turn(self):
+    def _can_end_turn(self) -> bool:
         """ Return True if the player CAN end their turn now.
-        Which is true, when all the other players are ready and there are cards on the table."""
+        Which is true, when all the other players are ready and there are cards on the table.
+        """
         players_ready = all((pl.ready for pl in self.moskaGame.players if (pl is not self) and (pl.rank is None)))
         cards_in_table = len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) > 0
         return players_ready and cards_in_table
     
-    def _must_end_turn(self):
+    def _must_end_turn(self) -> bool:
         """Player must end their turn if:
         - There are cards on the table, they have no playable cards, all players are ready, and the player cant koplata (there is no deck left or there is a kopled card already)
         """
@@ -184,12 +209,14 @@ class BasePlayer:
         return False
 
     def _play_fall_from_deck(self) -> None:
-        """ This method is called, when the player decides to koplata. """
+        """ This method is called, when the player decides to koplata.
+        """
         self._playFallFromDeck(fall_method=self.deck_lift_fall_method)
         return
 
     def _play_fall_card_from_hand(self) -> None:
-        """ This method is called, when the player has decided to play cards from their hand."""
+        """ This method is called, when the player has decided to play cards from their hand.
+        """
         play_cards = self.play_fall_card_from_hand()
         self.plog.info(f"Falling cards: {play_cards}")
         self._playFallCardFromHand(play_cards)
@@ -220,22 +247,21 @@ class BasePlayer:
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
-    def choose_move(self,from_= None) -> str:
-        if from_ is None:
-            from_ = self.moves.keys()
-        from_ = list(from_)
-        move = random.choice(from_)
-        return move
-    
     @utils.check_new_card
-    def _play_move(self):
+    def _play_move(self) -> Tuple[bool,str]:
+        """Calls moskaGame to propose a move.
+        This is called on each turn from _continuous play
+
+        Returns:
+            Tuple[bool,str]: _description_
+        """
         success = False
         playable = self._playable_moves()
         move = self.choose_move(playable)
         success, msg  = self.moskaGame._make_move(self.moves[move])
         return success, msg
     
-    def _playable_moves(self) -> dict:
+    def _playable_moves(self) -> list:
         """Return the playable moves as a dictionary of move-name : play_function
 
         Returns:
@@ -290,7 +316,8 @@ class BasePlayer:
             if initiated or not self is self.moskaGame.get_initiating_player():
                 playable.pop("play initial")
         assert bool(playable), f"There must be something to play"
-        self.plog.debug(f"Playable moves: {playable.keys()}")
+        playable = list(playable.keys())
+        self.plog.debug(f"Playable moves: {playable}")
         return playable
     
     def _start(self) -> int:
@@ -326,13 +353,13 @@ class BasePlayer:
                     print(f"{self.name} playing...",flush=True)
                     print(self.moskaGame,flush=True)
                     print(msgd, flush=True)
-                # If there is only 1 active player in the game, break
+                # If there is only 1 active player in the game, the player is last
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
                     self._set_rank()
                     break
                 self.plog.debug(f"{msgd}")
                 try:
-                    success, msg = self._play_move()
+                    success, msg = self._play_move()    # Return (True, "") if a valid move, else (False, <error>)
                     while not success:
                         self.plog.warning(msg)
                         self.ready = False
@@ -341,37 +368,26 @@ class BasePlayer:
                 except Exception as e:
                     self.plog.error(traceback.format_exc())
                     sys.exit(e)
+                # Set the players rank
                 self._set_rank()
+                # Check if self is target and finished
                 if self.rank is not None and self is self.moskaGame.get_target_player():
                     self.moskaGame._make_move(self.moves["end turn"])
         self.plog.info(f"Finished as {self.rank}")
         return
-
-    def want_to_fall_cards(self) -> bool:
-        """Whether the player wants to fall cards from their hand.
-        
-        Default: Whether play_fall_card_from_hand() returns empty dict.
-        This might be slow, but it is correct if play_fall_card_from_hand is deterministic.
-        
-        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
-
-        Returns:
-            bool: Whether the player wants to fall cards from hand
-        """
-        return bool(self.play_fall_card_from_hand()) 
     
-    def want_to_play_to_self(self) -> bool:
-        """ Whether the player wants to play cards to self.
-        
-        Default: Whether play_to_self() returns cards.
-        Default might be slower, but it is correct if play_to_self() is deterministic.
-        
-        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
-        
+    def choose_move(self,playable) -> str:
+        """ Select a move to play.
+
+        Args:
+            from_ (_type_, optional): _description_. Defaults to None.
+
         Returns:
-            bool: whether the player wants to play cards to self
+            str: _description_
         """
-        return bool(self.play_to_self())
+        move = random.choice(playable)
+        return move
+    
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
@@ -423,16 +439,6 @@ class BasePlayer:
             if utils.check_can_fall_card(deck_card,card,self.moskaGame.triumph):
                 return (deck_card,card)
             
-    def want_to_end_turn(self):
-        """ Return True if the player (as target) wants to prematurely end the turn by calling the _end_turn() method 
-        which lifts the cards specified in end_turn()
-        
-        Default: Want to end turn, when there are no cards to fall left"""
-        if not self.moskaGame.cards_to_fall:
-            return True
-        else:
-            False
-            
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
         Default play all playable values, except triumphs
@@ -452,13 +458,6 @@ class BasePlayer:
         hand = self.hand.copy()
         play_cards = hand.pop_cards(cond=lambda x : x.value == min_card,max_cards = self._fits_to_table())
         return play_cards
-    
-    def want_to_play_from_deck(self):
-        """ When you are the target, return True if you want to play from deck (koplata) or else False.
-        Default: Play from deck if there is only one card left (which is always triumph). This however is not always the best choice."""
-        if len(self.moskaGame.deck) == 1:
-            return True
-        return False
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.

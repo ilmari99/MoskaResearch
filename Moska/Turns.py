@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING, List
 from collections import Counter
 from Moska.Deck import Card
 if TYPE_CHECKING:
     from .Game import MoskaGame
-    from .BasePlayer import BasePlayer
+    from .Player.BasePlayer import BasePlayer
 from . import utils
 
 
@@ -12,6 +12,8 @@ from . import utils
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
+    player : BasePlayer = None
+    moskaGame : MoskaGame = None
     def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         """ Initialize
         Args:
@@ -53,7 +55,9 @@ class _PlayToPlayer:
 
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
-    def __call__(self,target_player : BasePlayer, play_cards : list):
+    target_player : BasePlayer = None
+    play_cards : List[Card] = []
+    def __call__(self,target_player : BasePlayer, play_cards : List[Card]):
         """This is called when the instance is called with brackets.
         Performs checks, assigns self variables and calls the play() method of super
 
@@ -76,7 +80,9 @@ class InitialPlay(_PlayToPlayer):
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
-    def __call__(self, target_player : BasePlayer, play_cards : list):
+    target_player : BasePlayer = None
+    play_cards : List[Card] = []
+    def __call__(self, target_player : BasePlayer, play_cards : List[Card]):
         """This method is called when this instance is called with brackets.
 
         Args:
@@ -109,6 +115,8 @@ class PlayToOther(_PlayToPlayer):
 
 class PlayFallCardFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
+    moskaGame : MoskaGame = None
+    player : BasePlayer = None
     def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         """ Initialize the instance """
         self.moskaGame = moskaGame
@@ -143,6 +151,9 @@ class PlayFallCardFromHand:
             
 class PlayFallFromDeck:
     """ Koplaus"""
+    moskaGame : MoskaGame = None
+    fall_method : Callable = None
+    card : Card = None
     def __init__(self,moskaGame : MoskaGame,fall_method : Callable = None):
         self.moskaGame = moskaGame
         self.fall_method = fall_method
@@ -175,7 +186,6 @@ class PlayFallFromDeck:
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         self.card.kopled = True
-        #self.card = Card(self.card.value,self.card.suit,True)
         self.player = self.moskaGame.get_target_player()
         self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
@@ -203,12 +213,15 @@ class PlayFallFromDeck:
 
 class EndTurn:
     """ Class representing ending a turn. """
+    moskaGame : MoskaGame = None
+    player : BasePlayer = None
+    pick_cards : List[Card] = []
     def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
         self.moskaGame = moskaGame
         self.player = player
     
     
-    def __call__(self,pick_cards : list = []):
+    def __call__(self,pick_cards : List[Card] = []):
         """Called at the end of a turn. Pick selected cards.
 
         Args:

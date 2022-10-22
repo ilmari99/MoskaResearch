@@ -7,6 +7,8 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
 from .. import utils
 from .BasePlayer import BasePlayer
 import logging
+
+
 class MoskaBot1(BasePlayer):
     def __init__(self,
                  moskaGame: MoskaGame = None, 
@@ -19,7 +21,6 @@ class MoskaBot1(BasePlayer):
                  log_file=""):
         if not name:
             name = f"B1-{pid}"
-        #super().__init__()
         super().__init__(moskaGame, pid, name, delay, requires_graphic, debug, log_level, log_file)
     
     def _count_score(self,card : Card):
@@ -50,37 +51,10 @@ class MoskaBot1(BasePlayer):
         """
         new_cards = []
         for card in cards:
-            #if card.score is None:
-                #card = Card(card.value,card.suit,card.kopled,self._count_score(card))
             card.score = self._count_score(card)
             new_cards.append(card)
         return new_cards
-         
-    def want_to_fall_cards(self) -> bool:
-        """Whether the player wants to fall cards from their hand.
-        
-        Default: Whether play_fall_card_from_hand() returns empty dict.
-        This might be slow, but it is correct if play_fall_card_from_hand is deterministic.
-        
-        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
-
-        Returns:
-            bool: Whether the player wants to fall cards from hand
-        """
-        return bool(self.play_fall_card_from_hand()) 
     
-    def want_to_play_to_self(self) -> bool:
-        """ Whether the player wants to play cards to self.
-        
-        Default: Whether play_to_self() returns cards.
-        Default might be slower, but it is correct if play_to_self() is deterministic.
-        
-        This method can be overwritten, but if it is incorrect wrt. play_fall_card_from_hand(), leads to undefined behavior
-        
-        Returns:
-            bool: whether the player wants to play cards to self
-        """
-        return bool(self.play_to_self())
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
@@ -192,15 +166,6 @@ class MoskaBot1(BasePlayer):
         sm_card = self._get_sm_score_in_list(mapping)
         return (deck_card,sm_card)
             
-    def want_to_end_turn(self) -> bool:
-        """ Return True if the player (as target) wants to prematurely end the turn by calling the _end_turn() method 
-        which lifts the cards specified in end_turn()
-        
-        Default: Want to end turn, when there are no cards to fall left"""
-        if not self.moskaGame.cards_to_fall:
-            return True
-        return False
-            
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
         Default play all playable values, except triumphs
@@ -213,7 +178,6 @@ class MoskaBot1(BasePlayer):
         cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
         return cards
 
-
     def play_initial(self):
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
@@ -222,13 +186,6 @@ class MoskaBot1(BasePlayer):
         hand = self.hand.copy()
         play_cards = hand.pop_cards(cond=lambda x : x.score == sm_card,max_cards = self._fits_to_table())
         return play_cards
-    
-    def want_to_play_from_deck(self):
-        """ When you are the target, return True if you want to play from deck (koplata) or else False.
-        Default: Play from deck if there is only one card left (which is always triumph). This however is not always the best choice."""
-        if len(self.moskaGame.deck) == 1:
-            return True
-        return False
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.

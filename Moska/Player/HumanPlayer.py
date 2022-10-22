@@ -1,10 +1,8 @@
 from __future__ import annotations
-from collections import Counter
-from typing import TYPE_CHECKING, Iterable, List
+from typing import TYPE_CHECKING, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
-from .. import utils
 from .BasePlayer import BasePlayer
 import logging
 
@@ -24,25 +22,24 @@ class HumanPlayer(BasePlayer):
         super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug,log_level=log_level, log_file=log_file)
     
     
-    def choose_move(self, from_ : dict=None) -> str:
-        choices = list(from_.keys())
-        if len(choices) == 1 and choices[0] == "skip":
+    def choose_move(self, playable) -> str:
+        if len(playable) == 1 and playable[0] == "skip":
             return "skip"
         while True:
-            for i,k in enumerate(choices):
+            for i,k in enumerate(playable):
                 print(f"{i}. {k}")
             inp = input(f"What do you want to play: ")
             if self._check_no_input(inp):
                 print(f"No input given.")
                 continue
             try:
-                if int(inp) in range(len(choices)):
+                if int(inp) in range(len(playable)):
                     pass
             except:
-                print(f"Incorrect input. Input must be one of: {list(range(len(choices)))}")
+                print(f"Incorrect input. Input must be one of: {list(range(len(playable)))}")
                 continue
             break
-        return choices[int(inp)]
+        return playable[int(inp)]
     
     
     def _check_no_input(self,inp) -> bool:

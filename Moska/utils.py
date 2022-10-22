@@ -55,6 +55,7 @@ def announce_new_card(self) -> None:
         pl.ready = False
     if self.requires_graphic:
         print(self.moskaGame,flush=True)
+    return
 
 def check_new_card(func : Callable) -> Callable:
     """A wrapper, that checks the state of the game before the function is applied and after the function is applied.
