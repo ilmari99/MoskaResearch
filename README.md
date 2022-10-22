@@ -11,3 +11,5 @@ This is designed for simulations of moska games with different algorithms, and p
 - Create a benchmarking system, that records each games initial order, final ranking. Then create an analyzing system.
 - If benchmarking works, make it possible to run games without logging to increase speed.
 - thread : player -mapping could probably be made global, and used to prevent accidental modification of moskaGame and other attributes
+- When running multiple games, the log files are appended if usig the same name
+- 
