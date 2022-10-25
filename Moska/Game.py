@@ -87,7 +87,7 @@ class MoskaGame:
         return
         
     @classmethod
-    def _get_random_players(cls,n, player_types : List[Callable] = []) -> List[BasePlayer]:
+    def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[BasePlayer]:
         """ Get a list of BasePlayer instances (or subclasses).
         The players will be dealt cards from 
 
@@ -103,7 +103,7 @@ class MoskaGame:
             player_types = [BasePlayer,MoskaBot1]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int](pid=i,debug=True)
+            player = player_types[rand_int](pid=i,**plkwargs)
             players.append(player)
         return players
     
