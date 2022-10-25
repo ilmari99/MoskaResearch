@@ -1,6 +1,6 @@
 import logging
 import os
-from time import time
+import time
 from Moska.Game import MoskaGame
 from Moska.Player.BasePlayer import BasePlayer
 from Moska.Player.HumanPlayer import HumanPlayer
@@ -8,7 +8,13 @@ import multiprocessing
 from typing import List
 
 def start_threaded_moska(players : List[BasePlayer],file = "",timeout=10, random_seed = None):
-    moskaGame = MoskaGame(players=players,log_file=file,log_level=logging.DEBUG,timeout=timeout, random_seed=random_seed)
+    moskaGame = MoskaGame(players=players,
+                          log_file=file,
+                          log_level=logging.DEBUG,
+                          timeout=timeout,
+                          random_seed=random_seed,
+                          
+                          )
     ranks = moskaGame.start()
     return ranks
 
@@ -24,11 +30,20 @@ def play_as_human(nopponents):
     moskaGame = MoskaGame(players = players,log_level=logging.DEBUG)
     moskaGame.start()
 
-def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
-    pool = multiprocessing.Pool(n)
-    timeout = 3
+def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
+    print(f"Found CPUs: {os.cpu_count()}")
+    try:
+        avail_cpus = len(os.sched_getaffinity(0))
+        print(f"CPUs available for use: {avail_cpus}")
+    except AttributeError as ae:
+        print(f"No information on CPU availability, assuming N - 1")
+        avail_cpus = os.cpu_count() - 1
+        pass
+    start_time = time.time()
+    cpus = min(avail_cpus,n) if cpus==-1 else cpus
+    chunksize = cpus if chunksize == -1 else chunksize
+    print(f"Starting a pool with {cpus} processes...")
     arg_list = []
-    print(f"Available CPUs: {os.cpu_count()}")
     for i in range(n):
         file = log_prefix + f"({i}).log"    # Name for the Games log file
         players = MoskaGame._get_random_players(nplayers)   # n random players
@@ -38,9 +53,9 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
         arg_list.append((players, file))
         #processes.append(multiprocessing.Process(target=start_threaded_moska,args=(players,file)))
     results = []
-    with multiprocessing.Pool(os.cpu_count()-1) as pool:
+    with multiprocessing.Pool(cpus) as pool:
         print("Games running...")
-        gen = pool.imap_unordered(start_threaded_moska_process,arg_list,chunksize = os.cpu_count() - 1)
+        gen = pool.imap_unordered(start_threaded_moska_process,arg_list,chunksize = chunksize)
         print(gen)
         failed_games = 0
         while gen:
@@ -54,7 +69,8 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_"):
             print(res)
             results.append(res)
     print(f"Simulated {len(results)} games. {len(results) - failed_games} succesfull games. {failed_games} failed.")
-    print("Results: ", results)
+    print(f"Time taken: {time.time() - start_time}")
+    #print("Results: ", results)
     b1_last = 0
     b0_last = 0
     for res in results:
@@ -74,7 +90,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     #play_as_human(n)
-    play_games(500,nplayers=5,log_prefix="moskafile_")
+    play_games(12,nplayers=5,log_prefix="moskafile_",cpus=4,chunksize=1)
     
     
 
