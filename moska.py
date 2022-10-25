@@ -41,8 +41,8 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
         pass
     start_time = time.time()
     cpus = min(avail_cpus,n) if cpus==-1 else cpus
-    chunksize = cpus if chunksize == -1 else chunksize
-    print(f"Starting a pool with {cpus} processes...")
+    chunksize = n//cpus if chunksize == -1 else chunksize
+    print(f"Starting a pool with {cpus} processes and {chunksize} chunksize...")
     arg_list = []
     for i in range(n):
         file = log_prefix + f"({i}).log"    # Name for the Games log file
@@ -56,7 +56,6 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
     with multiprocessing.Pool(cpus) as pool:
         print("Games running...")
         gen = pool.imap_unordered(start_threaded_moska_process,arg_list,chunksize = chunksize)
-        print(gen)
         failed_games = 0
         while gen:
             try:
@@ -68,7 +67,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
                 res = None
             print(res)
             results.append(res)
-    print(f"Simulated {len(results)} games. {len(results) - failed_games} succesfull games. {failed_games} failed.")
+    print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
     #print("Results: ", results)
     b1_last = 0
@@ -90,7 +89,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     #play_as_human(n)
-    play_games(12,nplayers=5,log_prefix="moskafile_",cpus=4,chunksize=1)
+    play_games(100,nplayers=5,log_prefix="moskafile_",cpus=8)
     
     
 
