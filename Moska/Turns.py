@@ -1,38 +1,40 @@
 from __future__ import annotations
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING, Dict, List
 from collections import Counter
 from Moska.Deck import Card
+from .Player.BasePlayer import BasePlayer
 if TYPE_CHECKING:
     from .Game import MoskaGame
-    from .BasePlayer import BasePlayer
 from . import utils
-
 
 
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
-    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
+    player : BasePlayer = None
+    target : BasePlayer = None
+    cards : List[Card] = []
+    moskaGame : MoskaGame = None
+    def __init__(self,moskaGame : MoskaGame):
         """ Initialize
         Args:
             moskaGame (MoskaGame): MoskaGame -instance
             player (BasePlayer): BasePlayer -instance
         """
         self.moskaGame = moskaGame
-        self.player = player
         
         
     def check_cards_available(self) -> bool:
         """ Check that the cards are playable.
         Return whether the player has the play_cards in hand.
         """
-        return all([card in self.player.hand.cards for card in self.play_cards])
+        return all([card in self.player.hand.cards for card in self.cards])
     
     def check_fits(self) -> bool:
         """ Check that the cards fit in the table.
         Return whether the cards fit to the table.
         """
-        return len(self.target_player.hand) - len(self.moskaGame.cards_to_fall) >= len(self.play_cards)
+        return len(self.target.hand) - len(self.moskaGame.cards_to_fall) >= len(self.cards)
     
     def check_target_active(self,tg : BasePlayer) -> bool:
         """ Check that the target is the active player """
@@ -42,10 +44,10 @@ class _PlayToPlayer:
         """Play the play_cards to the table;
         Modify the players hand, add cards to the table, and draw cards from the deck.
         """
-        self.player.hand.pop_cards(lambda x : x in self.play_cards) # Remove the played cards from the players hand
-        self.moskaGame.add_cards_to_fall(self.play_cards)           # Add the cards to the cards_to_fall -list
-        self.moskaGame.glog.info(f"{self.player.name} played {self.play_cards} to {self.moskaGame.get_target_player().name}")
-        if self.player is not self.target_player:
+        self.player.hand.pop_cards(lambda x : x in self.cards) # Remove the played cards from the players hand
+        self.moskaGame.add_cards_to_fall(self.cards)           # Add the cards to the cards_to_fall -list
+        self.moskaGame.glog.info(f"{self.player.name} played {self.cards} to {self.moskaGame.get_target_player().name}")
+        if self.player is not self.target:
             self.player.plog.debug(f"Drew {6 - len(self.player.hand)} cards from deck")
             self.player.hand.draw(6 - len(self.player.hand))                 # Draw the to get 6 cards, if you are not playing to self
         
@@ -53,7 +55,8 @@ class _PlayToPlayer:
 
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
-    def __call__(self,target_player : BasePlayer, play_cards : list):
+    
+    def __call__(self,player : BasePlayer, target : BasePlayer, cards : List[Card]):
         """This is called when the instance is called with brackets.
         Performs checks, assigns self variables and calls the play() method of super
 
@@ -61,32 +64,40 @@ class InitialPlay(_PlayToPlayer):
             target_player (BasePlayer): The target for who to play
             play_cards (list): The list of cards to play to the table
         """
-        self.target_player = target_player
-        self.play_cards = play_cards
+        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
+        self.player = player
+        self.target = target
+        self.cards = cards
+        # TODO: Check whether player is the initiating player
+        assert self.player is self.moskaGame.get_initiating_player(), f"Player is not the initiating player."
+        assert len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) == 0, "The game is already initiated"
         assert self.check_single_or_multiple(), "Selected values could not be played. Only pairs or greater, cards of same values can be played."
         assert self.check_cards_available(), "Some of the played cards are not available"
         assert self.check_fits(), "Attempted to play too many cards."
-        assert self.check_target_active(self.target_player), "Target is not active"
+        assert self.check_target_active(self.target), "Target is not active"
         self.play()
         
     def check_single_or_multiple(self):
-        c = Counter([c.value for c in self.play_cards])
-        return len(self.play_cards) == 1 or all((count >= 2 for count in c.values()))
+        c = Counter([c.value for c in self.cards])
+        return len(self.cards) == 1 or all((count >= 2 for count in c.values()))
         
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
-    def __call__(self, target_player : BasePlayer, play_cards : list):
+    def __call__(self, player : BasePlayer, target : BasePlayer, cards : List[Card]):
         """This method is called when this instance is called with brackets.
 
         Args:
             target_player (BasePlayer): The target for who to play
             play_cards (list): The cards to play
         """
-        self.target_player = target_player
-        self.play_cards = play_cards
+        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
+        self.player = player
+        self.target = target
+        self.cards = cards
         assert self.check_cards_available(), "Some of the played cards are not available"
-        if self.player is not target_player:
+        # If player is not the target (playing to self), then the cards must fit, if playing to self, there must be deck left
+        if self.player is not target:
             assert self.check_fits(), "Attempted to play too many cards."
         else:
             assert self.check_deck_left(), "There is no deck left, and playing to self is not possible."
@@ -104,26 +115,38 @@ class PlayToOther(_PlayToPlayer):
     def check_in_table(self):
         """ Check that the cards have already been played by either the player or an opponent"""
         playable_values = self._playable_values()
-        return all((card.value in playable_values for card in self.play_cards))
+        return all((card.value in playable_values for card in self.cards))
+    
+class PlayToSelf(PlayToOther):
+    pass
 
 
-class PlayFallCardFromHand:
+class PlayFallFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
-    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
+    moskaGame : MoskaGame = None
+    player : BasePlayer = None
+    def __init__(self,moskaGame : MoskaGame):
         """ Initialize the instance """
         self.moskaGame = moskaGame
-        self.player = player
 
-    def __call__(self,play_fall : dict):
-        
+    def __call__(self,player : BasePlayer, play_fall : Dict[Card,Card]):
+        assert utils.check_signature([BasePlayer,dict],[player,play_fall]), "Incorrect input signature"
+        self.player = player
         self.play_fall = play_fall
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
         assert self.check_player_has_turn(), "The player does not have the turn."
+        assert self.check_cards_available(), "Some of the played cards are not available"
         self.play()
         
     def check_cards_fall(self):
         """Returns whether all the pairs are correctly played"""
         return all([utils.check_can_fall_card(pc,fc,self.moskaGame.triumph) for pc,fc in self.play_fall.items()])
+    
+    def check_cards_available(self) -> bool:
+        """ Check that the cards are playable.
+        Return whether the player has the play_cards in hand.
+        """
+        return all([card in self.player.hand.cards for card in self.play_fall.keys()])
     
     def check_player_has_turn(self):
         return self.moskaGame.get_target_player() is self.player
@@ -143,15 +166,19 @@ class PlayFallCardFromHand:
             
 class PlayFallFromDeck:
     """ Koplaus"""
-    def __init__(self,moskaGame : MoskaGame,fall_method : Callable = None):
+    moskaGame : MoskaGame = None
+    fall_method : Callable = None
+    card : Card = None
+    def __init__(self,moskaGame : MoskaGame):
         self.moskaGame = moskaGame
-        self.fall_method = fall_method
-        
-    def __call__(self, fall_method : Callable = None):
+    
+    def __call__(self, player : BasePlayer, fall_method : Callable):
         """ fall_method must accept one argument: the card that was drawn,
         and return an indexable with two values: The played card, and the card which should be fallen"""
-        if fall_method is not None:
-            self.fall_method = fall_method
+        assert utils.check_signature([BasePlayer,Callable],[player,fall_method]), "Incorrect input signature"
+        self.fall_method = fall_method
+        self.player = player
+        assert self.player is self.moskaGame.get_target_player(), "The player can't play from deck, since they are not the target."
         assert self.check_not_already_kopled(), "There is already a kopled card on the table"
         assert self.fall_method is not None, "No fall_method specified"
         assert self.check_cards_on_table(), "There are no cards on the table which should be fell"
@@ -175,11 +202,10 @@ class PlayFallFromDeck:
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
         self.card.kopled = True
-        #self.card = Card(self.card.value,self.card.suit,True)
-        self.player = self.moskaGame.get_target_player()
         self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
             play_fall = self.fall_method(self.card)
+            # If an incorrect card is selected to fall, then a random card is picked.
             if not self.check_can_fall(in_=[play_fall[1]]):
                 self.player.plog.error(f"The card {self.card} can not fall {play_fall[1]}. Falling a random card.")
                 for card in self.moskaGame.cards_to_fall:
@@ -202,17 +228,20 @@ class PlayFallFromDeck:
 
 class EndTurn:
     """ Class representing ending a turn. """
-    def __init__(self,moskaGame : MoskaGame, player : BasePlayer):
+    moskaGame : MoskaGame = None
+    player : BasePlayer = None
+    pick_cards : List[Card] = []
+    def __init__(self,moskaGame : MoskaGame):
         self.moskaGame = moskaGame
-        self.player = player
     
-    
-    def __call__(self,pick_cards : list = []):
+    def __call__(self,player : BasePlayer, pick_cards : List[Card] = []):
         """Called at the end of a turn. Pick selected cards.
 
         Args:
             pick_cards (list, optional): _description_. Defaults to [].
         """
+        assert utils.check_signature([BasePlayer,list],[player,pick_cards]), "Incorrect input signature"
+        self.player = player
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
         if not pick_cards:
@@ -263,6 +292,28 @@ class EndTurn:
         if len(self.pick_cards) > 0 or self.player.rank is not None:
             self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.clear_table()
+        
+class Skip:
+    moskaGame : MoskaGame = None
+    def __init__(self, moskaGame : MoskaGame):
+        self.moskaGame = moskaGame
+    
+    def __call__(self, player : BasePlayer):
+        assert utils.check_signature([BasePlayer],[player]), "Incorrect input signature"
+        self.player = player
+        assert not self.check_is_initiating() or self.check_initiated(), "The game must be initiated, and skipping is not possible."
+        assert not self.check_target_must_end_turn(), "There are no plays left, and the turn must be ended."
+    
+    def check_is_initiating(self):
+        return self.player is self.moskaGame.get_initiating_player()
+    
+    def check_initiated(self):
+        return len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) > 0
+    
+    def check_target_must_end_turn(self):
+        if self.player is self.moskaGame.get_target_player():
+            return self.player._must_end_turn()
+        return False
     
     
     

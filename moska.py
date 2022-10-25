@@ -1,15 +1,11 @@
 import logging
 import os
 from time import time
-from Moska import Deck
 from Moska.Game import MoskaGame
 from Moska.Player.BasePlayer import BasePlayer
 from Moska.Player.HumanPlayer import HumanPlayer
-from Moska.Player.MoskaBot1 import MoskaBot1
-import sys
 import multiprocessing
-import random
-from typing import TextIO, List
+from typing import List
 
 def start_threaded_moska(players : List[BasePlayer],file = ""):
     moskaGame = MoskaGame(players=players,log_file=file,log_level=logging.DEBUG)
@@ -54,8 +50,8 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
-    play_as_human(n)
-    #play_games(1,nplayers=5,log_prefix="moskafile_")
+    #play_as_human(n)
+    play_games(1,nplayers=5,log_prefix="moskafile_")
     
     
 

@@ -44,7 +44,7 @@ class MoskaHand:
         
         This is a dangerous methdod, that might be used incorrectly when subclassing MoskaPlayer.
         
-        TODO: Make safer, for ex by prefixing with "_", but adding the same method without prefix to _MoskaHandCopy
+        TODO: Make safer, for ex by checking whether the calling thread has the moskaGames lock.
         """
         out = []
         for card in self.cards.copy():

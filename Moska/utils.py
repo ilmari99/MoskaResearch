@@ -1,6 +1,6 @@
 from __future__ import annotations
 from functools import wraps
-from typing import Any, Callable, Iterable, List, TYPE_CHECKING
+from typing import Any, Callable, Iterable, List, TYPE_CHECKING, Sequence
 if TYPE_CHECKING:
     from .Deck import Card
 
@@ -8,6 +8,12 @@ CARD_VALUES = tuple(range(2,15))                            # Initialize the sta
 CARD_SUITS = ("C","D","H","S") 
 CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion table
 MAIN_DECK = None                                            # The main deck
+
+def check_signature(sig : Sequence, inp : Sequence) -> bool:
+    for s, i in zip(sig,inp):
+        if not isinstance(i,s):
+            return False
+    return True
 
 def suit_to_symbol(suits : Iterable or str) -> List or str:
     """Convert a suit to a symbol according to CARD_SUIT_SYMBOLS
@@ -55,6 +61,7 @@ def announce_new_card(self) -> None:
         pl.ready = False
     if self.requires_graphic:
         print(self.moskaGame,flush=True)
+    return
 
 def check_new_card(func : Callable) -> Callable:
     """A wrapper, that checks the state of the game before the function is applied and after the function is applied.
@@ -72,11 +79,11 @@ def check_new_card(func : Callable) -> Callable:
     def wrap(*args,**kwargs):
         #assert isinstance(args[0],MoskaPlayerBase), "The decorated function must have a reference to an instance of MoskaPlayerBase as the first positional argument."
         state = args[0]._playable_values_to_table()
-        func(*args,**kwargs)
+        out = func(*args,**kwargs)
         new_state = args[0]._playable_values_to_table()
         if len(state) != len(new_state):
             announce_new_card(args[0])
-        return
+        return out
     return wrap
     
     

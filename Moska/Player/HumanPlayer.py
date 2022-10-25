@@ -1,10 +1,8 @@
 from __future__ import annotations
-from collections import Counter
-from typing import TYPE_CHECKING, Iterable, List
+from typing import TYPE_CHECKING, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from .Game import MoskaGame
-from .. import utils
+    from ..Game import MoskaGame
 from .BasePlayer import BasePlayer
 import logging
 
@@ -24,6 +22,26 @@ class HumanPlayer(BasePlayer):
         super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug,log_level=log_level, log_file=log_file)
     
     
+    def choose_move(self, playable) -> str:
+        if len(playable) == 1 and playable[0] == "Skip":
+            return "Skip"
+        while True:
+            for i,k in enumerate(playable):
+                print(f"{i}. {k}")
+            inp = input(f"What do you want to play: ")
+            if self._check_no_input(inp):
+                print(f"No input given.")
+                continue
+            try:
+                if int(inp) in range(len(playable)):
+                    pass
+            except:
+                print(f"Incorrect input. Input must be one of: {list(range(len(playable)))}")
+                continue
+            break
+        return playable[int(inp)]
+    
+    
     def _check_no_input(self,inp) -> bool:
         """Check if the input argument is empty.
 
@@ -38,31 +56,7 @@ class HumanPlayer(BasePlayer):
         if isinstance(inp,list) and inp[0] in ["", " "]:
             return True
         return False
-    
-    
-    def want_to_fall_cards(self) -> bool:
-        """ Ask the user whether they want to fall cards.
-        'y' for True, else False
-        """
-        a = input("Do you want to fall cards from table (y/n):\n")
-        return True if a == "y" else False
-    
-    def want_to_end_turn(self) -> bool:
-        """ User wants to end turn """
-        a = input("End turn (y/n):\n")
-        return True if a == "y" else False
-    
-    def want_to_play_from_deck(self) -> bool:
-        """ user wants to play from deck """
-        a = input("Do you want to play from deck (y/n):\n")
-        return True if a == "y" else False
-    
-    def want_to_play_to_self(self) -> bool:
-        a = input("Do you want to play cards to self (y/n):\n")
-        return True if a == "y" else False
-    
-    
-    
+      
     
     def end_turn(self) -> List[Card]:
         """ End turn, pick all cards or not. """
