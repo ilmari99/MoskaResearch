@@ -26,12 +26,17 @@ class MoskaGame:
     main_lock : threading.RLock = None
     lock_holder = None
     turns : dict = {}
+    timeout : float = 3
+    random_seed = None
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[BasePlayer] = [],
                  nplayers : int = 0,
                  log_file : str = "",
-                 log_level = logging.INFO,):
+                 log_level = logging.INFO,
+                 timeout=3,
+                 random_seed=None
+                 ):
         """Create a MoskaGame -instance.
 
         Args:
@@ -41,6 +46,10 @@ class MoskaGame:
         self.log_file = log_file if log_file else self.log_file
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
+        self.timeout = timeout
+        self.random_seed = random_seed if random_seed else int(1000*random.random())
+        if random_seed:
+            random.seed(self.random_seed)
         self._set_turns()
     
     def _set_turns(self):
@@ -78,7 +87,7 @@ class MoskaGame:
         return
         
     @classmethod
-    def _get_random_players(cls,n, player_types : List[Callable] = []) -> List[BasePlayer]:
+    def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[BasePlayer]:
         """ Get a list of BasePlayer instances (or subclasses).
         The players will be dealt cards from 
 
@@ -94,7 +103,7 @@ class MoskaGame:
             player_types = [BasePlayer,MoskaBot1]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int](pid=i,debug=True)
+            player = player_types[rand_int](pid=i,**plkwargs)
             players.append(player)
         return players
     
@@ -179,9 +188,14 @@ class MoskaGame:
     def _join_threads(self) -> None:
         """ Join all threads. """
         for pl in self.players:
-            pl.thread.join()
+            pl.thread.join(self.timeout)
+            if pl.thread.is_alive():
+                self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
+                pl.plog.error(f"Thread timedout!")
+                print(f"Game with log {self.log_file} failed.", flush=True)
+                return False
         self.glog.debug("All threads finished")
-        return
+        return True
     
     
     def get_initiating_player(self) -> BasePlayer:
@@ -252,9 +266,11 @@ class MoskaGame:
         """
         self._set_triumph()
         self._create_locks()
-        self.glog.info(f"Starting the game...")
+        self.glog.info(f"Starting the game with seed {self.random_seed}...")
         self._start_player_threads()
-        self._join_threads()
+        success = self._join_threads()
+        if not success:
+            return None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
