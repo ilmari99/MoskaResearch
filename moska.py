@@ -7,7 +7,7 @@ from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import List
 
-def start_threaded_moska(players : List[BasePlayer],file = "",timeout=10, random_seed = None):
+def start_threaded_moska(players : List[BasePlayer],file = "",timeout=2, random_seed = None):
     moskaGame = MoskaGame(players=players,
                           log_file=file,
                           log_level=logging.DEBUG,
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     #play_as_human(n)
-    play_games(100,nplayers=5,log_prefix="moskafile_",cpus=8)
+    play_games(100,nplayers=5,log_prefix="moskafile_")
     
     
 
