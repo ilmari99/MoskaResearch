@@ -2,6 +2,7 @@ import contextlib
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.MoskaBot1 import MoskaBot1
+from .Player.RandomPlayer import RandomPlayer
 from typing import Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 import threading
@@ -100,7 +101,7 @@ class MoskaGame:
         """
         players = []
         if not player_types:
-            player_types = [BasePlayer,MoskaBot1]
+            player_types = [BasePlayer,MoskaBot1, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
             player = player_types[rand_int](pid=i,**plkwargs)
