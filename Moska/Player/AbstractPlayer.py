@@ -39,25 +39,6 @@ class AbstractPlayer:
                  debug : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
-        """ Initialize MoskaPlayerBase -version. This by itself is a deprecated class, and the MoskaPlayerThreadedBase should be used for creating custom play styles.
-        Here we initialize the distinct possible plays from Turns.py.
-        
-        Do not overwrite methods prefixed with "_"
-        
-        IMPORTANT: When subclassing, DO NOT:
-        - Modify the active MoskaGame -instance in any method
-        - Modify the players hand!!!! Always when seeing which cards to use from self.hand, use a COPY of the hand with eq. chand = self.hand.copy()
-        - Modify the state of other players
-        
-        This will very likely lead to problems in the game. Looking at the hand, and getting the values is necessary to make play decisions.
-        However modifying the state of the game is not necessary and will lead to problems, since all modifications are made implicitly in the Turns -classes.
-        Refer to the documentation of functions that are not prefixed with "_" for instructions on how to succesfully overwrite these methods.
-
-        Args:
-            moskaGame (MoskaGame): The MoskaGame instance in which the player is participating.
-            pid (int, optional): The ID if the player. Defaults to 0. For future use.
-            name (str, optional): Name of the player. Defaults to f"P{pid}".
-        """
         self.moskaGame = moskaGame
         self.pid = pid
         self.log_level = log_level
@@ -406,7 +387,7 @@ class AbstractPlayer:
         return new_cards
     
     def _map_to_list(self,card : Card, to : Iterable[Card] = None) -> List[Card]:
-        """Return a list of Card -instances from to (default self.moskaGame.cards_to_fall),
+        """Return a list of Card -instances selected from 'to' (default self.moskaGame.cards_to_fall),
         that 'card' can fall.
 
         Args:
