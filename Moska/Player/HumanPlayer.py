@@ -24,8 +24,7 @@ class HumanPlayer(AbstractPlayer):
                 print(f"No input given.")
                 continue
             try:
-                if int(inp) in range(len(playable)):
-                    pass
+                a = playable[int(inp)]
             except:
                 print(f"Incorrect input. Input must be one of: {list(range(len(playable)))}")
                 continue
