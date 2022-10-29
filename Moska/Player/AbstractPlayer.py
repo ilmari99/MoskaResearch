@@ -1,5 +1,4 @@
 from __future__ import annotations
-from genericpath import isfile
 import os
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
 from ..Deck import Card
@@ -27,7 +26,7 @@ class AbstractPlayer(ABC):
     requires_graphic : bool = False
     plog : logging.Logger = None
     log_level = logging.INFO
-    log_file : str = "P"
+    log_file : str = ""
     thread_id : int = None
     moves : Dict[str,Callable] = {}
     def __init__(self,
@@ -72,10 +71,6 @@ class AbstractPlayer(ABC):
         self.plog.debug("Logger succesful")
         return
         
-        
-        
-        
-    
     def _set_moskaGame(self) -> None:
         """Sets the moskaGame instance. called from __setattr__.
         """
@@ -93,10 +88,12 @@ class AbstractPlayer(ABC):
         if name == "moskaGame" and value is not None:
             self._set_moskaGame()
     
-    def _set_pid(self,pid) -> None:
+    def _set_pid_name_logfile(self,pid) -> None:
         """ Set the players pid. Currently no use."""
         self.pid = pid
         self.name += str(pid)
+        if self.log_file is not os.devnull:
+            self.log_file = utils.add_before("(",self.log_file,str(pid))
     
     def _playable_values_to_table(self) -> Set[int]:
         """Return a set of integer values that can be played to the table.
@@ -302,7 +299,7 @@ class AbstractPlayer(ABC):
     
     def _start(self) -> int:
         """ Initializes the players thread, starts the thread and returns the threads identification with get_ident() """
-        self._set_pid(self.moskaGame.players.index(self))
+        self._set_pid_name_logfile(self.moskaGame.players.index(self))
         if self.thread is None or not self.thread.is_alive():
             self._set_plogger()
             self.thread = threading.Thread(target=self._continuous_play,name=self.name)
