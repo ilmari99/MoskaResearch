@@ -7,7 +7,7 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
 import logging
 
 class HumanPlayer(AbstractPlayer):
-    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = True, log_level=logging.INFO, log_file=""):
         if not name:
             name = "Human-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
