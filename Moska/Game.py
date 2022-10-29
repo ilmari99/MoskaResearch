@@ -30,6 +30,7 @@ class MoskaGame:
     turns : dict = {}
     timeout : float = 3
     random_seed = None
+    nplayers : int = 0
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[AbstractPlayer] = [],
@@ -75,6 +76,9 @@ class MoskaGame:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
+        if name == "nplayers":
+            self.players = self.players if self.players else self._get_random_players(value)
+            self.glog.debug(f"Created {value} random players.")
         return
     
     def _set_players(self,players : List[AbstractPlayer]) -> None:
