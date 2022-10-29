@@ -1,14 +1,15 @@
 from __future__ import annotations
 from collections import Counter
+import random
 from typing import TYPE_CHECKING, List
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
-from .BasePlayer import BasePlayer
+from .AbstractPlayer import AbstractPlayer
 import logging
 
 
-class MoskaBot1(BasePlayer):
+class MoskaBot1(AbstractPlayer):
     def __init__(self,
                  moskaGame: MoskaGame = None, 
                  pid: int = 0, 
@@ -22,6 +23,8 @@ class MoskaBot1(BasePlayer):
             name = f"B1-{pid}"
         super().__init__(moskaGame, pid, name, delay, requires_graphic, debug, log_level, log_file)
     
+    def choose_move(self, playable: List[str]) -> str:
+        return random.choice(playable)
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
