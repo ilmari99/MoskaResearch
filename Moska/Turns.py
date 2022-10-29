@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Callable, TYPE_CHECKING, Dict, List
 from collections import Counter
 from Moska.Deck import Card
-from .Player.BasePlayer import BasePlayer
+from .Player.AbstractPlayer import AbstractPlayer
 if TYPE_CHECKING:
     from .Game import MoskaGame
 from . import utils
@@ -11,15 +11,15 @@ from . import utils
 class _PlayToPlayer:
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
-    player : BasePlayer = None
-    target : BasePlayer = None
+    player : AbstractPlayer = None
+    target : AbstractPlayer = None
     cards : List[Card] = []
     moskaGame : MoskaGame = None
     def __init__(self,moskaGame : MoskaGame):
         """ Initialize
         Args:
             moskaGame (MoskaGame): MoskaGame -instance
-            player (BasePlayer): BasePlayer -instance
+            player (AbstractPlayer): AbstractPlayer -instance
         """
         self.moskaGame = moskaGame
         
@@ -36,7 +36,7 @@ class _PlayToPlayer:
         """
         return len(self.target.hand) - len(self.moskaGame.cards_to_fall) >= len(self.cards)
     
-    def check_target_active(self,tg : BasePlayer) -> bool:
+    def check_target_active(self,tg : AbstractPlayer) -> bool:
         """ Check that the target is the active player """
         return tg is self.moskaGame.get_target_player()
     
@@ -56,15 +56,15 @@ class _PlayToPlayer:
 class InitialPlay(_PlayToPlayer):
     """ The play that must be done, when it is the players turn to play cards to a target (and only then)"""
     
-    def __call__(self,player : BasePlayer, target : BasePlayer, cards : List[Card]):
+    def __call__(self,player : AbstractPlayer, target : AbstractPlayer, cards : List[Card]):
         """This is called when the instance is called with brackets.
         Performs checks, assigns self variables and calls the play() method of super
 
         Args:
-            target_player (BasePlayer): The target for who to play
+            target_player (AbstractPlayer): The target for who to play
             play_cards (list): The list of cards to play to the table
         """
-        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
+        assert utils.check_signature([AbstractPlayer,AbstractPlayer,list],[player,target,cards]), "Incorrect input signature"
         self.player = player
         self.target = target
         self.cards = cards
@@ -84,14 +84,14 @@ class InitialPlay(_PlayToPlayer):
         
 class PlayToOther(_PlayToPlayer):
     """ This is the play, that players can constantly make when playing cards to an opponent after the initial play."""
-    def __call__(self, player : BasePlayer, target : BasePlayer, cards : List[Card]):
+    def __call__(self, player : AbstractPlayer, target : AbstractPlayer, cards : List[Card]):
         """This method is called when this instance is called with brackets.
 
         Args:
-            target_player (BasePlayer): The target for who to play
+            target_player (AbstractPlayer): The target for who to play
             play_cards (list): The cards to play
         """
-        assert utils.check_signature([BasePlayer,BasePlayer,list],[player,target,cards]), "Incorrect input signature"
+        assert utils.check_signature([AbstractPlayer,AbstractPlayer,list],[player,target,cards]), "Incorrect input signature"
         self.player = player
         self.target = target
         self.cards = cards
@@ -124,13 +124,13 @@ class PlayToSelf(PlayToOther):
 class PlayFallFromHand:
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
     moskaGame : MoskaGame = None
-    player : BasePlayer = None
+    player : AbstractPlayer = None
     def __init__(self,moskaGame : MoskaGame):
         """ Initialize the instance """
         self.moskaGame = moskaGame
 
-    def __call__(self,player : BasePlayer, play_fall : Dict[Card,Card]):
-        assert utils.check_signature([BasePlayer,dict],[player,play_fall]), "Incorrect input signature"
+    def __call__(self,player : AbstractPlayer, play_fall : Dict[Card,Card]):
+        assert utils.check_signature([AbstractPlayer,dict],[player,play_fall]), "Incorrect input signature"
         self.player = player
         self.play_fall = play_fall
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
@@ -172,10 +172,10 @@ class PlayFallFromDeck:
     def __init__(self,moskaGame : MoskaGame):
         self.moskaGame = moskaGame
     
-    def __call__(self, player : BasePlayer, fall_method : Callable):
+    def __call__(self, player : AbstractPlayer, fall_method : Callable):
         """ fall_method must accept one argument: the card that was drawn,
         and return an indexable with two values: The played card, and the card which should be fallen"""
-        assert utils.check_signature([BasePlayer,Callable],[player,fall_method]), "Incorrect input signature"
+        assert utils.check_signature([AbstractPlayer,Callable],[player,fall_method]), "Incorrect input signature"
         self.fall_method = fall_method
         self.player = player
         assert self.player is self.moskaGame.get_target_player(), "The player can't play from deck, since they are not the target."
@@ -229,18 +229,18 @@ class PlayFallFromDeck:
 class EndTurn:
     """ Class representing ending a turn. """
     moskaGame : MoskaGame = None
-    player : BasePlayer = None
+    player : AbstractPlayer = None
     pick_cards : List[Card] = []
     def __init__(self,moskaGame : MoskaGame):
         self.moskaGame = moskaGame
     
-    def __call__(self,player : BasePlayer, pick_cards : List[Card] = []):
+    def __call__(self,player : AbstractPlayer, pick_cards : List[Card] = []):
         """Called at the end of a turn. Pick selected cards.
 
         Args:
             pick_cards (list, optional): _description_. Defaults to [].
         """
-        assert utils.check_signature([BasePlayer,list],[player,pick_cards]), "Incorrect input signature"
+        assert utils.check_signature([AbstractPlayer,list],[player,pick_cards]), "Incorrect input signature"
         self.player = player
         self.pick_cards = pick_cards
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
@@ -298,8 +298,8 @@ class Skip:
     def __init__(self, moskaGame : MoskaGame):
         self.moskaGame = moskaGame
     
-    def __call__(self, player : BasePlayer):
-        assert utils.check_signature([BasePlayer],[player]), "Incorrect input signature"
+    def __call__(self, player : AbstractPlayer):
+        assert utils.check_signature([AbstractPlayer],[player]), f"Incorrect input signature: {[player]}"
         self.player = player
         assert not self.check_is_initiating() or self.check_initiated(), "The game must be initiated, and skipping is not possible."
         assert not self.check_target_must_end_turn(), "There are no plays left, and the turn must be ended."

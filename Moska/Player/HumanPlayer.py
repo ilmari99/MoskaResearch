@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List
+from .AbstractPlayer import AbstractPlayer
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
-from .BasePlayer import BasePlayer
 import logging
 
-class HumanPlayer(BasePlayer):
+class HumanPlayer(AbstractPlayer):
     """ Class for letting a human player to play Moska."""
     def __init__(self,
                  moskaGame: MoskaGame = None, 
