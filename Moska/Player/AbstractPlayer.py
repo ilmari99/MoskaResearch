@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Set, Tuple
+from genericpath import isfile
+import os
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -15,7 +17,7 @@ from abc import ABC, abstractmethod
 
 class AbstractPlayer(ABC):
     hand : MoskaHand = None
-    pid : int = 0
+    pid : int = None
     moskaGame : MoskaGame = None
     rank : int = None
     thread : threading.Thread = None
@@ -23,29 +25,24 @@ class AbstractPlayer(ABC):
     ready : bool = False
     delay : float = 10**-6
     requires_graphic : bool = False
-    debug : bool = False
-    plog = None
+    plog : logging.Logger = None
     log_level = logging.INFO
     log_file : str = "P"
-    thread_id = None
-    move_map = {}
+    thread_id : int = None
+    moves : Dict[str,Callable] = {}
     def __init__(self,
                  moskaGame : MoskaGame = None, 
-                 pid : int = 0, 
                  name : str = "", 
                  delay=10**-6,
                  requires_graphic : bool = False,
-                 debug : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
         self.moskaGame = moskaGame
-        self.pid = pid
         self.log_level = log_level
-        self.name = name if name else f"B0-{str(pid)}"
-        self.log_file = log_file
+        self.name = name
+        self.log_file = log_file if log_file else os.devnull
         self.delay = delay
         self.requires_graphic = requires_graphic
-        self.debug = debug
         self.moves = {
             "EndTurn" : self._end_turn,
             "InitialPlay" : self._play_initial,
@@ -61,7 +58,8 @@ class AbstractPlayer(ABC):
         Can be called explicitly or with self.log_file=....
         NOTE: This must be called AFTER starting the process in which this player is run in.
         Currently this is called in the `_start` method, which is called from Game when the game begins.
-        """        
+        """
+        
         plog = logging.getLogger(self.name)
         plog.setLevel(self.log_level)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
@@ -69,11 +67,15 @@ class AbstractPlayer(ABC):
         fh.setFormatter(formatter)
         plog.addHandler(fh)
         self.plog = plog
-        assert self.plog.hasHandlers(), "Logger has no handles"
-        assert not self.plog.disabled, "Logger is disabled"
+        #assert self.plog.hasHandlers(), "Logger has no handles"
+        #assert not self.plog.disabled, "Logger is disabled"
         self.plog.debug("Logger succesful")
         return
         
+        
+        
+        
+    
     def _set_moskaGame(self) -> None:
         """Sets the moskaGame instance. called from __setattr__.
         """
@@ -94,7 +96,7 @@ class AbstractPlayer(ABC):
     def _set_pid(self,pid) -> None:
         """ Set the players pid. Currently no use."""
         self.pid = pid
-        self.plog.debug(f"Set pid to {pid}")
+        self.name += str(pid)
     
     def _playable_values_to_table(self) -> Set[int]:
         """Return a set of integer values that can be played to the table.
@@ -299,7 +301,8 @@ class AbstractPlayer(ABC):
         return playable
     
     def _start(self) -> int:
-        """ Initializes the players thread, starts the thread and returns the threads identification get_ident() """
+        """ Initializes the players thread, starts the thread and returns the threads identification with get_ident() """
+        self._set_pid(self.moskaGame.players.index(self))
         if self.thread is None or not self.thread.is_alive():
             self._set_plogger()
             self.thread = threading.Thread(target=self._continuous_play,name=self.name)
