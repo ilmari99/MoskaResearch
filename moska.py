@@ -2,12 +2,12 @@ import logging
 import os
 import time
 from Moska.Game import MoskaGame
-from Moska.Player.BasePlayer import BasePlayer
+from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import List
 
-def start_threaded_moska(players : List[BasePlayer],file = "",timeout=2, random_seed = None):
+def start_threaded_moska(players : List[AbstractPlayer],file = "",timeout=2, random_seed = None):
     moskaGame = MoskaGame(players=players,
                           log_file=file,
                           log_level=logging.DEBUG,
@@ -27,7 +27,7 @@ def play_as_human(nopponents):
         pl.delay = 1
         pl.log_file = f"{pl.name}_({i}).log"
         pl.log_level = logging.DEBUG
-    moskaGame = MoskaGame(players = players,log_level=logging.DEBUG)
+    moskaGame = MoskaGame(players = players,log_level=logging.DEBUG,timeout=120)
     moskaGame.start()
 
 def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
@@ -69,18 +69,18 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile_",cpus=-1, chunksize=-1):
             results.append(res)
     print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
-    #print("Results: ", results)
-    b1_last = 0
-    b0_last = 0
+    ranks = {}
     for res in results:
         if res is None:
             continue
-        if "B1" in res[-1][0]:
-            b1_last += 1
-        elif "B0" in res[-1][0]:
-            b0_last += 1
-    print(f"B1 was last {b1_last} times")
-    print(f"B0 was last {b0_last} times")
+        lastid = res[-1][0].split("-")[0]
+        if lastid not in ranks:
+            ranks[lastid] = 0
+        ranks[lastid] += 1
+    rank_list = list(ranks.items())
+    rank_list.sort(key=lambda x : x[1])
+    for pl,rank in rank_list:
+        print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
 
 
 if __name__ == "__main__":
