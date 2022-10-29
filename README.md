@@ -10,4 +10,4 @@ This is designed for simulations of moska games with different algorithms, and p
 - If benchmarking works, make it possible to run games without logging to increase speed.
 - thread : player -mapping could probably be made global, and used to prevent accidental modification of moskaGame and other attributes
 - Fix when running multiple games, the log files are appended if usig the same name
-- 
+- Add MoskaGameResult class
