@@ -1,4 +1,5 @@
 import contextlib
+import os
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.AbstractPlayer import AbstractPlayer
@@ -21,7 +22,7 @@ class MoskaGame:
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
     deck  : StandardDeck = None                             # The deck belonging to the moskaGame. 
     threads : Dict[int,AbstractPlayer] = {}
-    log_file : str = "gamelog.log"
+    log_file : str = ""
     log_level = logging.INFO
     name : str = __name__
     glog : logging.Logger = None
@@ -46,7 +47,7 @@ class MoskaGame:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
         self.log_level = log_level
-        self.log_file = log_file if log_file else self.log_file
+        self.log_file = log_file if log_file else os.devnull
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
