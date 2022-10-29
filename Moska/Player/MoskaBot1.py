@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections import Counter
 import random
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Dict, List, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -28,7 +28,7 @@ class MoskaBot1(AbstractPlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
-    def play_fall_card_from_hand(self):
+    def play_fall_card_from_hand(self) -> Dict[Card, Card]:
         """Return a dictionary of card_in_hand : card_in_table -pairs, denoting which card is used to fall which card on the table.
         This function is called when the player has decided to play from their hand.
         
@@ -71,8 +71,7 @@ class MoskaBot1(AbstractPlayer):
                 play_cards.pop(pc)
         return play_cards
     
-    
-    def deck_lift_fall_method(self, deck_card : Card):
+    def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
         """A function to determine which card will fall, if a random card from the deck is lifted.
         Function should take a card -instance as argument, and return a pair (card_from_deck , card_on_table) in the same order,
         determining which card on the table to fall.
@@ -105,8 +104,8 @@ class MoskaBot1(AbstractPlayer):
         chand = self.hand.copy()
         cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
         return cards
-
-    def play_initial(self):
+    
+    def play_initial(self) -> List[Card]:
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
         self.hand.cards = self._assign_scores(self.hand.cards)
@@ -125,6 +124,7 @@ class MoskaBot1(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            hand = self.hand.copy()     # Create a copy of the hand
-            play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values,max_cards = self._fits_to_table())
+            hand = self.hand.copy()
+            hand.cards = self._assign_scores(hand.cards)
+            play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values and x.score < 11, max_cards = self._fits_to_table())
         return play_cards
