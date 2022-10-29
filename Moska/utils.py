@@ -23,7 +23,7 @@ def add_before(char : str, orig : str, add : str) -> str:
     Returns:
         str: new string
     """
-    splitted = orig.split(char)
+    splitted = orig.split(char,maxsplit=1)
     return splitted[0] + str(add) + char + splitted[-1]
 
 def suit_to_symbol(suits : Iterable or str) -> List or str:
