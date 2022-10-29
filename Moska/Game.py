@@ -1,4 +1,5 @@
 import contextlib
+import os
 from . import utils
 from .Player.BasePlayer import BasePlayer
 from .Player.AbstractPlayer import AbstractPlayer
@@ -21,7 +22,7 @@ class MoskaGame:
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
     deck  : StandardDeck = None                             # The deck belonging to the moskaGame. 
     threads : Dict[int,AbstractPlayer] = {}
-    log_file : str = "gamelog.log"
+    log_file : str = ""
     log_level = logging.INFO
     name : str = __name__
     glog : logging.Logger = None
@@ -30,6 +31,7 @@ class MoskaGame:
     turns : dict = {}
     timeout : float = 3
     random_seed = None
+    nplayers : int = 0
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[AbstractPlayer] = [],
@@ -45,11 +47,11 @@ class MoskaGame:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
         self.log_level = log_level
-        self.log_file = log_file if log_file else self.log_file
+        self.log_file = log_file if log_file else os.devnull
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
-        self.random_seed = random_seed if random_seed else int(1000*random.random())
+        self.random_seed = random_seed if random_seed else int(100000*random.random())
         if random_seed:
             random.seed(self.random_seed)
         self._set_turns()
@@ -75,13 +77,15 @@ class MoskaGame:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
+        if name == "nplayers":
+            self.players = self.players if self.players else self._get_random_players(value)
+            self.glog.debug(f"Created {value} random players.")
         return
     
     def _set_players(self,players : List[AbstractPlayer]) -> None:
         """Here self.players is already set to players
         """
         assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
-        assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         self.deck = StandardDeck()
         for pl in players:
             pl.moskaGame = self
@@ -105,7 +109,7 @@ class MoskaGame:
             player_types = [BasePlayer,MoskaBot1, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int](pid=i,**plkwargs)
+            player = player_types[rand_int]()
             players.append(player)
         return players
     
@@ -186,6 +190,7 @@ class MoskaGame:
                 tid = pl._start()
                 self.threads[tid] = pl
             self.glog.debug("Started player threads")
+            assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         return
     
     def _join_threads(self) -> None:

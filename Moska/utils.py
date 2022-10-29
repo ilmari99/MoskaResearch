@@ -15,6 +15,17 @@ def check_signature(sig : Sequence, inp : Sequence) -> bool:
             return False
     return True
 
+def add_before(char : str, orig : str, add : str) -> str:
+    """Add string before the first '.' character of another string and return the new string.
+    Args:
+        string (str): log files prefix
+        add (str): log files prefix
+    Returns:
+        str: new string
+    """
+    splitted = orig.split(char,maxsplit=1)
+    return splitted[0] + str(add) + char + splitted[-1]
+
 def suit_to_symbol(suits : Iterable or str) -> List or str:
     """Convert a suit to a symbol according to CARD_SUIT_SYMBOLS
     If suits is str, returns a string

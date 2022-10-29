@@ -9,11 +9,10 @@ if TYPE_CHECKING:
     from ..Game import MoskaGame
 
 class RandomPlayer(AbstractPlayer):
-    
-    def __init__(self, moskaGame : MoskaGame = None, pid: int = 0, name: str = "", delay=10 ** -6, requires_graphic: bool = False, debug: bool = False, log_level=logging.INFO, log_file=""):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
-            name = f"R-{pid}"
-        super().__init__(moskaGame, pid, name, delay, requires_graphic, debug, log_level, log_file)
+            name = "R-"
+        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
     def choose_move(self, playable: List[str]) -> str:
         return random.choice(playable)
