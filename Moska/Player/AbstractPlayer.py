@@ -1,6 +1,5 @@
 from __future__ import annotations
-import random
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Set, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -14,7 +13,7 @@ import traceback
 from abc import ABC, abstractmethod
 
 
-class AbstractPlayer:
+class AbstractPlayer(ABC):
     hand : MoskaHand = None
     pid : int = 0
     moskaGame : MoskaGame = None
@@ -97,7 +96,7 @@ class AbstractPlayer:
         self.pid = pid
         self.plog.debug(f"Set pid to {pid}")
     
-    def _playable_values_to_table(self) -> set:
+    def _playable_values_to_table(self) -> Set[int]:
         """Return a set of integer values that can be played to the table.
         This equals the set of values, that have been played to the table.
 
@@ -106,7 +105,7 @@ class AbstractPlayer:
         """
         return set([c.value for c in self.moskaGame.cards_to_fall + self.moskaGame.fell_cards])
     
-    def _playable_values_from_hand(self) -> set:
+    def _playable_values_from_hand(self) -> Set[int]:
         """Return a set of values, that can be played to target.
         This is the intersection of values between the values in the table, and in the players hand.
 
@@ -127,7 +126,7 @@ class AbstractPlayer:
         return len(target.hand) - len(self.moskaGame.cards_to_fall)
     
     
-    def _play_to_target(self) -> None:
+    def _play_to_target(self) -> List[AbstractPlayer,List[Card]]:
         """ This method is invoked to play the cards, chosen in 'play_to_target' """
         play_cards = self.play_to_target()
         target = self.moskaGame.get_target_player()
@@ -135,10 +134,10 @@ class AbstractPlayer:
         #self._playToOther(target,play_cards)
         return [target, play_cards]
     
-    def _skip_turn(self):
+    def _skip_turn(self) -> List:
         return []
         
-    def _play_to_self(self) -> None:
+    def _play_to_self(self) -> List[AbstractPlayer,List[Card]]:
         """ Play cards selected in play_to_self to self
         """
         play_cards = self.play_to_self()
@@ -147,7 +146,7 @@ class AbstractPlayer:
         return [self, play_cards]
     
     
-    def _play_initial(self) -> None:
+    def _play_initial(self) -> List[AbstractPlayer,List[Card]]:
         """ This function is called, when self is the initiating player, and gets to play to an empty table.
         """
         target = self.moskaGame.get_target_player()
@@ -166,7 +165,10 @@ class AbstractPlayer:
     
     def _must_end_turn(self) -> bool:
         """Player must end their turn if:
-        - There are cards on the table, they have no playable cards, all players are ready, and the player cant koplata (there is no deck left or there is a kopled card already)
+        - There are cards on the table
+        - They have no playable cards
+        - All players are ready
+        - And the player cant koplata (there is no deck left or there is a kopled card already)
         """
         if self._can_end_turn() and not self._can_fall_cards() and not self._playable_values_from_hand() and (len(self.moskaGame.deck) == 0 or any(c.kopled for c in self.moskaGame.cards_to_fall)):
             return True
@@ -198,7 +200,7 @@ class AbstractPlayer:
         #self._playFallCardFromHand(play_cards)
         return [play_cards]
     
-    def _end_turn(self) -> bool:
+    def _end_turn(self) -> List[List[Card]]:
         """Called when the player must or wants to and can end their turn, or when finishing the game
 
         Returns:
