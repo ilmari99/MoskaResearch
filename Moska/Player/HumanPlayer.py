@@ -7,19 +7,10 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
 import logging
 
 class HumanPlayer(AbstractPlayer):
-    """ Class for letting a human player to play Moska."""
-    def __init__(self,
-                 moskaGame: MoskaGame = None, 
-                 pid: int = 0, 
-                 name: str = "", 
-                 delay=1, 
-                 requires_graphic : bool = True, 
-                 debug=False,
-                 log_level=logging.INFO,
-                 log_file=""):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
-            name = f"Human"
-        super().__init__(moskaGame, pid, name, delay,requires_graphic,debug=debug,log_level=log_level, log_file=log_file)
+            name = "Human-"
+        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
     
     def choose_move(self, playable) -> str:
