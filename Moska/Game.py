@@ -49,7 +49,7 @@ class MoskaGame:
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
-        self.random_seed = random_seed if random_seed else int(1000*random.random())
+        self.random_seed = random_seed if random_seed else int(100000*random.random())
         if random_seed:
             random.seed(self.random_seed)
         self._set_turns()
@@ -81,7 +81,6 @@ class MoskaGame:
         """Here self.players is already set to players
         """
         assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
-        assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         self.deck = StandardDeck()
         for pl in players:
             pl.moskaGame = self
@@ -105,7 +104,7 @@ class MoskaGame:
             player_types = [BasePlayer,MoskaBot1, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int](pid=i,**plkwargs)
+            player = player_types[rand_int]()
             players.append(player)
         return players
     
@@ -186,6 +185,7 @@ class MoskaGame:
                 tid = pl._start()
                 self.threads[tid] = pl
             self.glog.debug("Started player threads")
+            assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         return
     
     def _join_threads(self) -> None:
