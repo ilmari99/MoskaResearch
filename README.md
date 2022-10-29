@@ -4,7 +4,6 @@ A repo for simulating moska games, and trying different play algorithms.
 This is designed for simulations of moska games with different algorithms, and playing as a human can be quite tedious.
 
 ## TODO LIST
-- Move re-usable Player functions away from BasePlayer or its subclasses to make reusing easier.
 - Create TESTS!!
 - Clean moska.py, possibly add reading the configurations from file.
 - Create a benchmarking system, that records each games initial order, final ranking. Then create an analyzing system.
