@@ -4,6 +4,7 @@ from . import utils
 from .Player.MoskaBot0 import MoskaBot0
 from .Player.AbstractPlayer import AbstractPlayer
 from .Player.MoskaBot1 import MoskaBot1
+from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
 from typing import Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
@@ -106,7 +107,7 @@ class MoskaGame:
         """
         players = []
         if not player_types:
-            player_types = [MoskaBot0,MoskaBot1, RandomPlayer]
+            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
             player = player_types[rand_int]()
