@@ -12,13 +12,31 @@ from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
+    last_play = ""
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         
     def choose_move(self, playable: List[str]) -> str:
-        return random.choice(playable)
+        # This must be played
+        if "InitialPlay" in playable:
+            return "InitialPlay"
+        if "PlayToOther" in playable and not self.play_to_target():
+            playable.pop(playable.index("PlayToOther"))
+        if "PlayToSelf" in playable and not self.play_to_self():
+            playable.pop(playable.index("PlayToSelf"))
+        if "PlayFallFromHand" in playable and not self.play_to_self():
+            playable.pop(playable.index("PlayFallFromHand"))
+        # Now plays only contain plays, that change the status of the game, ie. we actually want to play something
+        if len(playable) > 1 and "Skip" in playable:
+            playable.pop(playable.index("Skip"))
+        if len(playable) > 1 and "EndTurn" in playable:
+            playable.pop(playable.index("EndTurn"))
+        self.plog.info(f"Want and can plays: {playable}")
+        play = random.choice(playable)
+        self.last_play = play
+        return play
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
@@ -63,7 +81,7 @@ class MoskaBot2(AbstractPlayer):
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if utils.check_can_fall_card(hand_card,table_card,self.moskaGame.triumph):
                 play_cards[hand_card] = table_card
-        #self.plog.info(f"Linear sum assignment: {play_cards}")
+        self.plog.info(f"Linear sum assignment: {play_cards}")
         return play_cards
     
     def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
