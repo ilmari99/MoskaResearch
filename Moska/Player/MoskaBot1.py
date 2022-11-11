@@ -10,23 +10,12 @@ import logging
 
 
 class MoskaBot1(AbstractPlayer):
-    last_play = ""
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B1-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
     def choose_move(self, playable: List[str]) -> str:
-        # Remove Skip if there are atleast 2 other plays available
-        # OR there is onlly one other play, which is NOT the latest move
-        if (len(playable) > 2 or (len(playable) > 1 and self.last_play not in playable)) and "Skip" in playable:
-            playable.pop(playable.index("Skip"))
-        # Remove EndTurn, if there are atleast 2 other plays (other than Skip) available.
-        # OR there is only one other play, which is NOT the latest played move.
-        if (len(playable) > 2 or (len(playable) > 1 and self.last_play not in playable)) and "EndTurn" in playable:
-            playable.pop(playable.index("EndTurn"))
-        if len(playable) > 1 and self.last_play in playable:
-            playable.pop(playable.index(self.last_play))
         return random.choice(playable)
     
     def end_turn(self) -> List[Card]:
