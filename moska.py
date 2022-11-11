@@ -1,11 +1,13 @@
 import logging
 import os
 import time
+from tkinter import Scale
 from Moska.Game import MoskaGame
 from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
+from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.utils import add_before
 
 def set_game_args(game : MoskaGame, gamekwargs : Dict[str,Any]) -> None:
@@ -47,8 +49,8 @@ def start_moska_process(
     moskaGame = MoskaGame()
     set_game_args(moskaGame,gamekwargs)
     set_player_args(moskaGame.players,plkwargs)
-    for pl in moskaGame.players:
-        pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
+    #for pl in moskaGame.players:
+    #    pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
     return moskaGame.start()
 
 def start_moska_process_wrap(args : Tuple):
@@ -75,7 +77,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
     chunksize = n//cpus if chunksize == -1 else chunksize
     game_kwargs = lambda p : {
         "nplayers" : nplayers,
-        "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
+    #    "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
         "timeout" : 3,
     }
@@ -121,7 +123,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     #play_as_human(n)
-    play_games(100,nplayers=5,log_prefix="moskafile",cpus=10,chunksize=1)
+    play_games(1000,nplayers=5,log_prefix="moskafile",cpus=32,chunksize=1)
     
     
 

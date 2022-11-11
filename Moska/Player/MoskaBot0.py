@@ -9,7 +9,7 @@ from .. import utils
 import logging
 
 
-class BasePlayer(AbstractPlayer):
+class MoskaBot0(AbstractPlayer):
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B0-"
