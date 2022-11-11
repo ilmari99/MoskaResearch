@@ -1,7 +1,10 @@
 import contextlib
+import os
 from . import utils
 from .Player.BasePlayer import BasePlayer
+from .Player.AbstractPlayer import AbstractPlayer
 from .Player.MoskaBot1 import MoskaBot1
+from .Player.RandomPlayer import RandomPlayer
 from typing import Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 import threading
@@ -11,36 +14,46 @@ from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay,
 
 
 class MoskaGame:
-    players : List[BasePlayer] = [] # List of players, with unique pids, and cards already in hand
+    players : List[AbstractPlayer] = [] # List of players, with unique pids, and cards already in hand
     triumph : str = ""              # Triumph suit, set when the moskaGame is started
     triumph_card : Card = None             # Triumph card
     cards_to_fall : List[Card] = []              # Current cards on the table, for the target to fall
     fell_cards : List[Card] = []                 # Cards that have fell during the last turn
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
     deck  : StandardDeck = None                             # The deck belonging to the moskaGame. 
-    threads : Dict[int,BasePlayer] = {}
-    log_file : str = "gamelog.log"
+    threads : Dict[int,AbstractPlayer] = {}
+    log_file : str = ""
     log_level = logging.INFO
     name : str = __name__
     glog : logging.Logger = None
     main_lock : threading.RLock = None
     lock_holder = None
     turns : dict = {}
+    timeout : float = 3
+    random_seed = None
+    nplayers : int = 0
     def __init__(self,
                  deck : StandardDeck = None,
-                 players : List[BasePlayer] = [],
+                 players : List[AbstractPlayer] = [],
                  nplayers : int = 0,
                  log_file : str = "",
-                 log_level = logging.INFO,):
+                 log_level = logging.INFO,
+                 timeout=3,
+                 random_seed=None
+                 ):
         """Create a MoskaGame -instance.
 
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
         self.log_level = log_level
-        self.log_file = log_file if log_file else self.log_file
+        self.log_file = log_file if log_file else os.devnull
         self.deck = deck if deck else StandardDeck()
         self.players = players if players else self._get_random_players(nplayers)
+        self.timeout = timeout
+        self.random_seed = random_seed if random_seed else int(100000*random.random())
+        if random_seed:
+            random.seed(self.random_seed)
         self._set_turns()
     
     def _set_turns(self):
@@ -64,13 +77,15 @@ class MoskaGame:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
+        if name == "nplayers":
+            self.players = self.players if self.players else self._get_random_players(value)
+            self.glog.debug(f"Created {value} random players.")
         return
     
-    def _set_players(self,players : List[BasePlayer]) -> None:
+    def _set_players(self,players : List[AbstractPlayer]) -> None:
         """Here self.players is already set to players
         """
         assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
-        assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         self.deck = StandardDeck()
         for pl in players:
             pl.moskaGame = self
@@ -78,8 +93,8 @@ class MoskaGame:
         return
         
     @classmethod
-    def _get_random_players(cls,n, player_types : List[Callable] = []) -> List[BasePlayer]:
-        """ Get a list of BasePlayer instances (or subclasses).
+    def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[AbstractPlayer]:
+        """ Get a list of AbstractPlayer instances (or subclasses).
         The players will be dealt cards from 
 
         Args:
@@ -91,10 +106,10 @@ class MoskaGame:
         """
         players = []
         if not player_types:
-            player_types = [BasePlayer,MoskaBot1]
+            player_types = [BasePlayer,MoskaBot1, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int](pid=i,debug=True)
+            player = player_types[rand_int]()
             players.append(player)
         return players
     
@@ -119,7 +134,7 @@ class MoskaGame:
         return
     
     @contextlib.contextmanager
-    def get_lock(self,player):
+    def get_lock(self,player=None):
         """A wrapper around getting the moskagames main_lock.
         Sets the lock_holder to the obtaining threads id
 
@@ -143,7 +158,7 @@ class MoskaGame:
         return
     
     def _make_move(self,move,args) -> Tuple[bool,str]:
-        """ This is called from a BasePlayer -instance
+        """ This is called from a AbstractPlayer -instance
         """
         if self.lock_holder != threading.get_ident():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
@@ -170,21 +185,28 @@ class MoskaGame:
     
     def _start_player_threads(self) -> None:
         """ Starts all player threads. """
-        for pl in self.players:
-            tid = pl._start()
-            self.threads[tid] = pl
-        self.glog.debug("Started player threads")
+        with self.get_lock() as ml:
+            for pl in self.players:
+                tid = pl._start()
+                self.threads[tid] = pl
+            self.glog.debug("Started player threads")
+            assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
         return
     
     def _join_threads(self) -> None:
         """ Join all threads. """
         for pl in self.players:
-            pl.thread.join()
+            pl.thread.join(self.timeout)
+            if pl.thread.is_alive():
+                self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
+                pl.plog.error(f"Thread timedout!")
+                print(f"Game with log {self.log_file} failed.", flush=True)
+                return False
         self.glog.debug("All threads finished")
-        return
+        return True
     
     
-    def get_initiating_player(self) -> BasePlayer:
+    def get_initiating_player(self) -> AbstractPlayer:
         """ Return the player, whose turn it is/was to initiate the turn aka. play to an empty table. """
         active = self.get_target_player()
         ptr = int(self.turnCycle.ptr)
@@ -193,11 +215,11 @@ class MoskaGame:
         assert self.turnCycle.ptr == ptr, "Problem with turnCycle"
         return out
     
-    def get_players_condition(self, cond : Callable = lambda x : True) -> List[BasePlayer]:
+    def get_players_condition(self, cond : Callable = lambda x : True) -> List[AbstractPlayer]:
         """ Get a list of players that return True when condition is applied.
 
         Args:
-            cond (Callable): The condition to be applied to each BasePlayer -instance. Defaults to lambda x : True.
+            cond (Callable): The condition to be applied to each AbstractPlayer -instance. Defaults to lambda x : True.
 
         Returns:
             List of players who satisfy condition.
@@ -213,7 +235,7 @@ class MoskaGame:
         self.cards_to_fall += add
         return
         
-    def get_target_player(self) -> BasePlayer:
+    def get_target_player(self) -> AbstractPlayer:
         """Return the player, who is currently the target; To who cards are played to.
 
         Returns:
@@ -252,9 +274,11 @@ class MoskaGame:
         """
         self._set_triumph()
         self._create_locks()
-        self.glog.info(f"Starting the game...")
+        self.glog.info(f"Starting the game with seed {self.random_seed}...")
         self._start_player_threads()
-        self._join_threads()
+        success = self._join_threads()
+        if not success:
+            return None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))

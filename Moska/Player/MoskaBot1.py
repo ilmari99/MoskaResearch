@@ -1,60 +1,22 @@
 from __future__ import annotations
 from collections import Counter
-from typing import TYPE_CHECKING, Iterable, List
+import random
+from typing import TYPE_CHECKING, Dict, List, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
-from .. import utils
-from .BasePlayer import BasePlayer
+from .AbstractPlayer import AbstractPlayer
 import logging
 
 
-class MoskaBot1(BasePlayer):
-    def __init__(self,
-                 moskaGame: MoskaGame = None, 
-                 pid: int = 0, 
-                 name: str = "", 
-                 delay=10 ** -6, 
-                 requires_graphic: bool = False, 
-                 debug: bool = False, 
-                 log_level=logging.INFO, 
-                 log_file=""):
+class MoskaBot1(AbstractPlayer):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
-            name = f"B1-{pid}"
-        super().__init__(moskaGame, pid, name, delay, requires_graphic, debug, log_level, log_file)
+            name = "B1-"
+        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
-    def _count_score(self,card : Card):
-        """Return how many cards can the input card fall;
-        How many cards are smaller and same suit
-        or if suit is triumph, how many cards are not triumph or are smaller triumph cards.
-
-        Args:
-            card (Card): The card for which to count the score
-
-        Returns:
-            int: How many cards the card can fall
-        """
-        if card.suit == self.moskaGame.triumph:
-            return 4*13 - (14 - card.value)
-        else:
-            return 12 - (14 - card.value)
-    
-    def _assign_scores(self, cards : Iterable[Card]) -> List[Card]:
-        """Create new Card instances, with the Card instances from Iterable.
-        Return the new cards
-
-        Args:
-            cards (Iterable[Card]): The cards which are copied to the new list of cards, along with the score
-            
-        Returns:
-            List[Card]: list of the same cards, with a score -attribute
-        """
-        new_cards = []
-        for card in cards:
-            card.score = self._count_score(card)
-            new_cards.append(card)
-        return new_cards
-    
+    def choose_move(self, playable: List[str]) -> str:
+        return random.choice(playable)
     
     def end_turn(self) -> List[Card]:
         """Return which cards you want to pick from the table when finishing your turn.
@@ -66,41 +28,7 @@ class MoskaBot1(BasePlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
-    def _map_to_list(self,card : Card, to : Iterable[Card] = None) -> List[Card]:
-        """Return a list of Card -instances from to (default self.moskaGame.cards_to_fall),
-        that 'card' can fall.
-
-        Args:
-            card (Card): The card that is used to fall cards in 'to'
-            to (Iterable[Card], optional): Iterable containing Card -instances. Defaults to cards_on_table.
-
-        Returns:
-        List[Card]: List of Card -instances
-        """
-        if not to:
-            to = self.moskaGame.cards_to_fall
-        out = []
-        for c in to:
-            if utils.check_can_fall_card(card,c,self.moskaGame.triumph):
-                out.append(c)
-        return out
-    
-    def _get_sm_score_in_list(self,cards : List[Card]):
-        """Return the first Card with the smallest score in 'cards'.
-
-        Args:
-            cards (List[Card]): _description_
-
-        Returns:
-            _type_: _description_
-        """        
-        if not cards:
-            return None
-        cards = self._assign_scores(cards)
-        sm_score = min((c.score for c in cards))
-        return list(filter(lambda x : x.score == sm_score,cards))[0]
-    
-    def play_fall_card_from_hand(self):
+    def play_fall_card_from_hand(self) -> Dict[Card, Card]:
         """Return a dictionary of card_in_hand : card_in_table -pairs, denoting which card is used to fall which card on the table.
         This function is called when the player has decided to play from their hand.
         
@@ -143,8 +71,7 @@ class MoskaBot1(BasePlayer):
                 play_cards.pop(pc)
         return play_cards
     
-    
-    def deck_lift_fall_method(self, deck_card : Card):
+    def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
         """A function to determine which card will fall, if a random card from the deck is lifted.
         Function should take a card -instance as argument, and return a pair (card_from_deck , card_on_table) in the same order,
         determining which card on the table to fall.
@@ -177,8 +104,8 @@ class MoskaBot1(BasePlayer):
         chand = self.hand.copy()
         cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
         return cards
-
-    def play_initial(self):
+    
+    def play_initial(self) -> List[Card]:
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
         self.hand.cards = self._assign_scores(self.hand.cards)
@@ -197,6 +124,7 @@ class MoskaBot1(BasePlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            hand = self.hand.copy()     # Create a copy of the hand
-            play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values,max_cards = self._fits_to_table())
+            hand = self.hand.copy()
+            hand.cards = self._assign_scores(hand.cards)
+            play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values and x.score < 11, max_cards = self._fits_to_table())
         return play_cards
