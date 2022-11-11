@@ -12,7 +12,6 @@ from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
-    last_play = ""
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B2-"
@@ -26,7 +25,7 @@ class MoskaBot2(AbstractPlayer):
             playable.pop(playable.index("PlayToOther"))
         if "PlayToSelf" in playable and not self.play_to_self():
             playable.pop(playable.index("PlayToSelf"))
-        if "PlayFallFromHand" in playable and not self.play_to_self():
+        if "PlayFallFromHand" in playable and not self.play_fall_card_from_hand():
             playable.pop(playable.index("PlayFallFromHand"))
         # Now plays only contain plays, that change the status of the game, ie. we actually want to play something
         if len(playable) > 1 and "Skip" in playable:
@@ -35,7 +34,6 @@ class MoskaBot2(AbstractPlayer):
             playable.pop(playable.index("EndTurn"))
         self.plog.info(f"Want and can plays: {playable}")
         play = random.choice(playable)
-        self.last_play = play
         return play
     
     def end_turn(self) -> List[Card]:
