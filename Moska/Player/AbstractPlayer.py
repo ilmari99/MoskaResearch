@@ -436,24 +436,25 @@ class AbstractPlayer(ABC):
         """
         pass
     
-    def _map_to_list(self,card : Card, to : Iterable[Card] = None) -> List[Card]:
-        """Return a list of Card -instances selected from 'to' (default self.moskaGame.cards_to_fall),
-        that 'card' can fall.
+    
+    def _check_can_fall_card(self, played_card : Card, fall_card : Card) -> bool:
+        """Returns true, if the played_card, can fall the fall_card.
+        The played card can fall fall_card, if:
+        - The played card has the same suit and is greater than fall_card
+        - If the played_card is triumph suit, and the fall_card is not.
 
         Args:
-            card (Card): The card that is used to fall cards in 'to'
-            to (Iterable[Card], optional): Iterable containing Card -instances. Defaults to cards_on_table.
+            played_card (Card): The card played from hand
+            fall_card (Card): The card on the table
+            triumph (str): The triumph suit of the current game
 
         Returns:
-        List[Card]: List of Card -instances
+            bool: True if played_card can fall fall_card, false otherwise
         """
-        if not to:
-            to = self.moskaGame.cards_to_fall
-        out = []
-        for c in to:
-            if utils.check_can_fall_card(card,c,self.moskaGame.triumph):
-                out.append(c)
-        return out
+        return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.triumph)
+    
+    def _map_to_list(self,card : Card):
+        return [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
     
     def _map_each_to_list(self) -> Dict[Card,List[Card]]:
         """Map each card in hand, to cards on the table, that can be fallen.
@@ -465,7 +466,7 @@ class AbstractPlayer(ABC):
         # Make a dictionary of 'card-in-hand' : List[card-on-table] pairs, to know what which cards can be fallen with which cards
         can_fall = {}
         for card in self.hand:
-            can_fall[card] = self._map_to_list(card)
+            can_fall[card] = [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
         return can_fall
     
     def _make_cost_matrix(self, scoring : Callable = None, max_val : int = 100000):
