@@ -8,6 +8,7 @@ from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
 from typing import Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
+from .CardMonitor import CardMonitor
 import threading
 import logging
 import random
@@ -33,6 +34,7 @@ class MoskaGame:
     timeout : float = 3
     random_seed = None
     nplayers : int = 0
+    card_monitor : CardMonitor = None
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[AbstractPlayer] = [],
@@ -53,6 +55,7 @@ class MoskaGame:
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
         self.random_seed = random_seed if random_seed else int(100000*random.random())
+        self.card_monitor = CardMonitor(self)
         if random_seed:
             random.seed(self.random_seed)
         self._set_turns()
@@ -155,6 +158,7 @@ class MoskaGame:
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
                 self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
+            assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
     
@@ -172,6 +176,7 @@ class MoskaGame:
         except AssertionError as ae:
             self.glog.warning(f"{self.threads[threading.get_ident()].name}:{ae}")
             return False, str(ae)
+        self.card_monitor.update_from_move(move,args)
         return True, ""
     
     
@@ -186,12 +191,15 @@ class MoskaGame:
     
     def _start_player_threads(self) -> None:
         """ Starts all player threads. """
+        self.cards_to_fall.clear()
+        self.fell_cards.clear()
         with self.get_lock() as ml:
             for pl in self.players:
                 tid = pl._start()
                 self.threads[tid] = pl
             self.glog.debug("Started player threads")
             assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
+            self.card_monitor.start()
         return
     
     def _join_threads(self) -> None:
@@ -277,6 +285,7 @@ class MoskaGame:
         self._create_locks()
         self.glog.info(f"Starting the game with seed {self.random_seed}...")
         self._start_player_threads()
+        self.glog.info(f"Started moska game with players {[pl.name for pl in self.players]}")
         success = self._join_threads()
         if not success:
             return None
