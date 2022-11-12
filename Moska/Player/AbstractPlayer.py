@@ -356,110 +356,6 @@ class AbstractPlayer(ABC):
         self.plog.info(f"Finished as {self.rank}")
         return
     
-    def _count_score(self,card : Card):
-        """Return how many cards can the input card fall;
-        How many cards are smaller and same suit
-        or if suit is triumph, how many cards are not triumph or are smaller triumph cards.
-
-        Args:
-            card (Card): The card for which to count the score
-
-        Returns:
-            int: How many cards the card can fall
-        """
-        if card.suit == self.moskaGame.triumph:
-            return 4*13 - (14 - card.value)
-        else:
-            return 12 - (14 - card.value)
-    
-    def _assign_scores(self, cards : Iterable[Card]) -> List[Card]:
-        """Create new Card instances, with the Card instances from Iterable.
-        Return the new cards
-
-        Args:
-            cards (Iterable[Card]): The cards which are copied to the new list of cards, along with the score
-            
-        Returns:
-            List[Card]: list of the same cards, with a score -attribute
-        """
-        new_cards = []
-        for card in cards:
-            card.score = self._count_score(card)
-            new_cards.append(card)
-        return new_cards
-    
-    def _map_to_list(self,card : Card, to : Iterable[Card] = None) -> List[Card]:
-        """Return a list of Card -instances selected from 'to' (default self.moskaGame.cards_to_fall),
-        that 'card' can fall.
-
-        Args:
-            card (Card): The card that is used to fall cards in 'to'
-            to (Iterable[Card], optional): Iterable containing Card -instances. Defaults to cards_on_table.
-
-        Returns:
-        List[Card]: List of Card -instances
-        """
-        if not to:
-            to = self.moskaGame.cards_to_fall
-        out = []
-        for c in to:
-            if utils.check_can_fall_card(card,c,self.moskaGame.triumph):
-                out.append(c)
-        return out
-    
-    def _map_each_to_list(self) -> Dict[Card,List[Card]]:
-        """Map each card in hand, to cards on the table, that can be fallen.
-        Returns a dictionary
-
-        Returns:
-            _type_: _description_
-        """
-        # Make a dictionary of 'card-in-hand' : List[card-on-table] pairs, to know what which cards can be fallen with which cards
-        can_fall = {}
-        for card in self.hand:
-            can_fall[card] = self._map_to_list(card)
-        return can_fall
-    
-    def _make_cost_matrix(self, scoring : Callable = None, max_val : int = 100000):
-        try:
-            import numpy as np
-        except ImportError as ie:
-            raise ImportError(f"{ie}\nNumpy is required for this function!\n")
-        if scoring is None:
-            try:
-                scoring = self._calc_score
-            except AttributeError as ae:
-                raise AttributeError(f"{ae}\nSpecify 'scoring : Callable' as an argument or have a _calc_score -method in self.")
-        can_fall = self._map_each_to_list()
-        # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
-        C = np.full((len(self.hand),len(self.moskaGame.cards_to_fall)),max_val)
-        #self.plog.info(f"can_fall: {can_fall}")
-        for card, falls in can_fall.items():
-            # If there are no cards on the table, that card can fall, continue
-            if not falls:
-                continue
-            card_index = self.hand.cards.index(card)
-            fall_indices = [self.moskaGame.cards_to_fall.index(c) for c in falls]
-            scores = [scoring(card,c) for c in falls]
-            C[card_index][fall_indices] = scores
-        return C
-    
-    def _get_sm_score_in_list(self,cards : List[Card]):
-        """Return the first Card with the smallest score in 'cards'.
-
-        Args:
-            cards (List[Card]): _description_
-
-        Returns:
-            _type_: _description_
-        """        
-        if not cards:
-            return None
-        cards = self._assign_scores(cards)
-        sm_score = min((c.score for c in cards))
-        return list(filter(lambda x : x.score == sm_score,cards))[0]
-    
-    
     @abstractmethod
     def choose_move(self,playable : List[str]) -> str:
         """ Select a move to play.
@@ -539,3 +435,68 @@ class AbstractPlayer(ABC):
             List[Card]: List of Card -instances from hand, that can be played to the target.
         """
         pass
+    
+    
+    def _check_can_fall_card(self, played_card : Card, fall_card : Card) -> bool:
+        """Returns true, if the played_card, can fall the fall_card.
+        The played card can fall fall_card, if:
+        - The played card has the same suit and is greater than fall_card
+        - If the played_card is triumph suit, and the fall_card is not.
+
+        Args:
+            played_card (Card): The card played from hand
+            fall_card (Card): The card on the table
+            triumph (str): The triumph suit of the current game
+
+        Returns:
+            bool: True if played_card can fall fall_card, false otherwise
+        """
+        return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.triumph)
+    
+    def _map_to_list(self,card : Card) -> List[Card]:
+        """ Return a list of cards, that the input card can fall from moskaGame.cards_to_fall"
+
+        Args:
+            card (Card): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        return [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
+    
+    def _map_each_to_list(self) -> Dict[Card,List[Card]]:
+        """Map each card in hand, to cards on the table, that can be fallen.
+        Returns a dictionary
+
+        Returns:
+            _type_: _description_
+        """
+        # Make a dictionary of 'card-in-hand' : List[card-on-table] pairs, to know what which cards can be fallen with which cards
+        can_fall = {}
+        for card in self.hand:
+            can_fall[card] = [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
+        return can_fall
+    
+    def _make_cost_matrix(self, scoring : Callable = None, max_val : int = 100000):
+        try:
+            import numpy as np
+        except ImportError as ie:
+            raise ImportError(f"{ie}\nNumpy is required for this function!\n")
+        if scoring is None:
+            try:
+                scoring = self._calc_score
+            except AttributeError as ae:
+                raise AttributeError(f"{ae}\nSpecify 'scoring : Callable' as an argument or have a _calc_score -method in self.")
+        can_fall = self._map_each_to_list()
+        # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
+        C = np.full((len(self.hand),len(self.moskaGame.cards_to_fall)),max_val)
+        #self.plog.info(f"can_fall: {can_fall}")
+        for card, falls in can_fall.items():
+            # If there are no cards on the table, that card can fall, continue
+            if not falls:
+                continue
+            card_index = self.hand.cards.index(card)
+            fall_indices = [self.moskaGame.cards_to_fall.index(c) for c in falls]
+            scores = [scoring(card,c) for c in falls]
+            C[card_index][fall_indices] = scores
+        return C
