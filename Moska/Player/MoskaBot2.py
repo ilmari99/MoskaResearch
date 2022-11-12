@@ -77,7 +77,7 @@ class MoskaBot2(AbstractPlayer):
             if C[hand_ind,table_ind] > 14 and len(self.moskaGame.deck) > 0:
                 continue
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
-            if utils.check_can_fall_card(hand_card,table_card,self.moskaGame.triumph):
+            if self._check_can_fall_card(hand_card,table_card):
                 play_cards[hand_card] = table_card
         self.plog.info(f"Linear sum assignment: {play_cards}")
         return play_cards

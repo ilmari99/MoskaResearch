@@ -42,24 +42,12 @@ class MoskaBot1(AbstractPlayer):
         
         self.scoring.assign_scores_inplace()
         
-        # Needed to refer to self.
-        def map_to_list(card):
-            return card,self._map_to_list(card)
+        can_fall = self._map_each_to_list()
         
-        # Map each card in hand, to a list of cards on the table, that can be fallen
-        can_fall = map(map_to_list,self.hand)
-        
-        # Map each card in hand to the card with the smallest score
-        def map_to_card(pc_li):
-            li = pc_li[1]
-            sm_card = self.scoring.get_sm_score_in_list(li)
-            if not sm_card:
-                return pc_li[0],[]
-            return pc_li[0],sm_card
         
         # Create a dict with play_card : smallest fallable card
         # and filter if card doesn't map to any card on the table
-        play_cards = {pc:fc for pc,fc in map(map_to_card,can_fall) if fc}
+        play_cards = {pc:fc for pc,fc in zip(can_fall.keys(), map(self.scoring.get_sm_score_in_list,can_fall.values())) if fc}
         
         # Create a counter to count how many cards from hand are mapped to each card on the table
         counter = Counter(play_cards.values())

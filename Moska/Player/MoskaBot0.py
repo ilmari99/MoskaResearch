@@ -49,7 +49,7 @@ class MoskaBot0(AbstractPlayer):
         play_cards = {}
         for fall_card in self.moskaGame.cards_to_fall:
             for play_card in self.hand:
-                success = utils.check_can_fall_card(play_card,fall_card,self.moskaGame.triumph)
+                success = self._check_can_fall_card(play_card,fall_card)
                 if success:
                     if play_card not in play_cards:
                         play_cards[play_card] = []
@@ -74,7 +74,7 @@ class MoskaBot0(AbstractPlayer):
             tuple(Card,Card): The input card from deck, the card on the table.
         """
         for card in self.moskaGame.cards_to_fall:
-            if utils.check_can_fall_card(deck_card,card,self.moskaGame.triumph):
+            if self._check_can_fall_card(deck_card,card):
                 return (deck_card,card)
             
     def play_to_self(self) -> List[Card]:
