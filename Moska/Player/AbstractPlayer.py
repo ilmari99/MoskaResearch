@@ -453,7 +453,15 @@ class AbstractPlayer(ABC):
         """
         return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.triumph)
     
-    def _map_to_list(self,card : Card):
+    def _map_to_list(self,card : Card) -> List[Card]:
+        """ Return a list of cards, that the input card can fall from moskaGame.cards_to_fall"
+
+        Args:
+            card (Card): _description_
+
+        Returns:
+            _type_: _description_
+        """
         return [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
     
     def _map_each_to_list(self) -> Dict[Card,List[Card]]:
