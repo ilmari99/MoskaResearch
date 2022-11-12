@@ -4,6 +4,7 @@ import random
 from typing import TYPE_CHECKING, Dict, List, Tuple
 from Moska import utils
 from Moska.Deck import Card
+from ._ScoreCards import _ScoreCards
 if TYPE_CHECKING:
     from Moska.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
@@ -12,10 +13,12 @@ from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
+    scoring : _ScoreCards = None
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
+        self.scoring = _ScoreCards(self,default_method = None)
         
     def choose_move(self, playable: List[str]) -> str:
         # This must be played
@@ -55,10 +58,7 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             _type_: _description_
         """
-        
-        # NOTE: modifying hand and cards_to_fall. Doesn't matter since were are not removing cards from them.
-        self.moskaGame.cards_to_fall = self._assign_scores(self.moskaGame.cards_to_fall)
-        self.hand.cards = self._assign_scores(self.hand.cards)
+        self.scoring.assign_scores_inplace()
         # Create the cost matrix
         C = self._make_cost_matrix(scoring=lambda c1,c2 : abs(c1.score - c2.score))
         self.plog.info(f"Cost matrix:\n {C}")
@@ -98,10 +98,11 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             tuple(Card,Card): The input card from deck, the card on the table.
         """
+        self.scoring.assign_scores_inplace()
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
         # Get the card on the table with the smallest score
-        sm_card = self._get_sm_score_in_list(mapping)
+        sm_card = self.scoring.get_sm_score_in_list(mapping)
         return (deck_card,sm_card)
     
     def play_to_self(self) -> List[Card]:
@@ -119,7 +120,7 @@ class MoskaBot2(AbstractPlayer):
     def play_initial(self) -> List[Card]:
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
-        self.hand.cards = self._assign_scores(self.hand.cards)
+        self.scoring.assign_scores_inplace()
         sm_card = min([c.score for c in self.hand])
         hand = self.hand.copy()
         play_cards = hand.pop_cards(cond=lambda x : x.score == sm_card,max_cards = self._fits_to_table())
@@ -135,7 +136,7 @@ class MoskaBot2(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
+            self.scoring.assign_scores_inplace()
             chand = self.hand.copy()
-            chand.cards = self._assign_scores(chand.cards)
             play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 11 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
         return play_cards
