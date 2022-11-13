@@ -15,9 +15,11 @@ class CardMonitor:
         
     def __init__(self,moskaGame : MoskaGame):
         self.game = moskaGame
+        self.player_cards = {}
+        self.cards_fall_dict = {}
+        self.started = False
         
     def start(self):
-        self.player_cards = {}
         if self.started:
             return
         for pl in self.game.players:
