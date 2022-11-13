@@ -247,13 +247,15 @@ class EndTurn:
         if not pick_cards:
             assert self.check_can_pick_none() or self.check_finished(), "There are cards on the table, and they must fall or be lifted."
         else:
-            assert self.check_pick_all_cards() or self.check_pick_cards_to_fall()
+            assert self.check_pick_all_cards() or self.check_pick_cards_to_fall(), f"Either pick all cards that have not been fallen, or pick all cards from table"
             assert self.check_turn(), "It is not this players turn to lift the cards"
         self.pick_the_cards()
     
     def clear_table(self):
+        # Only remove cards from game, if they were not picked. Then they were lifted by the player
+        if self.check_pick_cards_to_fall():
+            self.moskaGame.card_monitor.remove_from_game(self.moskaGame.fell_cards)
         self.moskaGame.cards_to_fall.clear()
-        self.moskaGame.card_monitor.remove_from_game(self.moskaGame.fell_cards)
         self.moskaGame.fell_cards.clear()
         
     def check_can_pick_none(self):
@@ -269,12 +271,14 @@ class EndTurn:
     def check_pick_cards_to_fall(self):
         """ Check if every pick_card equals cards_to_fall"""
         #return all([card in self.moskaGame.cards_to_fall for card in self.pick_cards])
-        return all([picked == card for picked,card in zip(self.pick_cards,self.moskaGame.cards_to_fall)])
+        #return all([picked == card for picked,card in zip(self.pick_cards,self.moskaGame.cards_to_fall)])
+        return set(self.pick_cards) == set(self.moskaGame.cards_to_fall)
     
     def check_pick_all_cards(self):
         """ Check if every pick_card is in either cards_to_fall or in fell_cards and not every card is in cards_to_fall"""
         #return all([card in self.moskaGame.cards_to_fall + self.moskaGame.fell_cards for card in self.pick_cards]) and not self.check_pick_cards_to_fall()
-        return all([picked == card for picked,card in zip(self.pick_cards,self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)])
+        #return all([picked == card for picked,card in zip(self.pick_cards,self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)])
+        return set(self.pick_cards) == set(self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)
     
     def check_has_played_cards(self):
         """ Check if there are cards that are not fallen or that are fallen"""

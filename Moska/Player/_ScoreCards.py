@@ -8,16 +8,22 @@ if TYPE_CHECKING:
 class _ScoreCards:
     default_method : Callable = None
     player : AbstractPlayer = None
+    methods : dict[str,Callable] = {}
     
     def __init__(self,player : AbstractPlayer,
-                 default_method : Callable = None,
+                 default_method : Callable = "basic",
                  ) -> None:
-        self.default_method = self._basic_count_score if default_method is None else default_method
+        self.methods = {
+            "basic" : self._basic_count_score,
+            "counter" : self._count_cards_score,
+        }
+        self.default_method = self.methods[default_method]
+        self.methods["default"] = self.default_method
         self.player = player
     
-    def assign_scores_inplace(self) -> Callable:
-        self.player.moskaGame.cards_to_fall = self._assign_scores(self.player.moskaGame.cards_to_fall)
-        self.player.hand.cards = self._assign_scores(self.player.hand.cards)
+    def assign_scores_inplace(self,method = "default") -> Callable:
+        self.player.moskaGame.cards_to_fall = self._assign_scores(self.player.moskaGame.cards_to_fall,method)
+        self.player.hand.cards = self._assign_scores(self.player.hand.cards,method)
 
     def get_sm_score_in_list(self,cards : List[Card]):
         """Return the first Card with the smallest score in 'cards'.
@@ -37,6 +43,9 @@ class _ScoreCards:
             print(f"Assign scores to cards first")
             raise Exception(e)
         return list(filter(lambda x : x.score == sm_score,cards))[0]
+    
+    def _count_cards_score(self, card : Card):
+        return len(self.player.moskaGame.card_monitor.cards_fall_dict[card])
     
     def _basic_count_score(self,card : Card) -> int:
         """Return how many cards can the input card fall;
@@ -64,11 +73,7 @@ class _ScoreCards:
         Returns:
             List[Card]: list of the same cards, with a score -attribute
         """
-        if method == "default":
-            try:
-                method = self.default_method
-            except AttributeError as ae:
-                raise AttributeError(f"No default method found! Specify the method to calculate score, or make sure you have a 'default_method' -attribute available, with a Callable value\n. {ae}")
+        method = self.methods[method]
         new_cards = []
         for card in cards:
             card.score = method(card)

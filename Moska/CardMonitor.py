@@ -31,22 +31,20 @@ class CardMonitor:
         for pl, cards in self.player_cards.items():
             self.game.glog.info(f"{pl} : {cards}")
         self.make_cards_fall_dict()
+        assert len(self.cards_fall_dict) == 52, f"Invalid make cards fall dict"
         self.started = True
         return
         
     def make_cards_fall_dict(self):
-        deck = StandardDeck()
-        for i in range(len(deck.cards)-1):
-            card = deck.cards.pop()
-            for i in range(len(deck.cards)):
-                card2 = deck.cards.pop()
+        deck = StandardDeck().pop_cards(52)
+        for i,card in enumerate(deck):
+            self.cards_fall_dict[card] = []
+            for i2,card2 in enumerate(deck):
+                if i == i2:
+                    continue
                 # Requires the game to be started, otherwise we have no information on the triumph suit
                 if check_can_fall_card(card,card2,self.game.triumph):
-                    if card not in self.cards_fall_dict:
-                        self.cards_fall_dict[card] = []
                     self.cards_fall_dict[card].append(card2)
-                deck.cards.appendleft(card2)
-            deck.cards.appendleft(card)
         return
     
     def update_from_move(self, moveid, args):
@@ -66,17 +64,20 @@ class CardMonitor:
         return
     
     def remove_from_game(self,cards : List[Card]):
-        # Called from Turns.EndTurn.clear_table
+        # Called from Turns.EndTurn.clear_table with moskaGame.fell_cards IF all cards were not lifted
         for card in cards:
+            # Remove the fallen card as a key
             if card in self.cards_fall_dict:
                 self.cards_fall_dict.pop(card)
+                self.game.glog.info(f"Removed {card} from cards_fall_dict keys")
+        
         for card_d, falls in self.cards_fall_dict.copy().items():
             for card in cards:
                 if card in falls:
                     self.cards_fall_dict[card_d].remove(card)
-        self.game.glog.info(f"Cards can fall: \n")
-        for card,falls in self.cards_fall_dict.items():
-            self.game.glog.info(f"{card} : {len(falls)}")
+                    self.game.glog.info(f"Removed {card} from {card_d} list of cards")
+        #for card,falls in self.cards_fall_dict.items():
+        #    self.game.glog.info(f"{card} : {len(falls)}")
         return
         
     
