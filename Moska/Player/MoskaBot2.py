@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import Counter
 import logging
 import random
 from typing import TYPE_CHECKING, Dict, List, Tuple
@@ -18,7 +19,7 @@ class MoskaBot2(AbstractPlayer):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
-        self.scoring = _ScoreCards(self,default_method = None)
+        self.scoring = _ScoreCards(self,default_method = "counter")
         
     def choose_move(self, playable: List[str]) -> str:
         # This must be played
@@ -121,10 +122,22 @@ class MoskaBot2(AbstractPlayer):
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
         self.scoring.assign_scores_inplace()
-        sm_card = min([c.score for c in self.hand])
+        same_values = Counter([c.value for c in self.hand.cards])
+        play_value = None
+        sm_avg_score = float("inf")
+        for val in same_values:
+            same_values[val] = list(filter(lambda x : x.value == val,self.hand.cards))
+            avg_score = sum([c.score for c in same_values[val]])/len(same_values[val])
+            if avg_score < sm_avg_score:
+                sm_avg_score = avg_score
+                play_value = val
         hand = self.hand.copy()
-        play_cards = hand.pop_cards(cond=lambda x : x.score == sm_card,max_cards = self._fits_to_table())
+        play_cards = hand.pop_cards(cond=lambda x : x.value == play_value,max_cards = self._fits_to_table())
         return play_cards
+    
+    def check_single_or_multiple(self):
+        c = Counter([c.value for c in self.cards])
+        return len(self.cards) == 1 or all((count >= 2 for count in c.values()))
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
@@ -138,5 +151,5 @@ class MoskaBot2(AbstractPlayer):
         if playable_values:
             self.scoring.assign_scores_inplace()
             chand = self.hand.copy()
-            play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 11 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
+            play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 10 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
         return play_cards
