@@ -122,22 +122,55 @@ class MoskaBot2(AbstractPlayer):
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
         self.scoring.assign_scores_inplace()
-        same_values = Counter([c.value for c in self.hand.cards])
-        play_value = None
-        sm_avg_score = float("inf")
-        for val in same_values:
-            same_values[val] = list(filter(lambda x : x.value == val,self.hand.cards))
-            avg_score = sum([c.score for c in same_values[val]])/len(same_values[val])
-            if avg_score < sm_avg_score:
-                sm_avg_score = avg_score
-                play_value = val
-        hand = self.hand.copy()
-        play_cards = hand.pop_cards(cond=lambda x : x.value == play_value,max_cards = self._fits_to_table())
+        same_values = {}
+        for val in set([c.value for c in self.hand.cards]):
+            # A dictionary of value : List[Card], where the cards are sorted in ascending order according to score
+            same_values[val] = list(sorted(filter(lambda x : x.value == val, self.hand.cards),key=lambda x : x.score))
+        fits = self._fits_to_table()
+        play_cards = []
+        new_play_cards = []
+        while (not play_cards and fits >= 1) or (fits >= 2):
+            scores = self._calc_initial_scores_dict(same_values,fits)
+            play_val = 0
+            play_ncards = 1
+            play_score = float("inf")
+            for val, res in scores.items():
+                ncards, score = res
+                if score < play_score:
+                    play_val = val
+                    play_ncards = ncards
+                    play_score = score
+            if (play_cards and play_ncards == 1) or (len(play_cards) == 1):
+                break
+            choose_from = same_values[play_val]
+            self.plog.info(f"INITIAL: Taking {play_ncards} from {choose_from}")
+            new_play_cards = choose_from[:None if play_ncards == len(choose_from) else play_ncards]
+            play_cards += new_play_cards
+            self.plog.info(f"INITIAL: Chose: {play_cards}")
+            [choose_from.remove(card) for card in new_play_cards]
+            fits -= play_ncards
         return play_cards
     
-    def check_single_or_multiple(self):
-        c = Counter([c.value for c in self.cards])
-        return len(self.cards) == 1 or all((count >= 2 for count in c.values()))
+    def _calc_initial_scores_dict(self,same_values : dict[int,List[Card]], fits : int):
+        scores = {}
+        for val,cards in same_values.items():
+            if not cards:
+                continue
+            cards = list(cards)
+            ncard_scores = [self._calc_initial_play_score(cards,ncards) for ncards in range(1,min(fits,len(cards))+1)]
+            sm_score = min(ncard_scores)
+            ncards = ncard_scores.index(sm_score) + 1
+            scores[val] = (ncards,sm_score)
+        return scores
+    
+    def _calc_initial_play_score(self,cards : List[Card],fits : int) -> float:
+        ncards = min(fits,len(cards))
+        cards_score = sum([c.score for c in cards[0:None if ncards == len(cards) else ncards]])
+        adj_score = sum(self._get_initial_weights(ncards))
+        return (cards_score - adj_score) / ncards
+    
+    def _get_initial_weights(self,n):
+        return list(range(n))
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
