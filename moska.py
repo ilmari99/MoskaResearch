@@ -78,7 +78,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
         "nplayers" : nplayers,
         "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
-        "timeout" : 3,
+        "timeout" : 5,
     }
     player_kwargs = {
         "log_level": logging.DEBUG,
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         os.mkdir("Logs")
     os.chdir("Logs/")
     #play_as_human(n)
-    play_games(10,nplayers=5,log_prefix="moskafile",cpus=4,chunksize=1)
+    play_games(1000,nplayers=5,log_prefix="moskafile",cpus=32,chunksize=6)
     
     
 

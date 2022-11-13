@@ -253,6 +253,7 @@ class EndTurn:
     
     def clear_table(self):
         self.moskaGame.cards_to_fall.clear()
+        self.moskaGame.card_monitor.remove_from_game(self.moskaGame.fell_cards)
         self.moskaGame.fell_cards.clear()
         
     def check_can_pick_none(self):

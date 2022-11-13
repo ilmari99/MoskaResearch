@@ -11,6 +11,7 @@ import time
 import logging
 import sys
 import traceback
+from copy import deepcopy
 from abc import ABC, abstractmethod
 
 
@@ -235,7 +236,9 @@ class AbstractPlayer(ABC):
         success = False
         playable = self._playable_moves()
         move = self.choose_move(playable)
-        args = [self] + self.moves[move]()
+        extra_args = self.moves[move]()
+        extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
+        args = [self] + extra_args
         success, msg  = self.moskaGame._make_move(move,args)
         return success, msg
     
