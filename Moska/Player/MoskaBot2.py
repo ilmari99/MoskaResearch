@@ -21,6 +21,10 @@ class MoskaBot2(AbstractPlayer):
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self,default_method = "counter")
         
+    def _play_move(self) -> Tuple[bool, str]:
+        self.scoring.assign_scores_inplace()
+        return super()._play_move()
+        
     def choose_move(self, playable: List[str]) -> str:
         # This must be played
         if "InitialPlay" in playable:
@@ -59,7 +63,7 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             _type_: _description_
         """
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         # Create the cost matrix
         C = self._make_cost_matrix(scoring=lambda c1,c2 : abs(c1.score - c2.score))
         self.plog.info(f"Cost matrix:\n {C}")
@@ -99,7 +103,7 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             tuple(Card,Card): The input card from deck, the card on the table.
         """
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
         # Get the card on the table with the smallest score
@@ -121,7 +125,7 @@ class MoskaBot2(AbstractPlayer):
     def play_initial(self) -> List[Card]:
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         same_values = {}
         for val in set([c.value for c in self.hand.cards]):
             # A dictionary of value : List[Card], where the cards are sorted in ascending order according to score
@@ -182,7 +186,7 @@ class MoskaBot2(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            self.scoring.assign_scores_inplace()
+            #self.scoring.assign_scores_inplace()
             chand = self.hand.copy()
             play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 10 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
         return play_cards

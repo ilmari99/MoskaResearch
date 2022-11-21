@@ -16,6 +16,10 @@ class MoskaBot1(AbstractPlayer):
             name = "B1-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self)
+        
+    def _play_move(self) -> Tuple[bool, str]:
+        self.scoring.assign_scores_inplace()
+        return super()._play_move()
     
     def choose_move(self, playable: List[str]) -> str:
         return random.choice(playable)
@@ -40,7 +44,7 @@ class MoskaBot1(AbstractPlayer):
             _type_: _description_
         """
         
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         
         can_fall = self._map_each_to_list()
         
@@ -75,7 +79,7 @@ class MoskaBot1(AbstractPlayer):
         Returns:
             tuple(Card,Card): The input card from deck, the card on the table.
         """
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
         # Get the card on the table with the smallest score
@@ -97,7 +101,7 @@ class MoskaBot1(AbstractPlayer):
     def play_initial(self) -> List[Card]:
         """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
         Default: Play all the smallest cards in hand, that fit to table."""
-        self.scoring.assign_scores_inplace()
+        #self.scoring.assign_scores_inplace()
         sm_card = min([c.score for c in self.hand])
         hand = self.hand.copy()
         play_cards = hand.pop_cards(cond=lambda x : x.score == sm_card,max_cards = self._fits_to_table())
@@ -113,7 +117,7 @@ class MoskaBot1(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            self.scoring.assign_scores_inplace()
+            #self.scoring.assign_scores_inplace()
             hand = self.hand.copy()
             play_cards = hand.pop_cards(cond=lambda x : x.value in playable_values and x.score < 11, max_cards = self._fits_to_table())
         return play_cards
