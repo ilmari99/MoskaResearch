@@ -487,7 +487,7 @@ class AbstractPlayer(ABC):
             raise ImportError(f"{ie}\nNumpy is required for this function!\n")
         if scoring is None:
             try:
-                scoring = self._calc_score
+                scoring = self._calc_assign_score
             except AttributeError as ae:
                 raise AttributeError(f"{ae}\nSpecify 'scoring : Callable' as an argument or have a _calc_score -method in self.")
         can_fall = self._map_each_to_list()

@@ -54,6 +54,35 @@ class MoskaBot2(AbstractPlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
+    def _calc_assign_score(self, hcard : Card, tcard : Card) -> float:
+        """ Calculate the score of playing hcard (card in hand) to tcard (card on the table).
+        The smaller the score, the better."""
+        # If the card to be played is already in the played cards, then increase the score a little,
+        # Because then others can't get new possibilities to play. If others can't play any cards anyway (full table), then this doesn't matter.
+        score = 0
+        if hcard.value in set([c.value for c in self.moskaGame.cards_to_fall]) and self._fits_to_table() > 0:
+            try:
+                score += self.coeffs.fall_card["card-already-in-table"]
+            except:
+                score += -0.5
+        # If I already have same values in hand, it is perhaps easier to get rid of the card if lifted -> Increase the score
+        if tcard.value in set([c.value for c in self.moskaGame.cards_to_fall]):
+            try:
+                score += self.coeffs.fall_card["same-value-already-in-hand"]
+            except:
+                score += 0.2
+        # If the card has been kopled and is preventing us from kopling again
+        if tcard.kopled and len(self.moskaGame.deck) > 0:
+            try:
+                score += self.coeffs.fall_card["card-is-preventing-kopling"]
+            except:
+                score += -0.5
+        score += tcard.score
+        return score
+            
+        
+                
+        
     def play_fall_card_from_hand(self) -> Dict[Card, Card]:
         """Return a dictionary of card_in_hand : card_in_table -pairs, denoting which card is used to fall which card on the table.
         This function is called when the player has decided to play from their hand.
@@ -65,7 +94,7 @@ class MoskaBot2(AbstractPlayer):
         """
         #self.scoring.assign_scores_inplace()
         # Create the cost matrix
-        C = self._make_cost_matrix(scoring=lambda c1,c2 : abs(c1.score - c2.score))
+        C = self._make_cost_matrix(scoring=self._calc_assign_score)
         self.plog.info(f"Cost matrix:\n {C}")
         
         # Solve a (possibly) rectangular linear sum assignment problem
@@ -78,13 +107,16 @@ class MoskaBot2(AbstractPlayer):
         for hand_ind, table_ind in zip(hand_indices,fall_indices):
             hand_card = self.hand.cards[hand_ind]
             table_card = self.moskaGame.cards_to_fall[table_ind]
+            try:
+                thresh_score = self.coeffs.fall_card["threshold-play-score"]
+            except:
+                thresh_score = 14
             # Discard cards, that are not that good to play, unless there is no deck left
-            if C[hand_ind,table_ind] > 14 and len(self.moskaGame.deck) > 0:
+            if C[hand_ind,table_ind] > thresh_score and len(self.moskaGame.deck) > 0:
                 continue
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if self._check_can_fall_card(hand_card,table_card):
                 play_cards[hand_card] = table_card
-        self.plog.info(f"Linear sum assignment: {play_cards}")
         return play_cards
     
     def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
@@ -103,12 +135,17 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             tuple(Card,Card): The input card from deck, the card on the table.
         """
-        #self.scoring.assign_scores_inplace()
+        
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
-        # Get the card on the table with the smallest score
-        sm_card = self.scoring.get_sm_score_in_list(mapping)
-        return (deck_card,sm_card)
+        sm_score = float("inf")
+        best_card = mapping[0]
+        for card in mapping:
+            score = self._calc_assign_score(deck_card,card)
+            if score < sm_score:
+                sm_score = score
+                best_card = card
+        return (deck_card,best_card)
     
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
@@ -123,58 +160,104 @@ class MoskaBot2(AbstractPlayer):
         return cards
     
     def play_initial(self) -> List[Card]:
-        """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
-        Default: Play all the smallest cards in hand, that fit to table."""
-        #self.scoring.assign_scores_inplace()
+        """Return a list of cards to play from hand to an empty table.
+        
+        Calculates a dictionary with unique values in hand as keys, and the cards in hand with that value as values. The cards are sorted in ascending
+        order. For example d[3] : [S3,A3], where S3.score = 4, S3.score = 6
+        
+        
+        Returns:
+            List[Card]: _description_
+        """
         same_values = {}
         for val in set([c.value for c in self.hand.cards]):
             # A dictionary of value : List[Card], where the cards are sorted in ascending order according to score
+            # For example same_values[3] : [S3,A3], where S3.score = 4, S3.score = 6
             same_values[val] = list(sorted(filter(lambda x : x.value == val, self.hand.cards),key=lambda x : x.score))
         fits = self._fits_to_table()
         play_cards = []
         new_play_cards = []
+        # Search for play cards, atleast once, and until fits < 2
         while (not play_cards and fits >= 1) or (fits >= 2):
             scores = self._calc_initial_scores_dict(same_values,fits)
-            play_val = 0
-            play_ncards = 1
-            play_score = float("inf")
+            play_val = 0    # Value to play
+            play_ncards = 1 # Number of cards to play
+            play_score = float("inf")   # The smallest score of the play, when playing ncards with certain value.
+            # Loop through scores, which contains 'value : (ncards,score)' pairs, and find the value and number of cards to play.
             for val, res in scores.items():
                 ncards, score = res
+                # If score is smaller than the currently found smallest score, update the variables.
                 if score < play_score:
                     play_val = val
                     play_ncards = ncards
                     play_score = score
+            # If there are cards chosen to be played AND we have only selected 1 new card to play, OR we only chose to play 1 card on the first loop.
+            # the move is illegal, and we must stop the search,
+            # because we can only play a single card, or multiple pairs or greater.
             if (play_cards and play_ncards == 1) or (len(play_cards) == 1):
                 break
+            # Once we know the new cards can be played, we remove the cards from the dictionary, and decrement fits variable
             choose_from = same_values[play_val]
-            self.plog.info(f"INITIAL: Taking {play_ncards} from {choose_from}")
+            # Take ncards from the cards
             new_play_cards = choose_from[:None if play_ncards == len(choose_from) else play_ncards]
             play_cards += new_play_cards
-            self.plog.info(f"INITIAL: Chose: {play_cards}")
+            # remove from same_values dict (choose from points to it)
             [choose_from.remove(card) for card in new_play_cards]
             fits -= play_ncards
+        self.plog.info(f"INITIAL: Chose: {play_cards}")
         return play_cards
     
-    def _calc_initial_scores_dict(self,same_values : dict[int,List[Card]], fits : int):
+    def _calc_initial_scores_dict(self,same_values : dict[int,List[Card]], fits : int) -> Dict[int,Tuple[int,float]]:
+        """Return a dictionary of value : (ncards, score) -pairs from every unique value in hand.
+        
+
+        Args:
+            same_values (dict[int,List[Card]]): _description_
+            fits (int): _description_
+
+        Returns:
+            Dict[int,Tuple[int,float]]: _description_
+        """
         scores = {}
+        # Loop through the same_values dictionary: Dict[int,List[Card]]
         for val,cards in same_values.items():
             if not cards:
                 continue
             cards = list(cards)
+            # Calculate a list of scores, that are achieved by playing i (1...min(fits,len(cards))) cards.
+            # The cards in cards are supposed to be in ascending order
             ncard_scores = [self._calc_initial_play_score(cards,ncards) for ncards in range(1,min(fits,len(cards))+1)]
+            # Store the number of cards, and the score corresponding with that amount of played cards
             sm_score = min(ncard_scores)
             ncards = ncard_scores.index(sm_score) + 1
             scores[val] = (ncards,sm_score)
         return scores
     
     def _calc_initial_play_score(self,cards : List[Card],fits : int) -> float:
+        """Calculate the score for playing 'fits' first cards from 'cards'.
+        
+        Args:
+            cards (List[Card]): _description_
+            fits (int): _description_
+
+        Returns:
+            float: _description_
+        """
         ncards = min(fits,len(cards))
+        # Get ncards first cards from 'cards'
         cards_score = sum([c.score for c in cards[0:None if ncards == len(cards) else ncards]])
-        adj_score = sum(self._get_initial_weights(ncards))
-        return (cards_score - adj_score) / ncards
+        # Return the adjusted average score
+        return (cards_score - self._adjust_score(ncards)) / ncards
     
-    def _get_initial_weights(self,n):
-        return list(range(n))
+    def _adjust_score(self,n : int) -> float:
+        """Return a number, by which to decrement the calculated total score.
+        If n == 0, then should return 0
+        """
+        try:
+            coef = self.coeffs.initial_play["score-adjustment-coeff"]
+        except:
+            coef = 0.5
+        return coef * n * (n+1)
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
@@ -186,7 +269,6 @@ class MoskaBot2(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            #self.scoring.assign_scores_inplace()
             chand = self.hand.copy()
             play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 10 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
         return play_cards
