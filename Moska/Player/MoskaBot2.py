@@ -103,7 +103,7 @@ class MoskaBot2(AbstractPlayer):
         Returns:
             tuple(Card,Card): The input card from deck, the card on the table.
         """
-        #self.scoring.assign_scores_inplace()
+        
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
         # Get the card on the table with the smallest score
@@ -123,58 +123,104 @@ class MoskaBot2(AbstractPlayer):
         return cards
     
     def play_initial(self) -> List[Card]:
-        """ Return a list of cards that will be played to target on an initiating turn. AKA playing to an empty table.
-        Default: Play all the smallest cards in hand, that fit to table."""
-        #self.scoring.assign_scores_inplace()
+        """Return a list of cards to play from hand to an empty table.
+        
+        Calculates a dictionary with unique values in hand as keys, and the cards in hand with that value as values. The cards are sorted in ascending
+        order. For example d[3] : [S3,A3], where S3.score = 4, S3.score = 6
+        
+        
+        Returns:
+            List[Card]: _description_
+        """
         same_values = {}
         for val in set([c.value for c in self.hand.cards]):
             # A dictionary of value : List[Card], where the cards are sorted in ascending order according to score
+            # For example same_values[3] : [S3,A3], where S3.score = 4, S3.score = 6
             same_values[val] = list(sorted(filter(lambda x : x.value == val, self.hand.cards),key=lambda x : x.score))
         fits = self._fits_to_table()
         play_cards = []
         new_play_cards = []
+        # Search for play cards, atleast once, and until fits < 2
         while (not play_cards and fits >= 1) or (fits >= 2):
             scores = self._calc_initial_scores_dict(same_values,fits)
-            play_val = 0
-            play_ncards = 1
-            play_score = float("inf")
+            play_val = 0    # Value to play
+            play_ncards = 1 # Number of cards to play
+            play_score = float("inf")   # The smallest score of the play, when playing ncards with certain value.
+            # Loop through scores, which contains 'value : (ncards,score)' pairs, and find the value and number of cards to play.
             for val, res in scores.items():
                 ncards, score = res
+                # If score is smaller than the currently found smallest score, update the variables.
                 if score < play_score:
                     play_val = val
                     play_ncards = ncards
                     play_score = score
+            # If there are cards chosen to be played AND we have only selected 1 new card to play, OR we only chose to play 1 card on the first loop.
+            # the move is illegal, and we must stop the search,
+            # because we can only play a single card, or multiple pairs or greater.
             if (play_cards and play_ncards == 1) or (len(play_cards) == 1):
                 break
+            # Once we know the new cards can be played, we remove the cards from the dictionary, and decrement fits variable
             choose_from = same_values[play_val]
-            self.plog.info(f"INITIAL: Taking {play_ncards} from {choose_from}")
+            # Take ncards from the cards
             new_play_cards = choose_from[:None if play_ncards == len(choose_from) else play_ncards]
             play_cards += new_play_cards
-            self.plog.info(f"INITIAL: Chose: {play_cards}")
+            # remove from same_values dict (choose from points to it)
             [choose_from.remove(card) for card in new_play_cards]
             fits -= play_ncards
+        self.plog.info(f"INITIAL: Chose: {play_cards}")
         return play_cards
     
-    def _calc_initial_scores_dict(self,same_values : dict[int,List[Card]], fits : int):
+    def _calc_initial_scores_dict(self,same_values : dict[int,List[Card]], fits : int) -> Dict[int,Tuple[int,float]]:
+        """Return a dictionary of value : (ncards, score) -pairs from every unique value in hand.
+        
+
+        Args:
+            same_values (dict[int,List[Card]]): _description_
+            fits (int): _description_
+
+        Returns:
+            Dict[int,Tuple[int,float]]: _description_
+        """
         scores = {}
+        # Loop through the same_values dictionary: Dict[int,List[Card]]
         for val,cards in same_values.items():
             if not cards:
                 continue
             cards = list(cards)
+            # Calculate a list of scores, that are achieved by playing i (1...min(fits,len(cards))) cards.
+            # The cards in cards are supposed to be in ascending order
             ncard_scores = [self._calc_initial_play_score(cards,ncards) for ncards in range(1,min(fits,len(cards))+1)]
+            # Store the number of cards, and the score corresponding with that amount of played cards
             sm_score = min(ncard_scores)
             ncards = ncard_scores.index(sm_score) + 1
             scores[val] = (ncards,sm_score)
         return scores
     
     def _calc_initial_play_score(self,cards : List[Card],fits : int) -> float:
+        """Calculate the score for playing 'fits' first cards from 'cards'.
+        
+        Args:
+            cards (List[Card]): _description_
+            fits (int): _description_
+
+        Returns:
+            float: _description_
+        """
         ncards = min(fits,len(cards))
+        # Get ncards first cards from 'cards'
         cards_score = sum([c.score for c in cards[0:None if ncards == len(cards) else ncards]])
-        adj_score = sum(self._get_initial_weights(ncards))
-        return (cards_score - adj_score) / ncards
+        # Return the adjusted average score
+        return (cards_score - self._adjust_score(ncards)) / ncards
     
-    def _get_initial_weights(self,n):
-        return list(range(n))
+    def _adjust_score(self,n : int) -> float:
+        """Return a number, by which to decrement the calculated total score.
+        If n == 0, then should return 0
+        """
+        try:
+            coef = self.coeffs.initial_play_score_adjustement
+        except:
+            coef = 0.5
+        return coef * n * (n+1)
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
