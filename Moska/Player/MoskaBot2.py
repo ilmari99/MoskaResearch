@@ -107,8 +107,12 @@ class MoskaBot2(AbstractPlayer):
         for hand_ind, table_ind in zip(hand_indices,fall_indices):
             hand_card = self.hand.cards[hand_ind]
             table_card = self.moskaGame.cards_to_fall[table_ind]
+            try:
+                thresh_score = self.coeffs.fall_card["threshold-play-score"]
+            except:
+                thresh_score = 14
             # Discard cards, that are not that good to play, unless there is no deck left
-            if C[hand_ind,table_ind] > 14 and len(self.moskaGame.deck) > 0:
+            if C[hand_ind,table_ind] > thresh_score and len(self.moskaGame.deck) > 0:
                 continue
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if self._check_can_fall_card(hand_card,table_card):
@@ -134,9 +138,14 @@ class MoskaBot2(AbstractPlayer):
         
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
-        # Get the card on the table with the smallest score
-        sm_card = self.scoring.get_sm_score_in_list(mapping)
-        return (deck_card,sm_card)
+        sm_score = float("inf")
+        best_card = mapping[0]
+        for card in mapping:
+            score = self._calc_assign_score(deck_card,card)
+            if score < sm_score:
+                sm_score = score
+                best_card = card
+        return (deck_card,best_card)
     
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
@@ -260,7 +269,6 @@ class MoskaBot2(AbstractPlayer):
         playable_values = self._playable_values_from_hand()
         play_cards = []
         if playable_values:
-            #self.scoring.assign_scores_inplace()
             chand = self.hand.copy()
             play_cards = chand.pop_cards(cond=lambda x : x.value in playable_values and (x.score < 10 or len(self.moskaGame.deck) <= 0), max_cards = self._fits_to_table())
         return play_cards
