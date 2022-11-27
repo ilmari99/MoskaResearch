@@ -54,6 +54,35 @@ class MoskaBot2(AbstractPlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
+    def _calc_assign_score(self, hcard : Card, tcard : Card) -> float:
+        """ Calculate the score of playing hcard (card in hand) to tcard (card on the table).
+        The smaller the score, the better."""
+        # If the card to be played is already in the played cards, then increase the score a little,
+        # Because then others can't get new possibilities to play. If others can't play any cards anyway (full table), then this doesn't matter.
+        score = 0
+        if hcard.value in set([c.value for c in self.moskaGame.cards_to_fall]) and self._fits_to_table() > 0:
+            try:
+                score += self.coeffs.fall_card["card-already-in-table"]
+            except:
+                score += -0.5
+        # If I already have same values in hand, it is perhaps easier to get rid of the card if lifted -> Increase the score
+        if tcard.value in set([c.value for c in self.moskaGame.cards_to_fall]):
+            try:
+                score += self.coeffs.fall_card["same-value-already-in-hand"]
+            except:
+                score += 0.2
+        # If the card has been kopled and is preventing us from kopling again
+        if tcard.kopled and len(self.moskaGame.deck) > 0:
+            try:
+                score += self.coeffs.fall_card["card-is-preventing-kopling"]
+            except:
+                score += -0.5
+        score += tcard.score
+        return score
+            
+        
+                
+        
     def play_fall_card_from_hand(self) -> Dict[Card, Card]:
         """Return a dictionary of card_in_hand : card_in_table -pairs, denoting which card is used to fall which card on the table.
         This function is called when the player has decided to play from their hand.
@@ -65,7 +94,7 @@ class MoskaBot2(AbstractPlayer):
         """
         #self.scoring.assign_scores_inplace()
         # Create the cost matrix
-        C = self._make_cost_matrix(scoring=lambda c1,c2 : abs(c1.score - c2.score))
+        C = self._make_cost_matrix(scoring=self._calc_assign_score)
         self.plog.info(f"Cost matrix:\n {C}")
         
         # Solve a (possibly) rectangular linear sum assignment problem
@@ -84,7 +113,6 @@ class MoskaBot2(AbstractPlayer):
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if self._check_can_fall_card(hand_card,table_card):
                 play_cards[hand_card] = table_card
-        self.plog.info(f"Linear sum assignment: {play_cards}")
         return play_cards
     
     def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
@@ -217,7 +245,7 @@ class MoskaBot2(AbstractPlayer):
         If n == 0, then should return 0
         """
         try:
-            coef = self.coeffs.initial_play_score_adjustement
+            coef = self.coeffs.initial_play["score-adjustment-coeff"]
         except:
             coef = 0.5
         return coef * n * (n+1)
