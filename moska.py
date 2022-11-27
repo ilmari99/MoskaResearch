@@ -48,8 +48,8 @@ def start_moska_process(
     moskaGame = MoskaGame()
     set_game_args(moskaGame,gamekwargs)
     set_player_args(moskaGame.players,plkwargs)
-    for pl in moskaGame.players:
-        pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
+    #for pl in moskaGame.players:
+    #    pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
     return moskaGame.start()
 
 def start_moska_process_wrap(args : Tuple):
@@ -76,7 +76,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
     chunksize = n//cpus if chunksize == -1 else chunksize
     game_kwargs = lambda p : {
         "nplayers" : nplayers,
-        "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
+    #    "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
         "timeout" : 5,
     }
