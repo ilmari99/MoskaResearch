@@ -54,7 +54,7 @@ class StaticCoefficients(_Coefficients):
         return self.method_values["fall_card_same_value_already_in_hand"]
     
     def fall_card_card_is_preventing_kopling(self, *args):
-        return self.method_values["fall_card_is_preventing_kopling"]
+        return self.method_values["fall_card_card_is_preventing_kopling"]
     
     def play_initial_score_adjustment(self, *args):
         return self.method_values["play_initial_score_adjustment"]
