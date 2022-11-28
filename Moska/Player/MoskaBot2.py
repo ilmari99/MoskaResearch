@@ -10,16 +10,20 @@ if TYPE_CHECKING:
     from Moska.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
 import numpy as np
+from ._Coefficients import StaticCoefficients
+
 from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
     scoring : _ScoreCards = None
+    coeffs : StaticCoefficients = None
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self,default_method = "counter")
+        self.coeffs = StaticCoefficients(self)
         
     def _play_move(self) -> Tuple[bool, str]:
         self.scoring.assign_scores_inplace()
@@ -61,22 +65,13 @@ class MoskaBot2(AbstractPlayer):
         # Because then others can't get new possibilities to play. If others can't play any cards anyway (full table), then this doesn't matter.
         score = 0
         if hcard.value in set([c.value for c in self.moskaGame.cards_to_fall]) and self._fits_to_table() > 0:
-            try:
-                score += self.coeffs.fall_card["card-already-in-table"]
-            except:
-                score += -0.5
+            score += self.coeffs.fall_card_already_in_table()
         # If I already have same values in hand, it is perhaps easier to get rid of the card if lifted -> Increase the score
         if tcard.value in set([c.value for c in self.moskaGame.cards_to_fall]):
-            try:
-                score += self.coeffs.fall_card["same-value-already-in-hand"]
-            except:
-                score += 0.2
+            score += self.coeffs.fall_card_same_value_already_in_hand()
         # If the card has been kopled and is preventing us from kopling again
         if tcard.kopled and len(self.moskaGame.deck) > 0:
-            try:
-                score += self.coeffs.fall_card["card-is-preventing-kopling"]
-            except:
-                score += -0.5
+            score += self.coeffs.fall_card_card_is_preventing_kopling()
         score += tcard.score
         return score
             
@@ -107,10 +102,7 @@ class MoskaBot2(AbstractPlayer):
         for hand_ind, table_ind in zip(hand_indices,fall_indices):
             hand_card = self.hand.cards[hand_ind]
             table_card = self.moskaGame.cards_to_fall[table_ind]
-            try:
-                thresh_score = self.coeffs.fall_card["threshold-play-score"]
-            except:
-                thresh_score = 14
+            thresh_score = self.coeffs.fall_card_threshold_play_score()
             # Discard cards, that are not that good to play, unless there is no deck left
             if C[hand_ind,table_ind] > thresh_score and len(self.moskaGame.deck) > 0:
                 continue
@@ -247,17 +239,7 @@ class MoskaBot2(AbstractPlayer):
         # Get ncards first cards from 'cards'
         cards_score = sum([c.score for c in cards[0:None if ncards == len(cards) else ncards]])
         # Return the adjusted average score
-        return (cards_score - self._adjust_score(ncards)) / ncards
-    
-    def _adjust_score(self,n : int) -> float:
-        """Return a number, by which to decrement the calculated total score.
-        If n == 0, then should return 0
-        """
-        try:
-            coef = self.coeffs.initial_play["score-adjustment-coeff"]
-        except:
-            coef = 0.5
-        return coef * n * (n+1)
+        return (cards_score - self.coeffs.play_initial_score_adjustment()) / ncards
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
