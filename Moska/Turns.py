@@ -290,6 +290,8 @@ class EndTurn:
         """
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
+        for card in self.player.hand.cards:
+            card.kopled = False
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.moskaGame.glog.info(f"{self.player.name} ending turn.")
         self.player.plog.info(f"Lifted cards {self.pick_cards}")
