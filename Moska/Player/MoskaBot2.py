@@ -9,7 +9,6 @@ from ._ScoreCards import _ScoreCards
 if TYPE_CHECKING:
     from Moska.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
-import numpy as np
 from ._Coefficients import StaticCoefficients,HeuristicCoefficients
 
 from scipy.optimize import linear_sum_assignment
