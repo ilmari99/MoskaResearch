@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple
 from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.utils import add_before
 import random
+import numpy as np
 from scipy.optimize import minimize
 #from noisyopt import minimizeCompass,minimize
 
@@ -66,6 +67,12 @@ def start_moska_process(
     return moskaGame.start()
 
 def start_moska_process_wrap(args : Tuple):
+    seed = None
+    seed = args[0].get("random_seed")
+    if seed is None:
+        print(args)
+        print(f"Couldn't find seed.")
+    random.seed(seed)
     return start_moska_process(*args)
     
 def play_as_human(nopponents):
@@ -92,8 +99,10 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1,coeff
     #    "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
         "timeout" : 0.9,
+        "random_seed" : p,
     }
     player_kwargs = {
+        "delay" : 10**-6,
         "log_level": logging.DEBUG,
         "coefficients" : coeffs,
     }
@@ -156,21 +165,19 @@ if __name__ == "__main__":
         print("coeffs",coeffs)
         print("params",params)
         print("kwargs",kwargs)
-        out = play_games(640,5,log_prefix="moskafile",cpus=32,chunksize=5,coeffs=coeffs)
+        out = play_games(100,5,log_prefix="moskafile",cpus=15,chunksize=3,coeffs=coeffs)
         print("")
         return out
-    
-    x0=[-0.1, 0.1, -0.1, 0.2, 5, 0.2]
-    x0 = [100*p for p in x0]
-    bounds = [(-50,0), (0,50), (-50,0), (5,80), (100,5000), (5,80)]
-    minimize(to_minimize,x0=x0,method="Nelder-Mead",bounds=bounds)
-    
+    #x0=[-0.1, 0.1, -0.1, 0.2, 5, 0.2]
+    #x0 = [100*p for p in x0]
+    #bounds = [(-50,0), (0,50), (-50,0), (5,80), (100,5000), (5,80)]
+    #minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
+    play_games(1000,nplayers=5,log_prefix="moskafile",cpus=16,chunksize=10)
     
     
     
     
     #play_as_human(n)
-    #play_games(1000,nplayers=5,log_prefix="moskafile",cpus=32,chunksize=6)
     
     
 
