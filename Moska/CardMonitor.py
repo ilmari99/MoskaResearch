@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 from .Deck import Card, StandardDeck
 from .utils import check_can_fall_card
 if TYPE_CHECKING:
@@ -36,6 +36,8 @@ class CardMonitor:
         return
         
     def make_cards_fall_dict(self):
+        """Create the crds_fall_dict by going through each card and checking if each card can be fell with the card
+        """
         deck = StandardDeck().pop_cards(52)
         for i,card in enumerate(deck):
             self.cards_fall_dict[card] = []
@@ -47,7 +49,16 @@ class CardMonitor:
                     self.cards_fall_dict[card].append(card2)
         return
     
-    def update_from_move(self, moveid, args):
+    def update_from_move(self, moveid : str, args : Tuple) -> Tuple:
+        """Update the CardMonitor instance, given moveid and the arguments passed to MoskaGame
+
+        Args:
+            moveid (str): _description_
+            args (Tuple): _description_
+
+        Returns:
+            Tuple: _description_
+        """
         player = args[0]
         if moveid == "EndTurn":
             picked = args[1]
@@ -63,26 +74,38 @@ class CardMonitor:
         # No updates to hand when playing from deck or skipping
         return
     
-    def remove_from_game(self,cards : List[Card]):
-        # Called from Turns.EndTurn.clear_table with moskaGame.fell_cards IF all cards were not lifted
+    def remove_from_game(self,cards : List[Card]) -> None:
+        """ Called from Turns.EndTurn.clear_table with moskaGame.fell_cards IF all cards were not lifted
+
+        Args:
+            cards (List[Card]): _description_
+        """
+        # Remove the removed cards from the cards_fall_dict
         for card in cards:
             # Remove the fallen card as a key
             if card in self.cards_fall_dict:
                 self.cards_fall_dict.pop(card)
-                self.game.glog.info(f"Removed {card} from cards_fall_dict keys")
-        
+                self.game.glog.debug(f"Removed {card} from cards_fall_dict keys")
+        # Remove the card as value from the list
         for card_d, falls in self.cards_fall_dict.copy().items():
             for card in cards:
                 if card in falls:
                     self.cards_fall_dict[card_d].remove(card)
-                    self.game.glog.info(f"Removed {card} from {card_d} list of cards")
-        #for card,falls in self.cards_fall_dict.items():
-        #    self.game.glog.info(f"{card} : {len(falls)}")
+                    self.game.glog.debug(f"Removed {card} from {card_d} list of cards")
+        for card,falls in self.cards_fall_dict.items():
+            self.game.glog.info(f"{card} : {len(falls)}")
         return
         
     
-    def update_unknown(self, player_name):
+    def update_unknown(self, player_name : str) -> None:
+        """Update missing cards from the players hand. Either add or remove unknown cards (Card(-1,"X"))
+
+        Args:
+            player_name (str): Players name
+        """
+        # The cards we know the player has
         known_cards = self.player_cards[player_name]
+        # Get the cards the player actually has
         actual_cards = self.game.get_players_condition(cond = lambda x : x.name == player_name)[0].hand.cards
         missing = len(actual_cards) - len(known_cards)
         add = True
@@ -91,19 +114,33 @@ class CardMonitor:
             #raise ValueError(f"Knowing more cards in a players hand than there are cards is impossible!!")
         if missing == 0:
             return
+        # Either add unknown cards, or remove unknown cards from the players hand
         self.update_known(player_name,[Card(-1,"X") for _ in range(missing)],add=add)
+        return
     
-    def update_known(self, player_name, cards, add = False):
+    def update_known(self, player_name : str, cards : List[Card], add : bool = False) -> None:
+        """ Update KNOWN cards from the player by either adding or removing cards from their hand. This is also used to
+        add unknown cards, since we still know they forexample lifted a certain number of cards.
+
+        Args:
+            player_name (_type_): The players name
+            cards (_type_): List of cards to add or remove from the player shand
+            add (bool, optional): Whether to add (True) or remove (False) cards from the players hand. Defaults to False.
+        """
+        # If we are removing cards from the players hand
         if not add:
             for card in cards:
+                # If the card we want to remove from the players hand is not known, then mark it as an unknown card
                 if card not in self.player_cards[player_name]:
                     card = Card(-1,"X")
-                self.game.glog.info(f"Removed {card} from {player_name}")
+                self.game.glog.info(f"CardMonitor: Removed {card} from {player_name}")
                 self.player_cards[player_name].remove(card)
+        # If we want to add cards to the players hand
         else:
-            self.game.glog.info(f"added {cards} to {player_name}")
             self.player_cards[player_name] += cards
-            
+            self.game.glog.info(f"CardMonitor: Added {cards} to {player_name}")
+        # Print the players cards
         for pl, cards in self.player_cards.items():
-            self.game.glog.info(f"{pl} : {cards}")
-        self.game.glog.info("\n")
+            self.game.glog.debug(f"{pl} : {cards}")
+        self.game.glog.debug("\n")
+        return
