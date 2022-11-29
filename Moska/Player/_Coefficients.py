@@ -43,15 +43,26 @@ class HeuristicCoefficients(_Coefficients):
     method_values = {}
     def __init__(self, player: AbstractPlayer,method_values : Dict[str,float] = {}) -> None:
         super().__init__(player)
+        #"""
+        self.method_values = {'fall_card_already_played_value': -0.09549183742260889, 
+         'fall_card_same_value_already_in_hand': 0.30900799478152363, 
+         'fall_card_card_is_preventing_kopling': -0.19098300562505258, 
+         'fall_card_deck_card_not_played_to_unique': 0.5164389337487543, 
+         'fall_card_threshold_at_start': 40.12031993619332, 
+         'initial_play_quadratic_scaler': 0.09179640442201922
+         }
+         #"""
+        """
         self.method_values = {
-            "fall_card_already_played_value" : -0.1,
-            "fall_card_same_value_already_in_hand" : 0.1,
-            "fall_card_card_is_preventing_kopling" : -0.1,
-            "fall_card_deck_card_not_played_to_unique" : 0.2,
-            "fall_card_threshold_at_start" : 5,
-            "initial_play_quadratic_scaler" : 0.2,
+            "fall_card_already_played_value" : -0.13,
+            "fall_card_same_value_already_in_hand" : 0.13,
+            "fall_card_card_is_preventing_kopling" : -0.08,
+            "fall_card_deck_card_not_played_to_unique" : 0.23,
+            "fall_card_threshold_at_start" : 5.5,
+            "initial_play_quadratic_scaler" : 0.18,
             
         }
+        #"""
         for met, val in method_values.items():
             self.method_values[met] = val
         return
