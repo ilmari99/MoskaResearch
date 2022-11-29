@@ -467,7 +467,7 @@ class AbstractPlayer(ABC):
         """
         return [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
     
-    def _map_each_to_list(self) -> Dict[Card,List[Card]]:
+    def _map_each_to_list(self,from_ = None, to = None) -> Dict[Card,List[Card]]:
         """Map each card in hand, to cards on the table, that can be fallen.
         Returns a dictionary
 
@@ -475,12 +475,16 @@ class AbstractPlayer(ABC):
             _type_: _description_
         """
         # Make a dictionary of 'card-in-hand' : List[card-on-table] pairs, to know what which cards can be fallen with which cards
+        if from_ is None:
+            from_ = self.hand.cards
+        if to is None:
+            to = self.moskaGame.cards_to_fall
         can_fall = {}
-        for card in self.hand:
-            can_fall[card] = [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
+        for card in from_:
+            can_fall[card] = [c for c in to if self._check_can_fall_card(card,c)]
         return can_fall
     
-    def _make_cost_matrix(self, scoring : Callable = None, max_val : int = 100000):
+    def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000):
         try:
             import numpy as np
         except ImportError as ie:
@@ -490,7 +494,7 @@ class AbstractPlayer(ABC):
                 scoring = self._calc_assign_score
             except AttributeError as ae:
                 raise AttributeError(f"{ae}\nSpecify 'scoring : Callable' as an argument or have a _calc_score -method in self.")
-        can_fall = self._map_each_to_list()
+        can_fall = self._map_each_to_list(from_,to)
         # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
         C = np.full((len(self.hand),len(self.moskaGame.cards_to_fall)),max_val)
         #self.plog.info(f"can_fall: {can_fall}")

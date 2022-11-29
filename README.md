@@ -13,3 +13,4 @@ This is designed for simulations of moska games with different algorithms, and p
 - Improve play to self, play to target, deck lift fall method, choose move (Calculate a score for each play and choose the play with the highest score)
 - Use scipy optimizing to find the coefficients, that minimize chance to lose, OR maximize average ranking.
 - Maybe add a wrapper to play_move, that would log when the played hand becomes worse after playing a move
+- Add methods to CardMonitor, to get all cards in deck

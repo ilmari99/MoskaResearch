@@ -8,6 +8,9 @@ import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.utils import add_before
+import random
+from scipy.optimize import minimize
+#from noisyopt import minimizeCompass,minimize
 
 def set_game_args(game : MoskaGame, gamekwargs : Dict[str,Any]) -> None:
     """Sets a game instances variables from a dictionary of key-value pairs.
@@ -39,6 +42,16 @@ def set_player_args(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any]
             pl.__setattr__(k,v)
     return
 
+def set_player_args_optimize_bot2(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any],coeffs = {}):
+    for pl in players:
+        for k,v in plkwargs.items():
+            if k == "coefficients" and not isinstance(pl,MoskaBot2):
+                continue
+            if isinstance(v,Callable):
+                v = v(pl)
+            pl.__setattr__(k,v)
+    return
+
 
 def start_moska_process(
                         gamekwargs : Dict[str,Any] = {},
@@ -47,7 +60,7 @@ def start_moska_process(
                         ):
     moskaGame = MoskaGame()
     set_game_args(moskaGame,gamekwargs)
-    set_player_args(moskaGame.players,plkwargs)
+    set_player_args_optimize_bot2(moskaGame.players,plkwargs)
     #for pl in moskaGame.players:
     #    pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
     return moskaGame.start()
@@ -69,7 +82,7 @@ def play_as_human(nopponents):
     }
     return start_moska_process(gamekwargs=gamekwargs,plkwargs=player_kwargs)
 
-def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
+def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1,coeffs = {}):
     start_time = time.time()
     avail_cpus = os.cpu_count()
     cpus = min(avail_cpus,n) if cpus==-1 else cpus
@@ -78,10 +91,11 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
         "nplayers" : nplayers,
     #    "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
-        "timeout" : 5,
+        "timeout" : 0.9,
     }
     player_kwargs = {
         "log_level": logging.DEBUG,
+        "coefficients" : coeffs,
     }
     arg_gen = ((game_kwargs(i),player_kwargs,i) for i in range(n))
     results = []
@@ -98,7 +112,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
             if res is None:
                 failed_games += 1
                 res = None
-            print(res)
+            #print(res)
             results.append(res)
     print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
@@ -114,6 +128,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1):
     rank_list.sort(key=lambda x : x[1])
     for pl,rank in rank_list:
         print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
+    return 100*(ranks["B2"]/len(results) - failed_games) if "B2" in ranks else 0
 
 
 if __name__ == "__main__":
@@ -121,8 +136,41 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
+    #            "fall_card_already_played_value" : -0.1,
+    #        "fall_card_same_value_already_in_hand" : 0.1,
+    #        "fall_card_card_is_preventing_kopling" : -0.1,
+    #        "fall_card_deck_card_not_played_to_unique" : 0.2,
+    #        "fall_card_threshold_at_start" : 5,
+     #       "initial_play_quadratic_scaler" : 0.2,
+    def to_minimize(params,**kwargs):
+        random.seed(42)
+        params = [p/100 for p in params]
+        coeffs = {
+            "fall_card_already_played_value" : params[0],
+            "fall_card_same_value_already_in_hand" : params[1],
+             "fall_card_card_is_preventing_kopling" : params[2],
+             "fall_card_deck_card_not_played_to_unique" : params[3],
+             "fall_card_threshold_at_start" : params[4],
+             "initial_play_quadratic_scaler" : params[5]
+        }
+        print("coeffs",coeffs)
+        print("params",params)
+        print("kwargs",kwargs)
+        out = play_games(640,5,log_prefix="moskafile",cpus=32,chunksize=5,coeffs=coeffs)
+        print("")
+        return out
+    
+    x0=[-0.1, 0.1, -0.1, 0.2, 5, 0.2]
+    x0 = [100*p for p in x0]
+    bounds = [(-50,0), (0,50), (-50,0), (5,80), (100,5000), (5,80)]
+    minimize(to_minimize,x0=x0,method="Nelder-Mead",bounds=bounds)
+    
+    
+    
+    
+    
     #play_as_human(n)
-    play_games(1000,nplayers=5,log_prefix="moskafile",cpus=32,chunksize=6)
+    #play_games(1000,nplayers=5,log_prefix="moskafile",cpus=32,chunksize=6)
     
     
 

@@ -157,7 +157,10 @@ class MoskaGame:
             
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
-                self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
+                try:
+                    self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
+                except KeyError:
+                    self.glog.warning("Couldn't find lock holder!")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
