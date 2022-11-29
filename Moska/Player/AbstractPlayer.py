@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import random
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
@@ -319,6 +320,7 @@ class AbstractPlayer(ABC):
                    "Triumph card" : self.moskaGame.triumph_card,
                    }
         self.plog.info(f"Table info: {tb_info}")
+        random.seed(self.moskaGame.random_seed)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
