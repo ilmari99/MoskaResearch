@@ -51,13 +51,11 @@ class MoskaGame:
         """
         self.log_level = log_level
         self.log_file = log_file if log_file else os.devnull
-        self.deck = deck if deck else StandardDeck()
+        self.random_seed = random_seed if random_seed else int(100000*random.random())
+        self.deck = deck if deck else StandardDeck(seed = self.random_seed)
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
-        self.random_seed = random_seed if random_seed else int(100000*random.random())
         self.card_monitor = CardMonitor(self)
-        if random_seed:
-            random.seed(self.random_seed)
         self._set_turns()
     
     def _set_turns(self):
@@ -84,13 +82,16 @@ class MoskaGame:
         if name == "nplayers":
             self.players = self.players if self.players else self._get_random_players(value)
             self.glog.debug(f"Created {value} random players.")
+        if name == "random_seed":
+            random.seed(value)     
+            self.glog.info(f"Set random_seed to {self.random_seed}")
         return
     
     def _set_players(self,players : List[AbstractPlayer]) -> None:
         """Here self.players is already set to players
         """
         assert isinstance(players, list), f"'players' of MoskaGame attribute must be a list"
-        self.deck = StandardDeck()
+        self.deck = StandardDeck(seed=self.random_seed)
         for pl in players:
             pl.moskaGame = self
         self.turnCycle = utils.TurnCycle(players)
@@ -150,7 +151,6 @@ class MoskaGame:
         """
         with self.main_lock as lock:
             og_state = len(self.cards_to_fall + self.fell_cards)
-            
             # Here we tell the player that they have the key
             self.lock_holder = threading.get_ident()
             yield lock
@@ -161,6 +161,7 @@ class MoskaGame:
                     self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
                 except KeyError:
                     self.glog.warning("Couldn't find lock holder!")
+                    print(f"Game {self.log_file}, seed: {self.random_seed}: Couldn't find lock holder!")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
@@ -187,7 +188,7 @@ class MoskaGame:
         """ What to print when calling print(self) """
         s = f"Triumph card: {self.triumph_card}\n"
         for pl in self.players:
-            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''} : {pl.hand}\n"
+            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''} : {self.card_monitor.player_cards[pl.name]}\n"
         s += f"Cards to fall : {self.cards_to_fall}\n"
         s += f"Fell cards : {self.fell_cards}\n"
         return s
