@@ -2,7 +2,7 @@ from __future__ import annotations
 from collections import Counter
 import logging
 import random
-from typing import TYPE_CHECKING, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from Moska import utils
 from Moska.Deck import Card
 from ._ScoreCards import _ScoreCards
@@ -10,21 +10,28 @@ if TYPE_CHECKING:
     from Moska.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
 import numpy as np
-from ._Coefficients import StaticCoefficients
+from ._Coefficients import StaticCoefficients,HeuristicCoefficients
 
 from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
     scoring : _ScoreCards = None
-    coeffs : StaticCoefficients = None
-    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
+    coeffs : HeuristicCoefficients = None
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file="",coefficients = {}):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self,default_method = "counter")
-        self.coeffs = StaticCoefficients(self)
-        
+        self.coeffs = HeuristicCoefficients(self,method_values=coefficients)
+    
+    
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "coefficients":
+            self.coeffs = HeuristicCoefficients(self,method_values=value)
+        return super().__setattr__(name, value)
+    
+    
     def _play_move(self) -> Tuple[bool, str]:
         self.scoring.assign_scores_inplace()
         return super()._play_move()
@@ -58,26 +65,26 @@ class MoskaBot2(AbstractPlayer):
         pick_cards = self.moskaGame.cards_to_fall
         return pick_cards
     
-    def _calc_assign_score(self, hcard : Card, tcard : Card) -> float:
+    def _calc_assignment_score_from_hand(self, hcard : Card, tcard : Card) -> float:
         """ Calculate the score of playing hcard (card in hand) to tcard (card on the table).
         The smaller the score, the better."""
-        # If the card to be played is already in the played cards, then increase the score a little,
-        # Because then others can't get new possibilities to play. If others can't play any cards anyway (full table), then this doesn't matter.
-        score = 0
-        if hcard.value in set([c.value for c in self.moskaGame.cards_to_fall]) and self._fits_to_table() > 0:
-            score += self.coeffs.fall_card_already_in_table()
-        # If I already have same values in hand, it is perhaps easier to get rid of the card if lifted -> Increase the score
-        if tcard.value in set([c.value for c in self.moskaGame.cards_to_fall]):
-            score += self.coeffs.fall_card_same_value_already_in_hand()
-        # If the card has been kopled and is preventing us from kopling again
-        if tcard.kopled and len(self.moskaGame.deck) > 0:
-            score += self.coeffs.fall_card_card_is_preventing_kopling()
-        score += tcard.score
+        score = hcard.score - tcard.score
+        # Scale the score with some value (currently not calculated [1])
+        score = self.coeffs.fall_card_scale_hand_play_score(hcard,tcard)*score
         return score
-            
-        
-                
-        
+    
+    def _calc_assignment_score_from_deck(self,deck_card : Card, tcard : Card):
+        score = deck_card.score - tcard.score
+        score = self.coeffs.fall_card_scale_deck_play_score(deck_card,tcard) * score
+        return score
+    
+    def _calc_assignment_score_to_self(self,card_in_hand : Card, card_to_self : Card):
+        score = card_in_hand.score - card_to_self.score
+        score = self.coeffs.to_self_scale_play_score(card_in_hand,card_to_self)*score
+        return score  
+    
+    
+    
     def play_fall_card_from_hand(self) -> Dict[Card, Card]:
         """Return a dictionary of card_in_hand : card_in_table -pairs, denoting which card is used to fall which card on the table.
         This function is called when the player has decided to play from their hand.
@@ -89,7 +96,7 @@ class MoskaBot2(AbstractPlayer):
         """
         #self.scoring.assign_scores_inplace()
         # Create the cost matrix
-        C = self._make_cost_matrix(scoring=self._calc_assign_score)
+        C = self._make_cost_matrix(scoring=self._calc_assignment_score_from_hand)
         self.plog.info(f"Cost matrix:\n {C}")
         
         # Solve a (possibly) rectangular linear sum assignment problem
@@ -97,19 +104,20 @@ class MoskaBot2(AbstractPlayer):
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html
         hand_indices, fall_indices = linear_sum_assignment(C)
         
-        # Loop through the optimal indices, and remove assignments with a large
+        # Loop through the optimal indices
         play_cards = {}
         for hand_ind, table_ind in zip(hand_indices,fall_indices):
             hand_card = self.hand.cards[hand_ind]
             table_card = self.moskaGame.cards_to_fall[table_ind]
-            thresh_score = self.coeffs.fall_card_threshold_play_score()
-            # Discard cards, that are not that good to play, unless there is no deck left
-            if C[hand_ind,table_ind] > thresh_score and len(self.moskaGame.deck) > 0:
+            # Discard plays which are not good enough
+            if C[hand_ind,table_ind] > self.coeffs.fall_card_maximum_play_score_from_hand():
                 continue
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if self._check_can_fall_card(hand_card,table_card):
                 play_cards[hand_card] = table_card
         return play_cards
+    
+    
     
     def deck_lift_fall_method(self, deck_card: Card) -> Tuple[Card, Card]:
         """A function to determine which card will fall, if a random card from the deck is lifted.
@@ -130,10 +138,11 @@ class MoskaBot2(AbstractPlayer):
         
         # Get a list of cards that we can fall with the deck_card
         mapping = self._map_to_list(deck_card)
+        self.scoring._assign_scores([deck_card])
         sm_score = float("inf")
         best_card = mapping[0]
         for card in mapping:
-            score = self._calc_assign_score(deck_card,card)
+            score = self._calc_assignment_score_from_deck(deck_card,card)
             if score < sm_score:
                 sm_score = score
                 best_card = card
@@ -147,9 +156,18 @@ class MoskaBot2(AbstractPlayer):
             List[Card]: list of cards played to self
         """
         pv = self._playable_values_from_hand()
-        chand = self.hand.copy()
-        cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
-        return cards
+        
+        # Get a mapping from each card in hand, to all cards in hand that can be fallen with the card and can be played to the table
+        c_playable = self.hand.copy().pop_cards(lambda x : x.value in pv)
+        can_fall = self._map_each_to_list(from_ = self.hand.cards, to=c_playable)
+        cards = []
+        for card, falls in can_fall.items():
+            for fall_card in falls:
+                score = self._calc_assignment_score_to_self(card,fall_card)
+                if score > self.coeffs.to_self_maximum_play_score():
+                    continue
+                cards.append(fall_card)
+        return list(set(cards))
     
     def play_initial(self) -> List[Card]:
         """Return a list of cards to play from hand to an empty table.
@@ -237,9 +255,11 @@ class MoskaBot2(AbstractPlayer):
         """
         ncards = min(fits,len(cards))
         # Get ncards first cards from 'cards'
-        cards_score = sum([c.score for c in cards[0:None if ncards == len(cards) else ncards]])
+        play_cards = cards[0:None if ncards == len(cards) else ncards]
+        cards_score = sum([c.score for c in play_cards]) / ncards
+        cards_score = self.coeffs.initial_play_scale_score(play_cards) * cards_score
         # Return the adjusted average score
-        return (cards_score - self.coeffs.play_initial_score_adjustment()) / ncards
+        return cards_score
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
