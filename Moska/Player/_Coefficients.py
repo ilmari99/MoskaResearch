@@ -44,12 +44,12 @@ class HeuristicCoefficients(_Coefficients):
     def __init__(self, player: AbstractPlayer,method_values : Dict[str,float] = {}) -> None:
         super().__init__(player)
         #"""
-        self.method_values = {'fall_card_already_played_value': -0.09549183742260889, 
-         'fall_card_same_value_already_in_hand': 0.30900799478152363, 
-         'fall_card_card_is_preventing_kopling': -0.19098300562505258, 
-         'fall_card_deck_card_not_played_to_unique': 0.5164389337487543, 
-         'fall_card_threshold_at_start': 40.12031993619332, 
-         'initial_play_quadratic_scaler': 0.09179640442201922
+        self.method_values = {'fall_card_already_played_value': -0.38, 
+         'fall_card_same_value_already_in_hand': 0.072, 
+         'fall_card_card_is_preventing_kopling': -0.29, 
+         'fall_card_deck_card_not_played_to_unique': 0.336, 
+         'fall_card_threshold_at_start': 30.44, 
+         'initial_play_quadratic_scaler': 0.61
          }
          #"""
         """
@@ -66,6 +66,87 @@ class HeuristicCoefficients(_Coefficients):
         for met, val in method_values.items():
             self.method_values[met] = val
         return
+    
+    
+    
+    
+    def choose_move_score(self,move : str) -> float:
+        e_lifted = self.expected_value_from_lift()
+        most_falls = max((len(falls) for card, falls in self.player.moskaGame.card_monitor.cards_fall_dict.items()))
+        self.player.plog.info(f"Expected score from deck: {e_lifted}")
+        self.player.plog.info(f"Most falling card: {most_falls}")
+        
+        def adjust_for_missing_cards(cards: List[Card],lifted = 0) -> float:
+            """ Adjust score for missing cards (each card missing from hand is as valuable is the most falling card"""
+            missing_from_hand = 6 - len(cards) - lifted
+            return max(most_falls * missing_from_hand,0)
+        
+        def lift_n_from_deck(cards : List[Card]) -> float:
+            """ Return how many cards must be lifted from the deck"""
+            missing = 6 - len(cards)
+            liftn = 0
+            if missing > 0 and len(self.player.moskaGame.deck) > 0:
+                liftn = min(missing, len(self.player.moskaGame.deck))
+            return liftn
+        
+        def e_score_from_lifted(n : int):
+            return e_lifted * n
+        
+        def calculate_score(cards_after_play, lifted_from_deck):
+            sc = sum((c.score for c in cards_after_play)) + adjust_for_missing_cards(cards_after_play,lifted=lifted_from_deck) + e_score_from_lifted(lifted_from_deck)
+            try:
+                sc = sc / (len(cards_after_play) + lifted_from_deck)
+            except ZeroDivisionError as zde:
+                sc = float("inf")
+            return sc
+        
+        cards_after_play = self.player.hand.cards
+        liftn = 0
+        
+        if move == "Skip":
+            # The score of hand stays the same
+            cards_after_play = self.player.hand.cards
+        
+        elif move == "EndTurn":
+            # The cards returned by player.end_turn() are lifted, and if necessary, filled from deck
+            cards_after_play = self.player.hand.cards + self.player.end_turn()
+            liftn = lift_n_from_deck(cards_after_play)
+        
+        elif move == "PlayToOther":
+            played_cards = self.player.play_to_target()
+            after_play = list(set(self.player.hand.cards).difference(played_cards))
+            liftn = lift_n_from_deck(after_play)
+            
+        else:
+            liftn = lift_n_from_deck(cards_after_play)
+            
+        score = calculate_score(cards_after_play, liftn)
+        return score
+
+    def expected_value_from_lift(self):
+        """ Calculate the expected score of a card that is lifted from the deck.
+        Check which cards location we know (Cards in hand + other players known cards).
+        >> The remaining cards are either in deck, or in players hands.
+        Then calculate the total fall score and divide by the number of cards whose location is not known,
+        
+        """
+        game = self.player.moskaGame
+        cards_not_in_deck = self.player.hand.copy().cards + game.fell_cards
+        for pl, cards in game.card_monitor.player_cards.items():
+            if pl == self.player.name:
+                continue
+            for card in cards:
+                if card != Card(-1,"X"):
+                    cards_not_in_deck.append(card)
+        self.player.plog.info(f"Cards NOT in deck: {cards_not_in_deck}")
+        cards_possibly_in_deck = set(game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
+        self.player.plog.info(f"Cards possibly in deck: {cards_possibly_in_deck}")
+        total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
+        try:
+            e_lifted = total_possible_falls / len(cards_possibly_in_deck)
+        except ZeroDivisionError as ze:
+            e_lifted = 0
+        return e_lifted
     
     def fall_card_scale_hand_play_score(self, hcard: Card, tcard: Card, **kwargs) -> float:
         scale = 1
