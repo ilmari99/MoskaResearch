@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 CARD_VALUES = tuple(range(2,15))                            # Initialize the standard deck
 CARD_SUITS = ("C","D","H","S") 
-CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"None"}    #Conversion table
+CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}    #Conversion table
 MAIN_DECK = None                                            # The main deck
 
 def check_signature(sig : Sequence, inp : Sequence) -> bool:
