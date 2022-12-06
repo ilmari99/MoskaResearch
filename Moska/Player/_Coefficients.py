@@ -138,9 +138,9 @@ class HeuristicCoefficients(_Coefficients):
             for card in cards:
                 if card != Card(-1,"X"):
                     cards_not_in_deck.append(card)
-        self.player.plog.info(f"Cards NOT in deck: {cards_not_in_deck}")
+        self.player.plog.debug(f"Cards NOT in deck: {len(cards_not_in_deck)}")
         cards_possibly_in_deck = set(game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
-        self.player.plog.info(f"Cards possibly in deck: {cards_possibly_in_deck}")
+        self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
         total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
         try:
             e_lifted = total_possible_falls / len(cards_possibly_in_deck)
