@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from Moska.Game import MoskaGame
+from Moska.Player.MoskaBot3 import MoskaBot3
 from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
@@ -43,10 +44,10 @@ def set_player_args(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any]
             pl.__setattr__(k,v)
     return
 
-def set_player_args_optimize_bot2(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any],coeffs = {}):
+def set_player_args_optimize_bot3(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any],coeffs = {}):
     for pl in players:
         for k,v in plkwargs.items():
-            if k == "coefficients" and not isinstance(pl,MoskaBot2):
+            if k == "coefficients" and not isinstance(pl,MoskaBot3):
                 continue
             if isinstance(v,Callable):
                 v = v(pl)
@@ -61,7 +62,7 @@ def start_moska_process(
                         ):
     moskaGame = MoskaGame()
     set_game_args(moskaGame,gamekwargs)
-    set_player_args_optimize_bot2(moskaGame.players,plkwargs)
+    set_player_args_optimize_bot3(moskaGame.players,plkwargs)
     #for pl in moskaGame.players:
     #    pl.log_file = add_before(".",pl.name + ".log","("+str(gameid)+")")
     return moskaGame.start()
@@ -95,10 +96,10 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1,coeff
     cpus = min(avail_cpus,n) if cpus==-1 else cpus
     chunksize = n//cpus if chunksize == -1 else chunksize
     game_kwargs = lambda p : {
-        "nplayers" : nplayers,
+        "players" : MoskaGame._get_random_players(nplayers,[MoskaBot2,MoskaBot3]),
     #    "log_file" : log_prefix + "(" +str(p)+ ")" + ".log",
         "log_level" : logging.DEBUG,
-        "timeout" : 0.9,
+        "timeout" : 2,
         "random_seed" : p,
     }
     player_kwargs = {
@@ -137,7 +138,7 @@ def play_games(n=1,nplayers=5,log_prefix="moskafile",cpus=-1, chunksize=-1,coeff
     rank_list.sort(key=lambda x : x[1])
     for pl,rank in rank_list:
         print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
-    return 100*(ranks["B2"]/len(results) - failed_games) if "B2" in ranks else 0
+    return 100*(ranks["B3"]/len(results) - failed_games) if "B3" in ranks else 0
 
 
 if __name__ == "__main__":
@@ -145,15 +146,7 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
-    #            "fall_card_already_played_value" : -0.1,
-    #        "fall_card_same_value_already_in_hand" : 0.1,
-    #        "fall_card_card_is_preventing_kopling" : -0.1,
-    #        "fall_card_deck_card_not_played_to_unique" : 0.2,
-    #        "fall_card_threshold_at_start" : 5,
-     #       "initial_play_quadratic_scaler" : 0.2,
     def to_minimize(params,**kwargs):
-        random.seed(42)
-        params = [p/100 for p in params]
         coeffs = {
             "fall_card_already_played_value" : params[0],
             "fall_card_same_value_already_in_hand" : params[1],
@@ -165,13 +158,14 @@ if __name__ == "__main__":
         print("coeffs",coeffs)
         print("params",params)
         print("kwargs",kwargs)
-        out = play_games(100,5,log_prefix="moskafile",cpus=15,chunksize=3,coeffs=coeffs)
+        out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
+        print(f"Result: {out}")
         print("")
         return out
-    #x0=[-0.1, 0.1, -0.1, 0.2, 5, 0.2]
-    #x0 = [100*p for p in x0]
-    #bounds = [(-50,0), (0,50), (-50,0), (5,80), (100,5000), (5,80)]
-    #minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
+    #x0=[-0.1723, 0.31, -0.30, 0.39, 34.2, 0.35]
+    #bounds = [(-1,0), (0,1), (-1,0), (0,1), (1,50), (0,1)]
+    #res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
+    #print(f"Minimization result: {res}")
     play_games(1000,nplayers=5,log_prefix="moskafile",cpus=16,chunksize=10)
     
     
