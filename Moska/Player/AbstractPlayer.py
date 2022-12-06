@@ -60,8 +60,7 @@ class AbstractPlayer(ABC):
         NOTE: This must be called AFTER starting the process in which this player is run in.
         Currently this is called in the `_start` method, which is called from Game when the game begins.
         """
-        
-        plog = logging.getLogger(self.name)
+        plog = logging.getLogger(self.name)    # TODO: This is why the logs might sometimes display multiple games in one file
         plog.setLevel(self.log_level)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
         formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
@@ -152,6 +151,7 @@ class AbstractPlayer(ABC):
         """
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
+        assert play_cards, f"INITIAL PLAY CAN NOT BE EMPTY"
         self.plog.info(f"Playing {play_cards} to {target.name}")
         #self._initialPlay(target,play_cards)
         return [target, play_cards]
@@ -266,7 +266,7 @@ class AbstractPlayer(ABC):
             # If the player is the target, they cant play these
             playable.remove("PlayToOther")
             playable.remove("InitialPlay")
-            # If the player can not end their turn, they cant end the turn, unless they are finished
+            # If the player can not end their turn, they cant end the turn, unless all other players are ready and there are cards played
             if not self._can_end_turn():
                 playable.remove("EndTurn")
             # If there are not values to play to self
@@ -278,10 +278,10 @@ class AbstractPlayer(ABC):
             # If there is no deck left, or there is already a kopled card on the table, or there are no cards to fall
             if any((c.kopled for c in self.moskaGame.cards_to_fall)) or len(self.moskaGame.deck) <= 0 or not self.moskaGame.cards_to_fall:
                 playable.remove("PlayFallFromDeck")
-            # If all players are ready and there are no other moves left
-            if self._must_end_turn():
+            # If all players are ready and there are no other moves left OR all other players are ready and there are played cards
+            if self._must_end_turn() or self._can_end_turn():
                 playable.remove("Skip")
-                assert len(playable) == 1, f"There should only be 'end turn' option left. Left options: {playable.keys()}"
+                #assert len(playable) == 1, f"There should only be 'end turn' option left. Left options: {playable}"
         else:
             # If the player is not the target player
             playable.remove("PlayFallFromDeck")
@@ -306,10 +306,10 @@ class AbstractPlayer(ABC):
         self._set_pid_name_logfile(self.moskaGame.players.index(self))
         if self.thread is None or not self.thread.is_alive():
             self._set_plogger()
-            self.thread = threading.Thread(target=self._continuous_play,name=self.name)
+            self.thread = threading.Thread(target=self._continuous_play,name=self.name,daemon=True)
             self.plog.info("Initialized thread")
             self.thread.start()
-            self.thread_id = self.thread.ident
+            self.thread_id = self.thread.native_id
         return self.thread_id
     
     def _continuous_play(self) -> None:
@@ -320,7 +320,7 @@ class AbstractPlayer(ABC):
                    "Triumph card" : self.moskaGame.triumph_card,
                    }
         self.plog.info(f"Table info: {tb_info}")
-        random.seed(self.moskaGame.random_seed)
+        #random.seed(self.moskaGame.random_seed)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame
