@@ -1,15 +1,18 @@
 import contextlib
 import os
+
+from .Player.MoskaBot3 import MoskaBot3
 from . import utils
 from .Player.MoskaBot0 import MoskaBot0
 from .Player.AbstractPlayer import AbstractPlayer
 from .Player.MoskaBot1 import MoskaBot1
 from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
-from typing import Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
 import threading
+import multiprocessing
 import logging
 import random
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip
@@ -49,6 +52,13 @@ class MoskaGame:
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
+        self.threads = {}
+        if self.players or self.nplayers > 0:
+            print("LEFTOVER PLAYERS FOUND!!!!!!!!!!!!!")
+        if self.card_monitor is not None:
+            print("LEFOVER card_monitor!!!!!!!!!!!!1")
+        if self.threads:
+            print("LEFTOVER THREAD!!!!!")
         self.log_level = log_level
         self.log_file = log_file if log_file else os.devnull
         self.random_seed = random_seed if random_seed else int(100000*random.random())
@@ -69,14 +79,24 @@ class MoskaGame:
         "Skip":Skip(self),
         }
         return
+
+
+    def __depr__getattribute____(self, __name: str) -> Any:
+        non_accessable_attributes = ["card_monitor", "deck", "turnCycle", "cards_to_fall", "fell_cards", "players"]
+        if __name in non_accessable_attributes and self.threads and threading.get_native_id() != self.lock_holder:
+            raise threading.ThreadError(f"Getting MoskaGame attribute with out lock!")
+        return object.__getattribute__(self,__name)
     
     def __setattr__(self, name, value):
+        if name != "lock_holder" and self.threads and threading.get_native_id() != self.lock_holder:
+            raise threading.ThreadError(f"Setting MoskaGame attribute with out lock!")
         super.__setattr__(self, name, value)
         if name == "players":
             self._set_players(value)
             self.glog.debug(f"Set players to: {value}")
         if name == "log_file" and value:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
+            self.name = value.split(".")[0]
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
         if name == "nplayers":
@@ -111,7 +131,7 @@ class MoskaGame:
         """
         players = []
         if not player_types:
-            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, RandomPlayer]
+            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, MoskaBot3, RandomPlayer]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
             player = player_types[rand_int]()
@@ -150,18 +170,18 @@ class MoskaGame:
             _type_: _description_
         """
         with self.main_lock as lock:
+            self.lock_holder = threading.get_native_id()
             og_state = len(self.cards_to_fall + self.fell_cards)
             # Here we tell the player that they have the key
-            self.lock_holder = threading.get_ident()
             yield lock
-            
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
                 try:
                     self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
                 except KeyError:
                     self.glog.warning("Couldn't find lock holder!")
-                    print(f"Game {self.log_file}, seed: {self.random_seed}: Couldn't find lock holder!")
+                    print(f"Game {self.log_file}, seed: {self.random_seed}: Couldn't find lock holder id {self.lock_holder}!")
+                    raise threading.ThreadError(f"Possibly incorrect results, due to an unidentified thread.")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
@@ -169,7 +189,7 @@ class MoskaGame:
     def _make_move(self,move,args) -> Tuple[bool,str]:
         """ This is called from a AbstractPlayer -instance
         """
-        if self.lock_holder != threading.get_ident():
+        if self.lock_holder != threading.get_native_id():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
         if move not in self.turns.keys():
             raise NameError(f"Attempted to make move '{move}' which is not recognized as a move in Turns.py")
@@ -178,7 +198,7 @@ class MoskaGame:
         try:
             move_call(*args)  # Calls a class from Turns, which raises AssertionError if the move is not playable
         except AssertionError as ae:
-            self.glog.warning(f"{self.threads[threading.get_ident()].name}:{ae}")
+            self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{ae}")
             return False, str(ae)
         self.card_monitor.update_from_move(move,args)
         return True, ""
@@ -208,15 +228,18 @@ class MoskaGame:
     
     def _join_threads(self) -> None:
         """ Join all threads. """
+        out = True
         for pl in self.players:
-            pl.thread.join(self.timeout)
-            if pl.thread.is_alive():
+            pl.thread.join(self.timeout,)
+            if out and pl.thread.is_alive():
                 self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
                 pl.plog.error(f"Thread timedout!")
                 print(f"Game with log {self.log_file} failed.", flush=True)
-                return False
-        self.glog.debug("All threads finished")
-        return True
+                out = False
+                return
+                #raise multiprocessing.ProcessError(f"Game with log {self.log_file} failed.")
+        self.glog.debug("Threads finished")
+        return out
     
     
     def get_initiating_player(self) -> AbstractPlayer:
