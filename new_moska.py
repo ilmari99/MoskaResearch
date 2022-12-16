@@ -55,14 +55,12 @@ def set_player_args_optimize_bot3(players : Iterable[AbstractPlayer], plkwargs :
             pl.__setattr__(k,v)
     return
 
-
-
-
 def args_to_game(
     game_kwargs : Callable,
     players : List[Tuple[AbstractPlayer,Callable]],
     gameid : int,
-    shuffle : False
+    shuffle : False,
+    disable_logging : bool = False,
                         ):
     """Start a moska game with callable game arguments and players with callable arguments
 
@@ -77,6 +75,9 @@ def args_to_game(
     """
     game_args = game_kwargs(gameid)
     players = [pl(**args(gameid)) for pl, args in players]
+    if disable_logging:
+        set_player_args(players,{"log_file" : None})
+        game_args["log_file"] = None
     if not players:
         assert "nplayers" in game_args or "players" in game_args
     else:
@@ -84,8 +85,6 @@ def args_to_game(
     if shuffle and "players" in game_args:
         random.shuffle(game_args["players"])
     return game_args
-    game = MoskaGame(**game_args)
-    return game
     
 def play_as_human():
     players = [
@@ -111,7 +110,8 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                n : int = 1,
                cpus :int = -1,
                chunksize : int = -1,
-               shuffle_player_order = True
+               shuffle_player_order = True,
+               disable_logging = False,
                ):
     """ Simulate moska games with specified players. Return loss percent of each player.
     The players are specified by a list of tuples, with AbstractPlayer subclass and argument pairs.
@@ -166,7 +166,6 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
         print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
     return 100*(ranks["B3"]/len(results) - failed_games) if "B3" in ranks else 0
 
-
 if __name__ == "__main__":
     n = 5
     if not os.path.isdir("Logs"):
@@ -204,7 +203,7 @@ if __name__ == "__main__":
         "log_level" : logging.DEBUG,
         "timeout" : 1,
     }
-    play_games(players, gamekwargs, n=10, cpus=16, chunksize=10)
+    play_games(players, gamekwargs, n=100, cpus=16, chunksize=10,disable_logging=True)
     
     
     
