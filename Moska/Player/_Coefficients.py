@@ -52,76 +52,81 @@ class HeuristicCoefficients(_Coefficients):
          'initial_play_quadratic_scaler': 0.61
          }
          #"""
-        """
-        self.method_values = {
-            "fall_card_already_played_value" : -0.13,
-            "fall_card_same_value_already_in_hand" : 0.13,
-            "fall_card_card_is_preventing_kopling" : -0.08,
-            "fall_card_deck_card_not_played_to_unique" : 0.23,
-            "fall_card_threshold_at_start" : 5.5,
-            "initial_play_quadratic_scaler" : 0.18,
-            
-        }
-        #"""
         for met, val in method_values.items():
             self.method_values[met] = val
         return
     
+    def _adjust_for_missing_cards(self, cards: List[Card], most_falls,lifted = 0) -> float:
+        """ Adjust score for missing cards (each card missing from hand is as valuable as the most falling card)
+        """
+        missing_from_hand = 6 - len(cards) - lifted
+        return max(most_falls * missing_from_hand,0)
+        
+    def _lift_n_from_deck(self, cards : List[Card]) -> float:
+        """ Return how many cards must be lifted from the deck, given current hand"""
+        missing = 6 - len(cards)
+        liftn = 0
+        if missing > 0 and len(self.player.moskaGame.deck) > 0:
+            liftn = min(missing, len(self.player.moskaGame.deck))
+        return liftn
     
+    def _e_score_from_lifted(self, e_lifted : float, n : int) -> float:
+        """ Return the total excpected score of lifted cards """
+        return e_lifted * n
     
+    def _calculate_score(self, cards_after_play : List[Card], lifted_from_deck : int, most_falls : int, e_lifted : float) -> float:
+        """ Evaluate the hand after playing, or the excpected value of the hand"""
+        sc = sum((c.score for c in cards_after_play)) + self._adjust_for_missing_cards(cards_after_play,most_falls,lifted=lifted_from_deck) + self._e_score_from_lifted(e_lifted, lifted_from_deck)
+        try:
+            sc = sc / (len(cards_after_play) + lifted_from_deck)
+        except ZeroDivisionError as zde:
+            sc = float("inf")
+        return sc
     
-    def choose_move_score(self,move : str) -> float:
+    def choose_move_scores(self,moves : List[str]) -> float:
+        """ Evaluate the expected score after playing a move.
+        This calls the corresponding method from the player, to see which cards the player is going to play"""
+        
         e_lifted = self.expected_value_from_lift()
         most_falls = max((len(falls) for card, falls in self.player.moskaGame.card_monitor.cards_fall_dict.items()))
         self.player.plog.info(f"Expected score from deck: {e_lifted}")
         self.player.plog.info(f"Most falling card: {most_falls}")
-        
-        def adjust_for_missing_cards(cards: List[Card],lifted = 0) -> float:
-            """ Adjust score for missing cards (each card missing from hand is as valuable is the most falling card"""
-            missing_from_hand = 6 - len(cards) - lifted
-            return max(most_falls * missing_from_hand,0)
-        
-        def lift_n_from_deck(cards : List[Card]) -> float:
-            """ Return how many cards must be lifted from the deck"""
-            missing = 6 - len(cards)
-            liftn = 0
-            if missing > 0 and len(self.player.moskaGame.deck) > 0:
-                liftn = min(missing, len(self.player.moskaGame.deck))
-            return liftn
-        
-        def e_score_from_lifted(n : int):
-            return e_lifted * n
-        
-        def calculate_score(cards_after_play, lifted_from_deck):
-            sc = sum((c.score for c in cards_after_play)) + adjust_for_missing_cards(cards_after_play,lifted=lifted_from_deck) + e_score_from_lifted(lifted_from_deck)
-            try:
-                sc = sc / (len(cards_after_play) + lifted_from_deck)
-            except ZeroDivisionError as zde:
-                sc = float("inf")
-            return sc
-        
-        cards_after_play = self.player.hand.cards
-        liftn = 0
-        
-        if move == "Skip":
-            # The score of hand stays the same
+        move_scores = {}
+        for move in moves:
             cards_after_play = self.player.hand.cards
-        
-        elif move == "EndTurn":
-            # The cards returned by player.end_turn() are lifted, and if necessary, filled from deck
-            cards_after_play = self.player.hand.cards + self.player.end_turn()
-            liftn = lift_n_from_deck(cards_after_play)
-        
-        elif move == "PlayToOther":
-            played_cards = self.player.play_to_target()
-            after_play = list(set(self.player.hand.cards).difference(played_cards))
-            liftn = lift_n_from_deck(after_play)
+            liftn = 0
             
-        else:
-            liftn = lift_n_from_deck(cards_after_play)
+            # In this if- structure, we define 'cards_after_play' and 'liftn'
             
-        score = calculate_score(cards_after_play, liftn)
-        return score
+            if move == "Skip":
+                # The score of hand stays the same
+                cards_after_play = self.player.hand.cards
+            
+            elif move == "EndTurn":
+                # The cards returned by player.end_turn() are lifted, and if necessary, filled from deck
+                cards_after_play = self.player.hand.cards + self.player.end_turn()
+                liftn = self._lift_n_from_deck(cards_after_play)
+            
+            elif move == "PlayToOther":
+                played_cards = self.player.play_to_target()
+                cards_after_play = list(set(self.player.hand.cards).difference(played_cards))
+                liftn = self._lift_n_from_deck(cards_after_play)
+                
+            elif move == "PlayFallFromHand":
+                # TODO: Bad
+                played_cards = list(self.player.play_fall_card_from_hand().keys())
+                cards_after_play = list(set(self.player.hand.cards).difference(played_cards))
+                liftn = self._lift_n_from_deck(cards_after_play)
+            elif move == "PlayToSelf":
+                played_cards = self.player.play_to_self()
+                cards_after_play = list(set(self.player.hand.cards).difference(played_cards))
+                liftn = self._lift_n_from_deck(cards_after_play)
+            else:
+                liftn = self._lift_n_from_deck(cards_after_play)
+                
+            score = self._calculate_score(cards_after_play, liftn,most_falls,e_lifted)
+            move_scores[move] = score
+        return move_scores
 
     def expected_value_from_lift(self):
         """ Calculate the expected score of a card that is lifted from the deck.
