@@ -76,8 +76,8 @@ def args_to_game(
     game_args = game_kwargs(gameid)
     players = [pl(**args(gameid)) for pl, args in players]
     if disable_logging:
-        set_player_args(players,{"log_file" : None})
-        game_args["log_file"] = None
+        set_player_args(players,{"log_file" : os.devnull})
+        game_args["log_file"] = os.devnull
     if not players:
         assert "nplayers" in game_args or "players" in game_args
     else:
@@ -133,7 +133,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     # Select the chunksize, so that it is close to 'chunksize * cpus = ngames'
     chunksize = n//cpus if chunksize == -1 else chunksize
     
-    arg_gen = (args_to_game(game_kwargs,players,i,shuffle_player_order) for i in range(n))
+    arg_gen = (args_to_game(game_kwargs,players,i,shuffle_player_order,disable_logging=disable_logging) for i in range(n))
     results = []
     print(f"Starting a pool with {cpus} processes and {chunksize} chunksize...")
     with multiprocessing.Pool(cpus) as pool:
@@ -164,7 +164,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     rank_list.sort(key=lambda x : x[1])
     for pl,rank in rank_list:
         print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
-    return 100*(ranks["B3"]/len(results) - failed_games) if "B3" in ranks else 0
+    return 100*(ranks["Bot3"]/(len(results) - failed_games)) if "Bot3" in ranks else 0
 
 if __name__ == "__main__":
     n = 5
@@ -184,7 +184,19 @@ if __name__ == "__main__":
         print("coeffs",coeffs)
         print("params",params)
         print("kwargs",kwargs)
-        out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
+        players = [
+            (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":f"Game-{x}-Bot3-1.log","log_level" : logging.INFO,"coefficients" : coeffs}),
+            (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":f"Game-{x}-Bot3-2.log","log_level" : logging.INFO, "coefficients" : coeffs}),
+            (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.INFO}),
+            (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO})
+               ]
+        gamekwargs = lambda x : {
+            "log_file" : f"Game-{x}.log",
+            "log_level" : logging.INFO,
+            "timeout" : 1,
+        }
+        #out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
+        out = play_games(players, gamekwargs, n=1600, cpus=16, chunksize=10,disable_logging=False)
         print(f"Result: {out}")
         print("")
         return out
@@ -192,18 +204,25 @@ if __name__ == "__main__":
     #bounds = [(-1,0), (0,1), (-1,0), (0,1), (1,50), (0,1)]
     #res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
     #print(f"Minimization result: {res}")
+    #exit()
     players = [
         (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":f"Game-{x}-Bot3-1.log","log_level" : logging.DEBUG}),
         (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":f"Game-{x}-Bot3-2.log","log_level" : logging.DEBUG}),
-        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.DEBUG}),
-        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.DEBUG})
+        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.INFO}),
+        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO})
                ]
+    #players = [
+    #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
+    #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":None}),
+    #    (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":None}),
+    #    (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":None})
+    #           ]
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.DEBUG,
         "timeout" : 1,
     }
-    play_games(players, gamekwargs, n=100, cpus=16, chunksize=10,disable_logging=True)
+    play_games(players, gamekwargs, n=10, cpus=-1, chunksize=-1,disable_logging=False)
     
     
     
