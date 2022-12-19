@@ -1,6 +1,7 @@
 from collections import deque
 import itertools as it
 import random
+import time
 from typing import Iterable
 from . import utils
 
@@ -117,4 +118,10 @@ class StandardDeck:
             card (Card): Card to insert to the bottom
         """
         self.cards.append(card)
-        
+
+
+if __name__ == "__main__":
+    start = time.time()
+    for i in range(1000):
+        deck = StandardDeck(shuffle=False)
+    print("Time to init 1000 decks: ",time.time()-start)
