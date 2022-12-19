@@ -8,6 +8,7 @@ from .Player.AbstractPlayer import AbstractPlayer
 from .Player.MoskaBot1 import MoskaBot1
 from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
+from .GameState import GameState
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
@@ -315,10 +316,15 @@ class MoskaGame:
         self.glog.info(f"Started moska game with players {[pl.name for pl in self.players]}")
         success = self._join_threads()
         if not success:
-            return None
+            return None, None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
+        state_results = []
+        for pl in self.players:
+            for state in pl.state_vectors:
+                state.append(0 if (pl.rank is None or pl.rank == len(self.players)) else 1)
+                state_results.append(state)
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
-        return ranks
+        return ranks, state_results
