@@ -41,6 +41,7 @@ class AbstractPlayer(ABC):
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
+        self.state_vectors = []
         self.moskaGame = moskaGame
         self.log_level = log_level
         self.name = name
@@ -244,6 +245,10 @@ class AbstractPlayer(ABC):
         extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
         args = [self] + extra_args
         success, msg  = self.moskaGame._make_move(move,args)
+        if success and move != "Skip":
+            state = GameState.from_game(self.moskaGame)
+            vec = state.as_vector()
+            self.state_vectors.append(vec)
         return success, msg
     
     def _playable_moves(self) -> List[str]:
@@ -345,9 +350,6 @@ class AbstractPlayer(ABC):
                     self._set_rank()
                     break
                 self.plog.debug(f"{msgd}")
-                state = GameState.from_game(self.moskaGame)
-                vec = state.as_vector()
-                self.state_vectors.append(vec)
                 try:
                     # Try to play moves, as long as a valid move is played.
                     success, msg = self._play_move()    # Return (True, "") if a valid move, else (False, <error>)
