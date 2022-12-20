@@ -24,12 +24,12 @@ class MoskaBot3(AbstractPlayer):
         self.scoring = _ScoreCards(self,default_method = "counter")
         if not coefficients:
             coefficients = {
-            'fall_card_already_played_value': -0.1723, 
-            'fall_card_same_value_already_in_hand': 0.31, 
-            'fall_card_card_is_preventing_kopling': -0.30, 
-            'fall_card_deck_card_not_played_to_unique': 0.39, 
-            'fall_card_threshold_at_start': 34.2, 
-            'initial_play_quadratic_scaler': 0.35
+            'fall_card_already_played_value': 0.025, 
+            'fall_card_same_value_already_in_hand': -0.0095, 
+            'fall_card_card_is_preventing_kopling': 0.0068, 
+            'fall_card_deck_card_not_played_to_unique': 0.0036, 
+            'fall_card_threshold_at_start': 0.73, 
+            'initial_play_quadratic_scaler': 0.0065
             }
         self.coeffs = HeuristicCoefficients(self,method_values=coefficients)
     
@@ -63,7 +63,7 @@ class MoskaBot3(AbstractPlayer):
         #if len(playable) > 1 and "EndTurn" in playable:
         #    playable.pop(playable.index("EndTurn"))
         self.plog.info(f"Want and can plays: {playable}")
-        scores = {p:self.coeffs.choose_move_score(p) for p in playable}
+        scores = self.coeffs.choose_move_scores(playable)
         self.plog.info(f"Scores: {scores}")
         best_play = max(scores.items(),key = lambda x : x[1])
         best_plays = [(pl,score) for pl,score in scores.items() if score == best_play[1]]
