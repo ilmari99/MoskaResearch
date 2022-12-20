@@ -2,6 +2,8 @@ from __future__ import annotations
 import os
 import random
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
+
+from Moska.GameState import GameState
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -31,6 +33,7 @@ class AbstractPlayer(ABC):
     log_file : str = ""
     thread_id : int = None
     moves : Dict[str,Callable] = {}
+    state_vectors = []
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  name : str = "", 
@@ -342,6 +345,9 @@ class AbstractPlayer(ABC):
                     self._set_rank()
                     break
                 self.plog.debug(f"{msgd}")
+                state = GameState.from_game(self.moskaGame)
+                vec = state.as_vector()
+                self.state_vectors.append(vec)
                 try:
                     # Try to play moves, as long as a valid move is played.
                     success, msg = self._play_move()    # Return (True, "") if a valid move, else (False, <error>)

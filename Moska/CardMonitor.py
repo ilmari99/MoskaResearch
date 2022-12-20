@@ -68,15 +68,19 @@ class CardMonitor:
             self.update_known(player.name,played,add=False)
         elif moveid == "PlayFallFromHand":
             played = list(args[-1].keys())
+            fell = list(args[-1].values())
             self.update_known(player.name,played,add=False)
+            self.remove_from_game(played + fell)
         # After updating known cards, check if the player lifted unknown cards from deck
         self.update_unknown(player.name)
         # No updates to hand when playing from deck or skipping
         return
     
     def remove_from_game(self,cards : List[Card]) -> None:
-        """ Called from Turns.EndTurn.clear_table with moskaGame.fell_cards IF all cards were not lifted
-
+        """ Remove cards from the card monitor. Both as keys and values in the cards_fall_dict.
+        This is called at the end of a turn, and when cards are fallen from hand.
+        
+        Called from Turns.EndTurn.clear_table with moskaGame.fell_cards IF all cards were not lifted
         Args:
             cards (List[Card]): _description_
         """
