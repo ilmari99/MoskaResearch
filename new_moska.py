@@ -153,13 +153,6 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                 state_data += states
             #print(res)
             results.append(res)
-    with open("vectors.out","w") as f:
-        #for s in state_data:
-        #    if s[-1] == 0:
-        #        print("0 found")
-        data = str(state_data).replace("], [","\n")
-        data = data.strip("[]")
-        f.write(data)
     print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
     ranks = {}
@@ -181,6 +174,8 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
+    if not os.path.isdir("Vectors"):
+        os.mkdir("Vectors")
     
     def to_minimize(params,**kwargs):
         coeffs = {
@@ -232,7 +227,7 @@ if __name__ == "__main__":
         "log_level" : logging.DEBUG,
         "timeout" : 1,
     }
-    play_games(players, gamekwargs, n=1000, cpus=-1, chunksize=-1,disable_logging=False)
+    play_games(players, gamekwargs, n=1000, cpus=8, chunksize=32,disable_logging=False)
     
     
     
