@@ -182,7 +182,7 @@ class MoskaGame:
                 except KeyError:
                     self.glog.warning("Couldn't find lock holder!")
                     print(f"Game {self.log_file}, seed: {self.random_seed}: Couldn't find lock holder id {self.lock_holder}!")
-                    raise threading.ThreadError(f"Possibly incorrect results, due to an unidentified thread.")
+                    #raise threading.ThreadError(f"Possibly incorrect results, due to an unidentified thread.")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
@@ -321,9 +321,22 @@ class MoskaGame:
         ranks = [(p.name, p.rank) for p in self.players]
         state_results = []
         for pl in self.players:
+            pl_lost = 0 if pl.rank == len(self.players) else 1
             for state in pl.state_vectors:
-                state.append(0 if (pl.rank is None or pl.rank == len(self.players)) else 1)
+                state.append(pl_lost)
                 state_results.append(state)
+
+        def get_file_name():
+            fname = "data_"+str(random.randint(0,10000000000000))+".out"
+            if os.path.exists(fname):
+                return get_file_name()
+            return fname
+        print(f"Writing {len(state_results)} vectors to file.")
+        with open("Vectors/"+get_file_name(),"w") as f:
+            data = str(state_results).replace("], [","\n")
+            #data = data.strip("[]")
+            f.write(data)
+        
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
