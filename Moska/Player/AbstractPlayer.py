@@ -331,8 +331,10 @@ class AbstractPlayer(ABC):
         #random.seed(self.moskaGame.random_seed)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
-            # Acquire the lock for moskaGame
+            # Acquire the lock for moskaGame, returns true if the lock was acquired, and False if there was a problem
             with self.moskaGame.get_lock(self) as ml:
+                if not ml:
+                    continue
                 msgd = {
                     "target" : self.moskaGame.get_target_player().name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,
