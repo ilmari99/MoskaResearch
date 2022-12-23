@@ -227,7 +227,7 @@ if __name__ == "__main__":
         "log_level" : logging.DEBUG,
         "timeout" : 1,
     }
-    play_games(players, gamekwargs, n=1000, cpus=8, chunksize=32,disable_logging=False)
+    play_games(players, gamekwargs, n=1400, cpus=14, chunksize=50,disable_logging=False)
     
     
     
