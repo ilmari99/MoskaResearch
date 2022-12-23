@@ -68,9 +68,10 @@ class CardMonitor:
             self.update_known(player.name,played,add=False)
         elif moveid == "PlayFallFromHand":
             played = list(args[-1].keys())
-            fell = list(args[-1].values())
+            #fell = list(args[-1].values())
             self.update_known(player.name,played,add=False)
-            self.remove_from_game(played + fell)
+            # No need to remove from game, as the cards might be lifted
+            #self.remove_from_game(played + fell)
         # After updating known cards, check if the player lifted unknown cards from deck
         self.update_unknown(player.name)
         # No updates to hand when playing from deck or skipping
