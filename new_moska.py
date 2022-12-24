@@ -140,14 +140,17 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
         print("Games running...")
         gen = pool.imap_unordered(run_game,arg_gen,chunksize = chunksize)
         failed_games = 0
+        state_data = []
         while gen:
             try:
-                res = next(gen)
+                res,states = next(gen)
             except StopIteration as si:
                 break
             if res is None:
                 failed_games += 1
                 res = None
+            if states is not None:
+                state_data += states
             #print(res)
             results.append(res)
     print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
@@ -171,6 +174,8 @@ if __name__ == "__main__":
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
+    if not os.path.isdir("Vectors"):
+        os.mkdir("Vectors")
     
     def to_minimize(params,**kwargs):
         coeffs = {
@@ -196,12 +201,12 @@ if __name__ == "__main__":
             "timeout" : 1,
         }
         #out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
-        out = play_games(players, gamekwargs, n=1600, cpus=16, chunksize=10,disable_logging=False)
+        out = play_games(players, gamekwargs, n=3200, cpus=16, chunksize=20,disable_logging=False)
         print(f"Result: {out}")
         print("")
         return out
-    #x0=[-0.1723, 0.31, -0.30, 0.39, 34.2, 0.35]
-    #bounds = [(-1,0), (0,1), (-1,0), (0,1), (1,50), (0,1)]
+    #x0=[-0.76918911, 0.67376208, -0.61803399, 0.85455507, 33.55246691, 0.61818669]
+    #bounds = [(-5,0), (0,5), (-5,0), (0,5), (1,50), (0,5)]
     #res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
     #print(f"Minimization result: {res}")
     #exit()
@@ -222,7 +227,7 @@ if __name__ == "__main__":
         "log_level" : logging.DEBUG,
         "timeout" : 1,
     }
-    play_games(players, gamekwargs, n=10, cpus=-1, chunksize=-1,disable_logging=False)
+    play_games(players, gamekwargs, n=1400, cpus=14, chunksize=50,disable_logging=False)
     
     
     

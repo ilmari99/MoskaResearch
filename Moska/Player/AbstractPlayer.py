@@ -2,6 +2,8 @@ from __future__ import annotations
 import os
 import random
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
+
+from Moska.GameState import GameState
 from ..Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game import MoskaGame
@@ -31,6 +33,7 @@ class AbstractPlayer(ABC):
     log_file : str = ""
     thread_id : int = None
     moves : Dict[str,Callable] = {}
+    state_vectors = []
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  name : str = "", 
@@ -38,6 +41,7 @@ class AbstractPlayer(ABC):
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
+        self.state_vectors = []
         self.moskaGame = moskaGame
         self.log_level = log_level
         self.name = name
@@ -241,6 +245,10 @@ class AbstractPlayer(ABC):
         extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
         args = [self] + extra_args
         success, msg  = self.moskaGame._make_move(move,args)
+        if success and move != "Skip":
+            state = GameState.from_game(self.moskaGame)
+            vec = state.as_vector()
+            self.state_vectors.append(vec)
         return success, msg
     
     def _playable_moves(self) -> List[str]:
@@ -323,8 +331,10 @@ class AbstractPlayer(ABC):
         #random.seed(self.moskaGame.random_seed)
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
-            # Acquire the lock for moskaGame
+            # Acquire the lock for moskaGame, returns true if the lock was acquired, and False if there was a problem
             with self.moskaGame.get_lock(self) as ml:
+                if not ml:
+                    continue
                 msgd = {
                     "target" : self.moskaGame.get_target_player().name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,

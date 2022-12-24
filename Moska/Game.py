@@ -8,6 +8,7 @@ from .Player.AbstractPlayer import AbstractPlayer
 from .Player.MoskaBot1 import MoskaBot1
 from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
+from .GameState import GameState
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
@@ -38,6 +39,7 @@ class MoskaGame:
     random_seed = None
     nplayers : int = 0
     card_monitor : CardMonitor = None
+    EXIT_FLAG = False
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[AbstractPlayer] = [],
@@ -65,6 +67,7 @@ class MoskaGame:
         self.deck = deck if deck else StandardDeck(seed = self.random_seed)
         self.players = players if players else self._get_random_players(nplayers)
         self.timeout = timeout
+        self.EXIT_FLAG = False
         self.card_monitor = CardMonitor(self)
         self._set_turns()
     
@@ -81,7 +84,7 @@ class MoskaGame:
         return
 
 
-    def __depr__getattribute____(self, __name: str) -> Any:
+    def __getattribute____(self, __name: str) -> Any:
         non_accessable_attributes = ["card_monitor", "deck", "turnCycle", "cards_to_fall", "fell_cards", "players"]
         if __name in non_accessable_attributes and self.threads and threading.get_native_id() != self.lock_holder:
             raise threading.ThreadError(f"Getting MoskaGame attribute with out lock!")
@@ -172,16 +175,20 @@ class MoskaGame:
         with self.main_lock as lock:
             self.lock_holder = threading.get_native_id()
             og_state = len(self.cards_to_fall + self.fell_cards)
+            if self.lock_holder not in self.threads:
+                self.lock_holder = None
+                print(f"Game {self.log_file}: Couldn't find lock holder id {self.lock_holder}!")
+                yield False
+                return
+            if self.EXIT_FLAG:
+                self.lock_holder = None
+                yield False
+                return
             # Here we tell the player that they have the key
-            yield lock
+            yield True
             state = len(self.cards_to_fall + self.fell_cards)
             if og_state != state:
-                try:
-                    self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
-                except KeyError:
-                    self.glog.warning("Couldn't find lock holder!")
-                    print(f"Game {self.log_file}, seed: {self.random_seed}: Couldn't find lock holder id {self.lock_holder}!")
-                    raise threading.ThreadError(f"Possibly incorrect results, due to an unidentified thread.")
+                self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
             self.lock_holder = None
         return
@@ -217,6 +224,8 @@ class MoskaGame:
         """ Starts all player threads. """
         self.cards_to_fall.clear()
         self.fell_cards.clear()
+        # Add self to allowed threads
+        self.threads[threading.get_native_id()] = self
         with self.get_lock() as ml:
             for pl in self.players:
                 tid = pl._start()
@@ -228,18 +237,18 @@ class MoskaGame:
     
     def _join_threads(self) -> None:
         """ Join all threads. """
-        out = True
         for pl in self.players:
             pl.thread.join(self.timeout,)
-            if out and pl.thread.is_alive():
-                self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
-                pl.plog.error(f"Thread timedout!")
-                print(f"Game with log {self.log_file} failed.", flush=True)
-                out = False
-                return
+            if pl.thread.is_alive():
+                with self.get_lock() as ml:
+                    self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
+                    pl.plog.error(f"Thread timedout!")
+                    print(f"Game with log {self.log_file} failed.")
+                    self.EXIT_FLAG = True
+                    return False
                 #raise multiprocessing.ProcessError(f"Game with log {self.log_file} failed.")
         self.glog.debug("Threads finished")
-        return out
+        return True
     
     
     def get_initiating_player(self) -> AbstractPlayer:
@@ -315,10 +324,31 @@ class MoskaGame:
         self.glog.info(f"Started moska game with players {[pl.name for pl in self.players]}")
         success = self._join_threads()
         if not success:
-            return None
+            return None, None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
+        state_results = []
+        for pl in self.players:
+            pl_lost = 0 if pl.rank == len(self.players) else 1
+            for state in pl.state_vectors:
+                state.append(pl_lost)
+                state_results.append(state)
+
+        def get_file_name():
+            fname = "data_"+str(random.randint(0,10000000000000))+".out"
+            if os.path.exists(fname):
+                return get_file_name()
+            return fname
+        print(f"Writing {len(state_results)} vectors to file.")
+        with open("Vectors/"+get_file_name(),"w") as f:
+            data = str(state_results).replace("], [","\n")
+            data = data.strip("[]")
+            f.write(data)
+        
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
-        return ranks
+        for pl in self.players:
+            del pl
+        del self.card_monitor, self.turnCycle, self.deck, self.players
+        return ranks, state_results
