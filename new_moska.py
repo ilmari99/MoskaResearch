@@ -8,6 +8,8 @@ from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from Moska.Player.MoskaBot2 import MoskaBot2
+from Moska.Player.MoskaBot0 import MoskaBot0
+from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.utils import add_before
 import random
@@ -214,8 +216,17 @@ if __name__ == "__main__":
         (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":f"Game-{x}-Bot3-1.log","log_level" : logging.DEBUG}),
         (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":f"Game-{x}-Bot3-2.log","log_level" : logging.DEBUG}),
         (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.INFO}),
-        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO})
+        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO}),
                ]
+    players = [
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-1-","log_file":f"Game-{x}-R-1.log","log_level" : logging.INFO}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-2-","log_file":f"Game-{x}-R-2.log","log_level" : logging.INFO}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-R-3.log","log_level" : logging.INFO}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-¤-4.log","log_level" : logging.INFO}),
+    ]
+    player_set = [
+
+    ]
     #players = [
     #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
     #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":None}),
@@ -224,13 +235,14 @@ if __name__ == "__main__":
     #           ]
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
-        "log_level" : logging.DEBUG,
-        "timeout" : 1,
+        "log_level" : logging.INFO,
+        "timeout" : 2,
     }
-    play_games(players, gamekwargs, n=1400, cpus=14, chunksize=50,disable_logging=False)
-    
-    
-    
+    for i in range(30):
+        pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
+        players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.sample(pl_types,4) ]
+        print(players)
+        play_games(players, gamekwargs, n=600, cpus=30, chunksize=10,disable_logging=False)
     
     #play_as_human()
     
