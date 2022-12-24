@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import sys
 from sklearn.model_selection import train_test_split, cross_val_score
 
 model = tf.keras.models.Sequential([
@@ -60,13 +61,15 @@ def read_dataset(path):
     X = arr[:,:-1]
     return X,y
 
-# X,y = read_x_and_y("combined.csv")
-data = pd.read_csv("combined.csv")
-X = data.iloc[:,:-1]
-y = data.iloc[:,-1]
+if __name__ == "__main__":
+    path = sys.argv[1]
+    # X,y = read_x_and_y("combined.csv")
+    data = pd.read_csv(path)
+    X = data.iloc[:,:-1]
+    y = data.iloc[:,-1]
 
-# y = 1 if not loss, 0 if loss
-x_train, x_test, y_train, y_test = train_test_split(X, y, random_state=42,train_size=0.8)
+    # y = 1 if not loss, 0 if loss
+    x_train, x_test, y_train, y_test = train_test_split(X, y, random_state=42,train_size=0.8)
 
-model.fit(x_train,y_train, epochs=5,batch_size=128, validation_data=(x_test,y_test))
-#cross_val_score(model, x_train, y_train, cv=5)
+    model.fit(x_train,y_train, epochs=5,batch_size=128, validation_data=(x_test,y_test))
+    #cross_val_score(model, x_train, y_train, cv=5)
