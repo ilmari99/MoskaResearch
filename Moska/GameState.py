@@ -5,12 +5,12 @@ if TYPE_CHECKING:
     from Moska.Game import MoskaGame
     from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Deck import StandardDeck
-REFERENCE_DECK = list(StandardDeck(shuffle = False).cards)
+REFERENCE_DECK = tuple(StandardDeck(shuffle = False).cards)
 
 
 class GameState:
     """ A class representing a state of a MoskaGame, from the perspective of a player. Contains information about the state of the game, and methods to handle the information. """
-    def __init__(self, deck_left : int, player_cards : List[List[Card]], cards_fall : Dict[Card,List[Card]], cards_on_table : List[Card], player_status : List[int]):
+    def __init__(self, deck_left : int, player_cards : List[List[Card]], cards_fall : Dict[Card,List[Card]], cards_on_table : List[Card], fell_cards : List[Card], player_status : List[int]):
         """Initializes a GameState object. The object contains information about the state of the game, and methods to handle the information.
 
         Args:
@@ -27,6 +27,7 @@ class GameState:
         self.player_cards = tuple((tuple(cards) for cards in player_cards))
         self.cards_fall = {card : len(cards) for card,cards in cards_fall.items()}
         self.cards_on_table = tuple(cards_on_table)
+        self.fell_cards = tuple(fell_cards)
         self.player_status = tuple(player_status)
     
     @classmethod
@@ -38,7 +39,7 @@ class GameState:
         # Loop through the list by pid, and add the player's hand to the list.
         for pl in player_names:
             player_hands.append(player_hands_dict[pl])
-        return cls(len(game.deck), player_hands, game.card_monitor.cards_fall_dict.copy(), game.cards_to_fall.copy(), cls._get_player_status(cls,game))
+        return cls(len(game.deck), player_hands, game.card_monitor.cards_fall_dict.copy(), game.cards_to_fall.copy(), game.fell_cards.copy(), cls._get_player_status(cls,game))
     
     def encode_cards(self, cards : List[Card]) -> List[int]:
         """Encodes a list of cards into a list of integers.
@@ -59,11 +60,21 @@ class GameState:
         return out
     
     def as_vector(self):
-        """Returns a numeric vector representation of the state."""
+        """Returns a numeric vector representation of the state.
+        The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
+        The vector is ordered as follows:
+        - The number of cards left in the deck.
+        - The cards in each player's hand, that are known by everyone, ordered by pid.
+        - All cards, and how many cards they can fall, or -1 if the card is not in the game.
+        - The cards on the table, waiting to be fell
+        - The cards that have fallen during this turn
+        - The status of each player, ordered by pid.
+        """
         player_hands = []
         for cards in self.player_cards:
             player_hands += self.encode_cards(cards)
-        out = [self.deck_left] + player_hands + self.encode_cards(list(self.cards_fall.keys())) + self.encode_cards(self.cards_on_table) + list(self.player_status)
+        out = [self.deck_left] + player_hands + self.encode_cards(REFERENCE_DECK) + self.encode_cards(self.cards_on_table) + self.encode_cards(self.fell_cards) + list(self.player_status)
+        # len out should be 4x42 + 1 + 2 + 52 + 52 + 52 + 4 + 52 = 422
         return out
     
     def _get_player_status(cls, game : 'MoskaGame') -> List[int]:
