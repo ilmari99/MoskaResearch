@@ -1,75 +1,53 @@
+#!/usr/bin/env python3
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 import sys
 from sklearn.model_selection import train_test_split, cross_val_score
 
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(512, activation='relu'),
-    tf.keras.layers.Dense(256, activation='relu'),
-    #tf.keras.layers.Conv1D(256, 5, activation='relu'),
+
+def get_model():
+    model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(256, activation="elu"),
+    #tf.keras.layers.Dense(256, activation=None),
+    tf.keras.layers.Conv1D(64,kernel_size=3, activation='relu',data_format="channels_last"),
     #tf.keras.layers.MaxPooling1D(5),
-    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(64, activation="relu"),
     tf.keras.layers.Dense(1, activation='sigmoid'),
-])
+    ])
 
-model.compile(optimizer='adam',
-                loss='binary_crossentropy',
-                metrics=['accuracy'])
-
-def read_x_and_y(path):
-    X = []
-    y = []
-# Load data
-    counter = 0
-    with open(path, 'r') as data:
-        line_len = -1
-        line = data.readline()
-        while line:
-            counter += 1
-            line = line.strip()
-            values = line.split(', ')
-            if line_len == -1:
-                line_len = len(values)
-            #print(line)
-            elif len(values) != line_len:
-                print("Line length mismatch, Expected: " + str(line_len) + " Got: " + str(len(values)))
-                print(line)
-                exit()
-            if counter % 1000 == 0:
-                print(f"Line {counter} read")
-            values = [float(x) for x in values]
-            y_val = values.pop(-1)
-            X.append(values)
-            y.append(y_val)
-            line = data.readline()
-    return X,y
-
-def convert_line_to_list(line):
-    print(line)
-    line = line.strip()
-    values = line.split(', ')
-    values = [int(x) for x in values]
-    return values
-
-def read_dataset(path):
-    arr = np.fromfile(path,int,sep=", ")
-    print(arr)
-    arr = arr.reshape((-1,422))
-    print(arr)
-    y = arr[:,-1]
-    X = arr[:,:-1]
-    return X,y
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+        metrics=['accuracy']
+        )
+    
+    return model
 
 if __name__ == "__main__":
-    path = sys.argv[1]
+    if len(sys.argv) < 2:
+        path = "combined.pkl"
+    else:
+        path = sys.argv[1]
     # X,y = read_x_and_y("combined.csv")
-    data = pd.read_csv(path)
-    X = data.iloc[:,:-1]
-    y = data.iloc[:,-1]
-
+    model = get_model()
+    ftype = path.split(".")[-1]
+    if ftype == "csv":
+        data = pd.read_csv(path)
+        fname = path.split(".")[0]
+        data.to_pickle(fname +".pkl")
+        print(f"Converted {path} to pkl")
+    elif ftype == "pkl":
+        data = pd.read_pickle(path)
+    X = np.array(data.iloc[:,:-1])
+    y = np.array(data.iloc[:,-1])
+    X = X[:,:,np.newaxis]
+    y = y[:,np.newaxis]
+    #y = np.asarray(y).astype(int).reshape((-1,1))
+    #print(X.shape)
+    #print(y.shape)
     # y = 1 if not loss, 0 if loss
     x_train, x_test, y_train, y_test = train_test_split(X, y, random_state=42,train_size=0.8)
 
-    model.fit(x_train,y_train, epochs=5,batch_size=128, validation_data=(x_test,y_test))
+    model.fit(x_train,y_train, epochs=5,batch_size=512, validation_data=(x_test,y_test))
     #cross_val_score(model, x_train, y_train, cv=5)
