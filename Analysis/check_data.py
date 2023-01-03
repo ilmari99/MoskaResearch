@@ -1,5 +1,6 @@
 import os
 import re
+import pandas as pd
 CWD = os.getcwd()
 PATH = "./Logs/Vectors/"
 print("Current working directory: " + CWD)
@@ -9,7 +10,9 @@ def check_unique_vectors(path=PATH):
     with open(path,"r") as f:
         lines = f.readlines()
         uniq_lines = set(lines)
-        print(f"Number of unique lines: {len(uniq_lines)}") 
+        print(f"Number of unique lines: {len(uniq_lines)}")
+    print("Number of lines: " + str(len(lines)))
+    print("Percent unique data: " + str(len(uniq_lines)/len(lines)))
 
 
 def check_line_lengths_equal(path=PATH):
@@ -51,9 +54,36 @@ def combine_files(output,path=PATH):
                     f.write(line)
             f.write("\n")
 
+def balance_data(path=PATH):
+    """ Balance the data by removing the extra 1s"""
+    ftype = path.split(".")[-1]
+    fname = path.split(".")[0]
+    if ftype == "csv":
+        data = pd.read_csv(path)
+        data.to_pickle(fname +".pkl")
+        print(f"Converted {path} to pkl")
+    elif ftype == "pkl":
+        data = pd.read_pickle(path)
+    #rows = random.sample(list(range(data.shape[0])),200000)
+    #data = data.iloc[rows,:]
+    #data.iloc[:,-5:-1] = data.iloc[:,-5:-1].applymap(lambda x: 1 if x == 2 else 0)
+    winners = data[data.iloc[:,-1] == 1]
+    losers = data[data.iloc[:,-1] == 0]
+    winners = winners.sample(n=losers.shape[0])
+    print(f"Winners: {winners.shape}")
+    print(f"Losers: {losers.shape}")
+    data = pd.concat([winners, losers],axis=0)
+    data = data.sample(frac=1).reset_index(drop=True)
+    data.to_pickle(f"balanced-{fname}.pkl")
+    print(f"Saved data to 'balanced-{fname}.pkl'")
+    print(data.head())
+    print(data.describe())
 
-check_line_lengths_equal()
-combine_files("combined.csv")
-get_n_losses(CWD + "\\combined.csv")
-check_unique_vectors(CWD + "\\combined.csv")
+if __name__ == "__main__":
+    balance_data("combined.csv")
+    exit()
+    check_line_lengths_equal()
+    combine_files("combined.csv")
+    get_n_losses(CWD + "\\combined.csv")
+    check_unique_vectors(CWD + "\\combined.csv")
 
