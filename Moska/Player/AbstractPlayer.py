@@ -245,10 +245,10 @@ class AbstractPlayer(ABC):
         extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
         args = [self] + extra_args
         success, msg  = self.moskaGame._make_move(move,args)
-        if success and move != "Skip":
+        if success and (move != "Skip" or len(self.state_vectors) == 0):
             state = GameState.from_game(self.moskaGame)
-            vec = state.as_vector()
-            vec = vec + state.encode_cards(self.hand.cards,normalize=True)
+            vec = state.as_vector(normalize=False)
+            vec = vec + state.encode_cards(self.hand.cards,normalize=False)
             self.state_vectors.append(vec)
         return success, msg
     
