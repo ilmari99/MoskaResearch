@@ -248,7 +248,7 @@ class AbstractPlayer(ABC):
         if success and move != "Skip":
             state = GameState.from_game(self.moskaGame)
             vec = state.as_vector()
-            vec = state.encode_cards(self.hand.cards) + vec
+            vec = vec + state.encode_cards(self.hand.cards,normalize=True)
             self.state_vectors.append(vec)
         return success, msg
     
