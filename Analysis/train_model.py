@@ -9,11 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from check_data import create_tf_dataset
 
-def get_forest_model():
-    model = RandomForestClassifier(n_estimators=600, max_depth=10,random_state=42)
-    return model
-
-def get_nn_model():
+def get_nn_model(channels=None):
     #norm_layer = tf.keras.layers.Normalization(axis=2)
     #norm_layer.adapt(x_train)
     #print(norm_layer.adapt_mean, norm_layer.adapt_variance)
@@ -21,41 +17,47 @@ def get_nn_model():
     #norm_layer,
         #norm_layer,
         #tf.keras.layers.Dense(1024, activation="tanh",kernel_regularizer="l2"),
-        tf.keras.layers.Dense(64, activation="relu",kernel_regularizer=None, input_shape=(425,)),
-        tf.keras.layers.Dense(64, activation="relu"),
-        tf.keras.layers.Dense(64, activation="relu"),
-        tf.keras.layers.Dense(32, activation="relu"),
-        tf.keras.layers.Dense(64, activation="relu"),
-        tf.keras.layers.Dense(32, activation="relu"),
-        tf.keras.layers.Dense(16, activation="relu"),
+        tf.keras.layers.BatchNormalization(axis=-1,input_shape=(425,1)),
+        tf.keras.layers.Dense(512, activation="relu"),
+        tf.keras.layers.Conv1D(512, 5, activation="relu",kernel_regularizer="l2",bias_regularizer="l2",padding="same",data_format="channels_first"),
+        tf.keras.layers.Dense(256, activation="relu"),
+        tf.keras.layers.Dense(128, activation="linear"),
+        tf.keras.layers.Dense(32, activation="linear"),
         tf.keras.layers.Dense(32, activation="relu"),
         tf.keras.layers.Dense(16, activation="relu"),
         tf.keras.layers.Dense(1, activation="sigmoid"),
     ])
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
-        #loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=False),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
         #loss=tf.keras.losses.BinaryFocalCrossentropy(from_logits=False,gamma=2),
-        loss=tf.keras.losses.MeanSquaredError(),
+        #loss=tf.keras.losses.MeanSquaredError(),
         metrics=['accuracy']
         )
     return model
 
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset("./Logs/Vectors/")
+    all_dataset = create_tf_dataset("./BigLogs/Logs/Vectors/",add_channel=True)
     model = get_nn_model()
-    VALIDATION_LENGTH = 50000
-    TEST_LENGTH = 50000
-    BATCH_SIZE = 2*4096
-    SHUFFLE_BUFFER_SIZE = 10000
+    VALIDATION_LENGTH = 200000
+    TEST_LENGTH = 200000
+    BATCH_SIZE = 512
+    SHUFFLE_BUFFER_SIZE = 100000
+    
+    print(all_dataset.element_spec)
     
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     
     test_ds = all_dataset.skip(VALIDATION_LENGTH).take(TEST_LENGTH).batch(BATCH_SIZE)
     
-    train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)
+    train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)#Add shuffle for NN
     
-    model.fit(train_ds, epochs=10, validation_data=validation_ds,verbose=1)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0.001, patience=6)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-logs/log1")
+    
+    model.fit(x=train_ds, validation_data=validation_ds, epochs=100, callbacks=[early_stopping_cb, tensorboard_cb])
     
     model.evaluate(test_ds, verbose=1)
+    
+    model.save("model.h5")
