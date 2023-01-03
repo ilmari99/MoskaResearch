@@ -4,7 +4,7 @@ import re
 import pandas as pd
 import tensorflow as tf
 
-def create_tf_dataset(path):
+def create_tf_dataset(path, add_channel=False):
     """ Create a tf dataset from a folder of files"""
     file_paths = [os.path.join(path, file) for file in os.listdir(path)]
     file_paths.sort()
@@ -12,6 +12,8 @@ def create_tf_dataset(path):
     dataset = tf.data.TextLineDataset(file_paths)
     dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "))
     dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])))
+    if add_channel:
+        dataset = dataset.map(lambda x,y: (tf.expand_dims(x, axis=-1), tf.expand_dims(y, axis=-1)))
     return dataset
     
     
