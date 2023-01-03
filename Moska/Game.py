@@ -1,6 +1,5 @@
 import contextlib
 import os
-
 from .Player.MoskaBot3 import MoskaBot3
 from . import utils
 from .Player.MoskaBot0 import MoskaBot0
@@ -322,23 +321,30 @@ class MoskaGame:
         self.glog.info(f"Starting the game with seed {self.random_seed}...")
         self._start_player_threads()
         self.glog.info(f"Started moska game with players {[pl.name for pl in self.players]}")
+        # Wait for the threads to finish
         success = self._join_threads()
         if not success:
             return None, None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
         state_results = []
+        # Combine the players vectors into one list
         for pl in self.players:
-            pl_lost = 0 if pl.rank == len(self.players) else 1
+            # If the player lost, append 0 to the end of the vector, else append 1
+            pl_not_lost = 0 if pl.rank == len(self.players) else 1
             for state in pl.state_vectors:
-                state.append(pl_lost)
+                # Randomly remove roughly 50% of vectors, where the player did not lose to balance the data and reduce the size of the dataset
+                if pl_not_lost == 1 and random.random() < 0.55:
+                    continue
+                state.append(pl_not_lost)
                 state_results.append(state)
 
         def get_file_name():
             fname = "data_"+str(random.randint(0,10000000000000))+".out"
-            if os.path.exists(fname):
-                return get_file_name()
+            while os.path.exists(fname):
+                fname = "data_"+str(random.randint(0,10000000000000))+".out"
             return fname
+        
         #print(f"Writing {len(state_results)} vectors to file.")
         with open("Vectors/"+get_file_name(),"w") as f:
             data = str(state_results).replace("], [","\n")
@@ -348,6 +354,7 @@ class MoskaGame:
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
+        # Clean up just in case.
         for pl in self.players:
             del pl
         del self.card_monitor, self.turnCycle, self.deck, self.players

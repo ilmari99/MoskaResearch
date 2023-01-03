@@ -1,12 +1,23 @@
+#!/usr/bin/env python3
 import os
 import re
 import pandas as pd
-CWD = os.getcwd()
-PATH = "./Logs/Vectors/"
-print("Current working directory: " + CWD)
+import tensorflow as tf
 
-def check_unique_vectors(path=PATH):
-    """ Check that there are no duplicate vectors in the data"""
+def create_tf_dataset(path):
+    """ Create a tf dataset from a folder of files"""
+    file_paths = [os.path.join(path, file) for file in os.listdir(path)]
+    file_paths.sort()
+    print(file_paths[0:10])
+    dataset = tf.data.TextLineDataset(file_paths)
+    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "))
+    dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])))
+    return dataset
+    
+    
+
+def check_unique_vectors(path):
+    """ Check that there are no duplicate lines in files in path"""
     with open(path,"r") as f:
         lines = f.readlines()
         uniq_lines = set(lines)
@@ -15,23 +26,32 @@ def check_unique_vectors(path=PATH):
     print("Percent unique data: " + str(len(uniq_lines)/len(lines)))
 
 
-def check_line_lengths_equal(path=PATH):
+def check_line_lengths_equal(path):
     line_length = -1
     out = True
+    nlines = 0
+    nlosses = 0
     for file in os.listdir(path):
         with open(path+file,"r") as f:
             for line in f:
+                nlines += 1
                 if line_length == -1:
                     line_length = line.count(",")
                     print("Line length: " + str(line_length))
+                line = line.strip()
+                if line[-1] == "0":
+                    nlosses += 1
                 if line.count(",") != line_length:
                     print(f"Line length mismatch in {file}")
                     out = False
                     break
+    if out:
+        print(f"All {nlines} lines are the same length")
+    print(f"Loss ratio: {nlosses/nlines}")
     return out
 
-def get_n_losses(path=PATH):
-    """ Get the number of losses in each file"""
+def get_n_losses(path):
+    """ Get the distribution of winners/losses in the file"""
     with open(path,"r") as f:
         n_losses = 0
         data_length = 0
@@ -45,7 +65,7 @@ def get_n_losses(path=PATH):
         print(f"Loss ratio: {n_losses/data_length}")
 
 
-def combine_files(output,path=PATH):
+def combine_files(path,output="combined.csv"):
     """ Combine all files in path into one file"""
     with open(output,"w") as f:
         for file in os.listdir(path):
@@ -53,8 +73,25 @@ def combine_files(output,path=PATH):
                 for line in f2:
                     f.write(line)
             f.write("\n")
+            
+def to_single_dataset(path,pickle_file="data.pkl"):
+    """ Convert a bunch of files to an hdf5 file.
+    Shuffle and balance the data and save it.
+    """
+    data = pd.read_csv(path)
+    winners = data[data.iloc[:,-1] == 1]
+    losers = data[data.iloc[:,-1] == 0]
+    winners = winners.sample(n=losers.shape[0])
+    print(f"Winners: {winners.shape}")
+    print(f"Losers: {losers.shape}")
+    data = pd.concat([winners, losers],axis=0,ignore_index=True)
+    data = data.sample(frac=1).reset_index(drop=True)
+    data.to_pickle(pickle_file)
+    print(f"Saved data to '{pickle_file}'")
+    print(data.head())
+    print(data.describe())
 
-def balance_data(path=PATH):
+def balance_data(path):
     """ Balance the data by removing the extra 1s"""
     ftype = path.split(".")[-1]
     fname = path.split(".")[0]
@@ -64,9 +101,6 @@ def balance_data(path=PATH):
         print(f"Converted {path} to pkl")
     elif ftype == "pkl":
         data = pd.read_pickle(path)
-    #rows = random.sample(list(range(data.shape[0])),200000)
-    #data = data.iloc[rows,:]
-    #data.iloc[:,-5:-1] = data.iloc[:,-5:-1].applymap(lambda x: 1 if x == 2 else 0)
     winners = data[data.iloc[:,-1] == 1]
     losers = data[data.iloc[:,-1] == 0]
     winners = winners.sample(n=losers.shape[0])
@@ -80,10 +114,13 @@ def balance_data(path=PATH):
     print(data.describe())
 
 if __name__ == "__main__":
-    balance_data("combined.csv")
-    exit()
-    check_line_lengths_equal()
-    combine_files("combined.csv")
-    get_n_losses(CWD + "\\combined.csv")
-    check_unique_vectors(CWD + "\\combined.csv")
+    CWD = os.getcwd()
+    PATH = "./Logs/Vectors/"
+    print("Current working directory: " + CWD)
+    
+    #balance_data()
+    check_line_lengths_equal(PATH)
+    #combine_files(PATH,output="combined.csv")
+    #get_n_losses("combined.csv")
+    #check_unique_vectors("combined.csv")
 
