@@ -240,11 +240,11 @@ if __name__ == "__main__":
         "log_level" : logging.INFO,
         "timeout" : 2,
     }
-    for i in range(160):
+    for i in range(20):
         pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
         players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         print(players)
-        play_games(players, gamekwargs, n=1500, cpus=15, chunksize=50,disable_logging=False)
+        play_games(players, gamekwargs, n=300, cpus=15, chunksize=20,disable_logging=False)
     
     #play_as_human()
     
