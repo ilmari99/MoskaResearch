@@ -339,7 +339,7 @@ class MoskaGame:
             if os.path.exists(fname):
                 return get_file_name()
             return fname
-        print(f"Writing {len(state_results)} vectors to file.")
+        #print(f"Writing {len(state_results)} vectors to file.")
         with open("Vectors/"+get_file_name(),"w") as f:
             data = str(state_results).replace("], [","\n")
             data = data.strip("[]")
