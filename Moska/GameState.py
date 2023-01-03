@@ -41,7 +41,7 @@ class GameState:
             player_hands.append(player_hands_dict[pl])
         return cls(len(game.deck), player_hands, game.card_monitor.cards_fall_dict.copy(), game.cards_to_fall.copy(), game.fell_cards.copy(), cls._get_player_status(cls,game))
     
-    def encode_cards(self, cards : List[Card]) -> List[int]:
+    def encode_cards(self, cards : List[Card],normalize : bool = False) -> List[int]:
         """Encodes a list of cards into a list of integers.
         Returns a list of 52 zeros, with the index of the card in the reference deck set to the number of cards that the card can fall.
         If a card is not in the game (not in cards_fall), the value is -1.
@@ -53,13 +53,13 @@ class GameState:
             # If no such card exists, the value is -1, which indicates that the card is not in the game.
             encoding_value = self.cards_fall.get(card,-1)
             try:
-                out[REFERENCE_DECK.index(card)] = encoding_value
+                out[REFERENCE_DECK.index(card)] = encoding_value/52 if normalize else encoding_value
             # If the card is not in the reference deck it is likely an unknown card
             except ValueError:
                 pass
         return out
     
-    def as_vector(self):
+    def as_vector(self,normalize : bool = True):
         """Returns a numeric vector representation of the state.
         The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
         The vector is ordered as follows:
@@ -71,10 +71,15 @@ class GameState:
         - The status of each player, ordered by pid.
         """
         player_hands = []
+        player_cards = []
         for cards in self.player_cards:
             player_hands += self.encode_cards(cards)
-        out = [self.deck_left] + player_hands + self.encode_cards(REFERENCE_DECK) + self.encode_cards(self.cards_on_table) + self.encode_cards(self.fell_cards) + list(self.player_status)
-        # len out should be 4x42 + 1 + 2 + 52 + 52 + 52 + 4 + 52 = 422
+            player_cards.append(len(cards))
+        out = [self.deck_left] + player_hands + self.encode_cards(REFERENCE_DECK) + self.encode_cards(self.cards_on_table) + self.encode_cards(self.fell_cards) + player_cards
+        if normalize:
+            out = [x / 52 for x in out]
+        out += list(self.player_status)
+        # len out should be 7x52 + 1 + 4 + 4 (+52 + 1) = 426  
         return out
     
     def _get_player_status(cls, game : 'MoskaGame') -> List[int]:
@@ -87,8 +92,8 @@ class GameState:
         statuses = []
         for pl in players:
             out = 0
-            if pl.rank is None:
-                out += 1
+            #if pl.rank is None:
+            #    out += 1
             if pl is game.get_target_player():
                 out += 1
             statuses.append(out)
