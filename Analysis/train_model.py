@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import random
 import tensorflow as tf
 import numpy as np
@@ -69,8 +70,8 @@ def get_loaded_model() -> tf.keras.models.Sequential:
     return model
 
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset("./Logs/Vectors/",add_channel=False)
-    model = get_loaded_model()
+    all_dataset = create_tf_dataset("./RandomLogs/Vectors/",add_channel=False)
+    model = get_optimal_model()
     VALIDATION_LENGTH = 100000
     TEST_LENGTH = 100000
     BATCH_SIZE = 4096
@@ -84,9 +85,11 @@ if __name__ == "__main__":
     train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)#Add shuffle for NN
     
     early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=5)
+    if os.path.exists("tensorboard-logs/"):
+        raise Exception("Tensorboard log directory already exists")
     tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-logs/")
     
-    model.fit(x=train_ds, validation_data=validation_ds, epochs=100, callbacks=[early_stopping_cb, tensorboard_cb])
+    model.fit(x=train_ds, validation_data=validation_ds, epochs=200, callbacks=[early_stopping_cb, tensorboard_cb])
     
     model.evaluate(test_ds, verbose=1)
     
