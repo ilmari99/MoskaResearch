@@ -8,6 +8,7 @@ from .Player.MoskaBot1 import MoskaBot1
 from .Player.MoskaBot2 import MoskaBot2
 from .Player.RandomPlayer import RandomPlayer
 from .GameState import GameState
+import numpy as np
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
@@ -15,6 +16,7 @@ import threading
 import multiprocessing
 import logging
 import random
+#import tensorflow as tf
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip
 
 
@@ -69,6 +71,7 @@ class MoskaGame:
         self.EXIT_FLAG = False
         self.card_monitor = CardMonitor(self)
         self._set_turns()
+        #self.model = tf.keras.models.load_model("/home/ilmari/python/moska/Model5-300/model.h5")
     
     def _set_turns(self):
         self.turns = {
@@ -189,6 +192,12 @@ class MoskaGame:
             if og_state != state:
                 self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
             assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
+            pl = self.threads[self.lock_holder]
+            if False and isinstance(pl, AbstractPlayer):
+                inp = pl.state_vectors[-1]
+                #print(inp)
+                possib_to_not_lose = self.model.predict(np.array([inp]),verbose=0)
+                print(f"{pl.name} has {possib_to_not_lose[0]} chance of not losing")
             self.lock_holder = None
         return
     
