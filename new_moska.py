@@ -94,16 +94,17 @@ def play_as_human():
     players = [
         (HumanPlayer,lambda x : {"name":"Human-","log_file":"human.log"}),
         (MoskaBot3,lambda x : {"log_file":"Bot3.log"}),
-        (MoskaBot2,lambda x : {"log_file":"Bot2-log"}),
+        (MoskaBot2,lambda x : {"log_file":"Bot2.log"}),
         (RandomPlayer,lambda x :{"log_file" : "Random1.log"})
                ]
     gamekwargs = lambda x : {
         "log_file" : "Humangame.log",
         "players" : players,
         "log_level" : logging.DEBUG,
-        "timeout" : 320,
+        "timeout" : 1000,
     }
     game = args_to_game(gamekwargs,players,0,True)
+    game = MoskaGame(**game)
     return game.start()
 
 def run_game(kwargs):
@@ -180,7 +181,8 @@ if __name__ == "__main__":
     os.chdir("Logs/")
     if not os.path.isdir("Vectors"):
         os.mkdir("Vectors")
-    
+    #play_as_human()
+    #exit()
     def to_minimize(params,**kwargs):
         coeffs = {
             "fall_card_already_played_value" : params[0],
@@ -221,13 +223,10 @@ if __name__ == "__main__":
         (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO}),
                ]
     players = [
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-1-","log_file":f"Game-{x}-R-1.log","log_level" : logging.INFO}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-2-","log_file":f"Game-{x}-R-2.log","log_level" : logging.INFO}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-R-3.log","log_level" : logging.INFO}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-¤-4.log","log_level" : logging.INFO}),
-    ]
-    player_set = [
-
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-1-","log_file":f"Game-{x}-R-1.log","log_level" : logging.ERROR}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-2-","log_file":f"Game-{x}-R-2.log","log_level" : logging.ERROR}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-R-3.log","log_level" : logging.ERROR}),
+        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-¤-4.log","log_level" : logging.ERROR}),
     ]
     #players = [
     #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
@@ -238,13 +237,13 @@ if __name__ == "__main__":
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.INFO,
-        "timeout" : 2,
+        "timeout" : 5,
     }
-    for i in range(20):
-        pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
-        players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
-        print(players)
-        play_games(players, gamekwargs, n=300, cpus=15, chunksize=20,disable_logging=False)
+    for i in range(50):
+        #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
+        #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
+        #print(players)
+        play_games(players, gamekwargs, n=1200, cpus=15, chunksize=20,disable_logging=False)
     
     #play_as_human()
     
