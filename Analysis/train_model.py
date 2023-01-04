@@ -17,19 +17,29 @@ def get_nn_model(channels=None):
     #norm_layer,
         #norm_layer,
         #tf.keras.layers.Dense(1024, activation="tanh",kernel_regularizer="l2"),
-        tf.keras.layers.BatchNormalization(axis=-1,input_shape=(425,1)),
-        tf.keras.layers.Dense(512, activation="relu"),
-        tf.keras.layers.Conv1D(512, 5, activation="relu",kernel_regularizer="l2",bias_regularizer="l2",padding="same",data_format="channels_first"),
-        tf.keras.layers.Dense(256, activation="relu"),
-        tf.keras.layers.Dense(128, activation="linear"),
-        tf.keras.layers.Dense(32, activation="linear"),
-        tf.keras.layers.Dense(32, activation="relu"),
-        tf.keras.layers.Dense(16, activation="relu"),
-        tf.keras.layers.Dense(1, activation="sigmoid"),
+        tf.keras.layers.BatchNormalization(axis=-1,input_shape=(425,)),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dropout(0.4),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dropout(0.4),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(425, activation="relu"),
+        tf.keras.layers.Dense(1, activation="sigmoid")
     ])
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=False),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
         loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
         #loss=tf.keras.losses.BinaryFocalCrossentropy(from_logits=False,gamma=2),
         #loss=tf.keras.losses.MeanSquaredError(),
@@ -38,11 +48,11 @@ def get_nn_model(channels=None):
     return model
 
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset("./BigLogs/Logs/Vectors/",add_channel=True)
+    all_dataset = create_tf_dataset("./BigLogs/Logs/Vectors/",add_channel=False)
     model = get_nn_model()
     VALIDATION_LENGTH = 200000
     TEST_LENGTH = 200000
-    BATCH_SIZE = 512
+    BATCH_SIZE = 4096
     SHUFFLE_BUFFER_SIZE = 100000
     
     print(all_dataset.element_spec)
@@ -53,7 +63,7 @@ if __name__ == "__main__":
     
     train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).shuffle(SHUFFLE_BUFFER_SIZE).batch(BATCH_SIZE)#Add shuffle for NN
     
-    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0.001, patience=6)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=5)
     tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-logs/log1")
     
     model.fit(x=train_ds, validation_data=validation_ds, epochs=100, callbacks=[early_stopping_cb, tensorboard_cb])
