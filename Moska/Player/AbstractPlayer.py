@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-import random
+import numpy as np
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
 from ..Game.GameState import GameState
 from ..Game.Deck import Card
@@ -496,10 +496,6 @@ class AbstractPlayer(ABC):
         return can_fall
     
     def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000):
-        try:
-            import numpy as np
-        except ImportError as ie:
-            raise ImportError(f"{ie}\nNumpy is required for this function!\n")
         if scoring is None:
             try:
                 scoring = self._calc_assign_score
