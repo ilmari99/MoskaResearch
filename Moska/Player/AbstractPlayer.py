@@ -17,6 +17,11 @@ from abc import ABC, abstractmethod
 
 
 class AbstractPlayer(ABC):
+    """ Abstract class for a player in Moska.
+    This class implements the required methods and some utility methods.
+    When subclassing, the abstract methods must be implemented to decide actions.
+    
+    """
     hand : MoskaHand = None
     pid : int = None
     moskaGame : MoskaGame = None
@@ -76,6 +81,7 @@ class AbstractPlayer(ABC):
         
     def _set_moskaGame(self) -> None:
         """Sets the moskaGame instance. called from __setattr__.
+        Deals the hand to the player.
         """
         self.hand = MoskaHand(self.moskaGame)
         return
@@ -88,11 +94,12 @@ class AbstractPlayer(ABC):
             value (Any): set value to what
         """
         super.__setattr__(self, name, value)
+        # If moskaGame is not set in the constructor, it must be set later
         if name == "moskaGame" and value is not None:
             self._set_moskaGame()
     
     def _set_pid_name_logfile(self,pid) -> None:
-        """ Set the players pid. Currently no use."""
+        """ Set the players pid. The pid is used to identify the player in the game. The pid is the index of the player in the players list of the game."""
         self.pid = pid
         self.name += str(pid)
         if self.log_file is not os.devnull:
