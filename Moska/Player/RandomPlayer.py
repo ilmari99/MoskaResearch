@@ -1,12 +1,11 @@
 from __future__ import annotations
 import logging
 import random
-from Moska import utils
 from .AbstractPlayer import AbstractPlayer
 from typing import Dict, List,TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
-    from ..Deck import Card
-    from ..Game import MoskaGame
+    from ..Game.Deck import Card
+    from ..Game.Game import MoskaGame
 
 class RandomPlayer(AbstractPlayer):
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):

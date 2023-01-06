@@ -1,38 +1,42 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Iterable, Callable
-from functools import wraps
 if TYPE_CHECKING:
-    from ..Deck import Card
+    from ..Game.Deck import Card
     from AbstractPlayer import AbstractPlayer
 
 class _ScoreCards:
+    """ Class for assigning scores to cards.
+    Each player who uses a scoring system, has a separate instance of this class.
+    This class is used to assing scores to cards in the players hand, and in the table,
+    to determine which cards are the best to play.
+    """
     default_method : Callable = None
     player : AbstractPlayer = None
     methods : dict[str,Callable] = {}
     
     def __init__(self,player : AbstractPlayer,
-                 default_method : Callable = "basic",
+                 default_method : Callable | str = "basic",
                  ) -> None:
         self.methods = {
             "basic" : self._basic_count_score,
             "counter" : self._count_cards_score,
         }
+        # Default method is either a custom callable, or a string which is a key in self.methods
         self.default_method = self.methods[default_method]
         self.methods["default"] = self.default_method
         self.player = player
     
-    def assign_scores_inplace(self,method = "default") -> Callable:
+    def assign_scores_inplace(self, method : str = "default") -> None:
+        """ Assign scores to cards in the players hand and in the table inplace. The method
+        is the value at 'default' key in self.methods, which is defined at __init__.
+        """
         self.player.moskaGame.cards_to_fall = self._assign_scores(self.player.moskaGame.cards_to_fall,method)
         self.player.hand.cards = self._assign_scores(self.player.hand.cards,method)
+        return
 
-    def get_sm_score_in_list(self,cards : List[Card]):
-        """Return the first Card with the smallest score in 'cards'.
-
-        Args:
-            cards (List[Card]): _description_
-
-        Returns:
-            _type_: _description_
+    def get_sm_score_in_list(self, cards : List[Card]) -> int:
+        """Return the smallest score in the list of cards.
+        TODO: This shouldn't be maybe be here.
         """        
         if not cards:
             return None
@@ -45,13 +49,16 @@ class _ScoreCards:
         return list(filter(lambda x : x.score == sm_score,cards))[0]
     
     def _count_cards_score(self, card : Card):
+        """ Return how many cards can the input card fall. Uses the card_monitor to count the cards."""
         return len(self.player.moskaGame.card_monitor.cards_fall_dict[card])
     
     def _basic_count_score(self,card : Card) -> int:
         """Return how many cards can the input card fall;
         How many cards are smaller and same suit
         or if suit is triumph, how many cards are not triumph or are smaller triumph cards.
-
+        
+        Doesn't require counting cards.
+        
         Args:
             card (Card): The card for which to count the score
 

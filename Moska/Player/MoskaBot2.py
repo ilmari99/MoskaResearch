@@ -3,32 +3,25 @@ from collections import Counter
 import logging
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
-from Moska import utils
-from Moska.Deck import Card
+from ..Game.Deck import Card
 from ._ScoreCards import _ScoreCards
 if TYPE_CHECKING:
-    from Moska.Game import MoskaGame
+    from ..Game.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
-from ._Coefficients import StaticCoefficients,HeuristicCoefficients
+from .PolicyParameters.HeuristicParameters import HeuristicParameters
 
 from scipy.optimize import linear_sum_assignment
 
 class MoskaBot2(AbstractPlayer):
     cost_matrix_max = 10000
     scoring : _ScoreCards = None
-    coeffs : HeuristicCoefficients = None
-    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file="",coefficients = {}):
+    parameters : HeuristicParameters = None
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file="",parameters = {}):
         if not name:
             name = "B2-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self,default_method = "counter")
-        self.coeffs = HeuristicCoefficients(self,method_values=coefficients)
-    
-    
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name == "coefficients":
-            self.coeffs = HeuristicCoefficients(self,method_values=value)
-        return super().__setattr__(name, value)
+        self.parameters = HeuristicParameters(self,method_values=parameters)
     
     
     def _play_move(self) -> Tuple[bool, str]:
@@ -69,17 +62,17 @@ class MoskaBot2(AbstractPlayer):
         The smaller the score, the better."""
         score = hcard.score - tcard.score
         # Scale the score with some value (currently not calculated [1])
-        score = self.coeffs.fall_card_scale_hand_play_score(hcard,tcard)*score
+        score = self.parameters.fall_card_scale_hand_play_score(hcard,tcard)*score
         return score
     
     def _calc_assignment_score_from_deck(self,deck_card : Card, tcard : Card):
         score = deck_card.score - tcard.score
-        score = self.coeffs.fall_card_scale_deck_play_score(deck_card,tcard) * score
+        score = self.parameters.fall_card_scale_deck_play_score(deck_card,tcard) * score
         return score
     
     def _calc_assignment_score_to_self(self,card_in_hand : Card, card_to_self : Card):
         score = card_in_hand.score - card_to_self.score
-        score = self.coeffs.to_self_scale_play_score(card_in_hand,card_to_self)*score
+        score = self.parameters.to_self_scale_play_score(card_in_hand,card_to_self)*score
         return score  
     
     
@@ -109,7 +102,7 @@ class MoskaBot2(AbstractPlayer):
             hand_card = self.hand.cards[hand_ind]
             table_card = self.moskaGame.cards_to_fall[table_ind]
             # Discard plays which are not good enough
-            if C[hand_ind,table_ind] > self.coeffs.fall_card_maximum_play_score_from_hand():
+            if C[hand_ind,table_ind] > self.parameters.fall_card_maximum_play_score_from_hand():
                 continue
             # Discard cards that are incorrectly mapped (There will be such cards sometimes)
             if self._check_can_fall_card(hand_card,table_card):
@@ -163,7 +156,7 @@ class MoskaBot2(AbstractPlayer):
         for card, falls in can_fall.items():
             for fall_card in falls:
                 score = self._calc_assignment_score_to_self(card,fall_card)
-                if score > self.coeffs.to_self_maximum_play_score():
+                if score > self.parameters.to_self_maximum_play_score():
                     continue
                 cards.append(fall_card)
         return list(set(cards))
@@ -256,7 +249,7 @@ class MoskaBot2(AbstractPlayer):
         # Get ncards first cards from 'cards'
         play_cards = cards[0:None if ncards == len(cards) else ncards]
         cards_score = sum([c.score for c in play_cards]) / ncards
-        cards_score = self.coeffs.initial_play_scale_score(play_cards) * cards_score
+        cards_score = self.parameters.initial_play_scale_score(play_cards) * cards_score
         # Return the adjusted average score
         return cards_score
     

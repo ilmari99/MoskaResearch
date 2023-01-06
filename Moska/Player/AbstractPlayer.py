@@ -1,24 +1,27 @@
 from __future__ import annotations
 import os
-import random
+import numpy as np
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
-
-from Moska.GameState import GameState
-from ..Deck import Card
+from ..Game.GameState import GameState
+from ..Game.Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from ..Game import MoskaGame
-from ..Hand import MoskaHand
-from .. import utils
+    from ..Game.Game import MoskaGame
+from ..Game.Hand import MoskaHand
+from ..Game import utils
 import threading
 import time
 import logging
 import sys
 import traceback
-from copy import deepcopy
 from abc import ABC, abstractmethod
 
 
 class AbstractPlayer(ABC):
+    """ Abstract class for a player in Moska.
+    This class implements the required methods and some utility methods.
+    When subclassing, the abstract methods must be implemented to decide actions.
+    
+    """
     hand : MoskaHand = None
     pid : int = None
     moskaGame : MoskaGame = None
@@ -78,6 +81,7 @@ class AbstractPlayer(ABC):
         
     def _set_moskaGame(self) -> None:
         """Sets the moskaGame instance. called from __setattr__.
+        Deals the hand to the player.
         """
         self.hand = MoskaHand(self.moskaGame)
         return
@@ -90,11 +94,12 @@ class AbstractPlayer(ABC):
             value (Any): set value to what
         """
         super.__setattr__(self, name, value)
+        # If moskaGame is not set in the constructor, it must be set later
         if name == "moskaGame" and value is not None:
             self._set_moskaGame()
     
     def _set_pid_name_logfile(self,pid) -> None:
-        """ Set the players pid. Currently no use."""
+        """ Set the players pid. The pid is used to identify the player in the game. The pid is the index of the player in the players list of the game."""
         self.pid = pid
         self.name += str(pid)
         if self.log_file is not os.devnull:
@@ -498,10 +503,6 @@ class AbstractPlayer(ABC):
         return can_fall
     
     def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000):
-        try:
-            import numpy as np
-        except ImportError as ie:
-            raise ImportError(f"{ie}\nNumpy is required for this function!\n")
         if scoring is None:
             try:
                 scoring = self._calc_assign_score

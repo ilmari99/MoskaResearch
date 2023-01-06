@@ -1,19 +1,17 @@
 import contextlib
 import os
-from .Player.MoskaBot3 import MoskaBot3
+from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
-from .Player.MoskaBot0 import MoskaBot0
-from .Player.AbstractPlayer import AbstractPlayer
-from .Player.MoskaBot1 import MoskaBot1
-from .Player.MoskaBot2 import MoskaBot2
-from .Player.RandomPlayer import RandomPlayer
-from .GameState import GameState
+from ..Player.MoskaBot0 import MoskaBot0
+from ..Player.AbstractPlayer import AbstractPlayer
+from ..Player.MoskaBot1 import MoskaBot1
+from ..Player.MoskaBot2 import MoskaBot2
+from ..Player.RandomPlayer import RandomPlayer
 import numpy as np
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
 import threading
-import multiprocessing
 import logging
 import random
 #import tensorflow as tf
@@ -87,26 +85,36 @@ class MoskaGame:
 
 
     def __getattribute____(self, __name: str) -> Any:
+        """ This is a fail safe to prevent dangerous access to MoskaGame
+        attributes from outside the main or player threads, when the game is locked.
+        """
         non_accessable_attributes = ["card_monitor", "deck", "turnCycle", "cards_to_fall", "fell_cards", "players"]
         if __name in non_accessable_attributes and self.threads and threading.get_native_id() != self.lock_holder:
             raise threading.ThreadError(f"Getting MoskaGame attribute with out lock!")
         return object.__getattribute__(self,__name)
     
     def __setattr__(self, name, value):
+        """ Prevent access to MoskaGame attributes from outside the main or player threads, when the game is locked.
+        Also used for ensuring that inter-related attributes are set correctly.
+        """
         if name != "lock_holder" and self.threads and threading.get_native_id() != self.lock_holder:
             raise threading.ThreadError(f"Setting MoskaGame attribute with out lock!")
         super.__setattr__(self, name, value)
+        # If setting the players, set the turnCycle and the new deck
         if name == "players":
             self._set_players(value)
             self.glog.debug(f"Set players to: {value}")
+        # If setting the log_file, set the logger
         if name == "log_file" and value:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self.name = value.split(".")[0]
             self._set_glogger(value)
             self.glog.debug(f"Set GameLogger (glog) to file {value}")
+        # If setting nplayers, create random players and set self.players
         if name == "nplayers":
             self.players = self.players if self.players else self._get_random_players(value)
             self.glog.debug(f"Created {value} random players.")
+        # If setting the random seed, set the random seed
         if name == "random_seed":
             random.seed(value)     
             self.glog.info(f"Set random_seed to {self.random_seed}")
@@ -124,12 +132,12 @@ class MoskaGame:
         
     @classmethod
     def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[AbstractPlayer]:
-        """ Get a list of AbstractPlayer instances (or subclasses).
-        The players will be dealt cards from 
+        """ Get a list of AbstractPlayer  subclasses.
+        The players will be dealt cards from a new_deck if called from an instance.
 
         Args:
-            n (_type_): _description_
-            player_types (list, optional): _description_. Defaults to [].
+            n (int): Number of players to create
+            player_types (list[Callable], optional): The player types to use. Defaults to all.
 
         Returns:
             _type_: _description_

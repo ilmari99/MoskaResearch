@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Dict, List, TYPE_CHECKING
-from Moska.Deck import Card
+from .Deck import Card
 if TYPE_CHECKING:
     from Moska.Game import MoskaGame
     from Moska.Player.AbstractPlayer import AbstractPlayer
-from Moska.Deck import StandardDeck
+from .Deck import StandardDeck
 REFERENCE_DECK = tuple(StandardDeck(shuffle = False).cards)
 
 
