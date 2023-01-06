@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Any, Dict,Callable, List
-from abc import ABC,abstractmethod
-from ..Deck import Card
+from ..Game.Deck import Card
 from .AbstractPlayer import AbstractPlayer
 #from ..Game import MoskaGame
 

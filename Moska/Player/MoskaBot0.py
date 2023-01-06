@@ -3,9 +3,9 @@ import random
 from typing import List, TYPE_CHECKING
 from .AbstractPlayer import AbstractPlayer
 if TYPE_CHECKING:
-    from ..Game import MoskaGame
-from ..Deck import Card
-from .. import utils
+    from ..Game.Game import MoskaGame
+from ..Game.Deck import Card
+from ..Game import utils
 import logging
 
 

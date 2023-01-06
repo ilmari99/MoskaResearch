@@ -2,19 +2,17 @@ from __future__ import annotations
 import os
 import random
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
-
-from Moska.GameState import GameState
-from ..Deck import Card
+from ..Game.GameState import GameState
+from ..Game.Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from ..Game import MoskaGame
-from ..Hand import MoskaHand
-from .. import utils
+    from ..Game.Game import MoskaGame
+from ..Game.Hand import MoskaHand
+from ..Game import utils
 import threading
 import time
 import logging
 import sys
 import traceback
-from copy import deepcopy
 from abc import ABC, abstractmethod
 
 

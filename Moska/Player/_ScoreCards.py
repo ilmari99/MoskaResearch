@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Iterable, Callable
 from functools import wraps
 if TYPE_CHECKING:
-    from ..Deck import Card
+    from ..Game.Deck import Card
     from AbstractPlayer import AbstractPlayer
 
 class _ScoreCards:

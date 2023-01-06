@@ -3,8 +3,7 @@ from collections import Counter
 import logging
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
-from Moska import utils
-from Moska.Deck import Card
+from ..Game.Deck import Card
 from ._ScoreCards import _ScoreCards
 if TYPE_CHECKING:
     from Moska.Game import MoskaGame

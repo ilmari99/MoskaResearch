@@ -2,10 +2,10 @@ from __future__ import annotations
 from collections import Counter
 import random
 from typing import TYPE_CHECKING, Dict, List, Tuple
-from ..Deck import Card
+from ..Game.Deck import Card
 from ._ScoreCards import _ScoreCards
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
-    from ..Game import MoskaGame
+    from ..Game.Game import MoskaGame
 from .AbstractPlayer import AbstractPlayer
 import logging
 

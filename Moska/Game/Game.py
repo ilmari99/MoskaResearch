@@ -1,19 +1,17 @@
 import contextlib
 import os
-from .Player.MoskaBot3 import MoskaBot3
+from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
-from .Player.MoskaBot0 import MoskaBot0
-from .Player.AbstractPlayer import AbstractPlayer
-from .Player.MoskaBot1 import MoskaBot1
-from .Player.MoskaBot2 import MoskaBot2
-from .Player.RandomPlayer import RandomPlayer
-from .GameState import GameState
+from ..Player.MoskaBot0 import MoskaBot0
+from ..Player.AbstractPlayer import AbstractPlayer
+from ..Player.MoskaBot1 import MoskaBot1
+from ..Player.MoskaBot2 import MoskaBot2
+from ..Player.RandomPlayer import RandomPlayer
 import numpy as np
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
 from .CardMonitor import CardMonitor
 import threading
-import multiprocessing
 import logging
 import random
 #import tensorflow as tf

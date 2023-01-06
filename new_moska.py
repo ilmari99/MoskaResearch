@@ -3,7 +3,7 @@ import logging
 import os
 import time
 import sys
-from Moska.Game import MoskaGame
+from Moska.Game.Game import MoskaGame
 from Moska.Player.MoskaBot3 import MoskaBot3
 from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
@@ -13,7 +13,6 @@ from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.Player.MoskaBot0 import MoskaBot0
 from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
-from Moska.utils import add_before
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -239,11 +238,11 @@ if __name__ == "__main__":
         "log_level" : logging.INFO,
         "timeout" : 5,
     }
-    for i in range(50):
-        #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
-        #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
+    for i in range(2):
+        pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
+        players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         #print(players)
-        play_games(players, gamekwargs, n=1200, cpus=15, chunksize=20,disable_logging=False)
+        play_games(players, gamekwargs, n=10, cpus=15, chunksize=1,disable_logging=False)
     
     #play_as_human()
     
