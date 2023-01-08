@@ -312,7 +312,7 @@ class AbstractPlayer(ABC):
             if initiated or not self is self.moskaGame.get_initiating_player():
                 playable.remove("InitialPlay")
         assert bool(playable), f"There must be something to play"
-        self.plog.debug(f"Playable moves: {playable}")
+        self.plog.info(f"Playable moves: {playable}")
         return playable
     
     def _start(self) -> int:
@@ -508,16 +508,22 @@ class AbstractPlayer(ABC):
                 scoring = self._calc_assign_score
             except AttributeError as ae:
                 raise AttributeError(f"{ae}\nSpecify 'scoring : Callable' as an argument or have a _calc_score -method in self.")
+        if from_ is None:
+            from_ = self.hand.cards
+        if to is None:
+            to = self.moskaGame.cards_to_fall
+        self.plog.debug(f"Making cost matrix from {from_} to {to}")
         can_fall = self._map_each_to_list(from_,to)
+        self.plog.debug(f"can_fall: {can_fall}")
         # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
-        C = np.full((len(self.hand),len(self.moskaGame.cards_to_fall)),max_val)
+        C = np.full((len(from_),len(to)),max_val)
         #self.plog.info(f"can_fall: {can_fall}")
         for card, falls in can_fall.items():
             # If there are no cards on the table, that card can fall, continue
             if not falls:
                 continue
-            card_index = self.hand.cards.index(card)
-            fall_indices = [self.moskaGame.cards_to_fall.index(c) for c in falls]
+            card_index = from_.index(card)
+            fall_indices = [to.index(c) for c in falls]
             scores = [scoring(card,c) for c in falls]
             C[card_index][fall_indices] = scores
         return C
