@@ -13,6 +13,7 @@ from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.Player.MoskaBot0 import MoskaBot0
 from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
+from Moska.Player.ModelBot import ModelBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -92,9 +93,9 @@ def args_to_game(
 def play_as_human():
     players = [
         (HumanPlayer,lambda x : {"name":"Human-","log_file":"human.log"}),
-        (MoskaBot3,lambda x : {"log_file":"Bot3.log"}),
-        (MoskaBot2,lambda x : {"log_file":"Bot2.log"}),
-        (RandomPlayer,lambda x :{"log_file" : "Random1.log"})
+        (ModelBot,lambda x : {"name" : f"M-{x}-1-","log_file":f"Game-{x}-M-1.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"}),
+        (ModelBot,lambda x : {"name" : f"M-{x}-2-","log_file":f"Game-{x}-M-2.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"}),
+        (ModelBot,lambda x :{f"log_file" : f"M-{x}-3-.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"})
                ]
     gamekwargs = lambda x : {
         "log_file" : "Humangame.log",
@@ -145,7 +146,10 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
         gen = pool.imap_unordered(run_game,arg_gen,chunksize = chunksize)
         failed_games = 0
         state_data = []
-        while gen:
+        start = time.time()
+        while gen and time.time() - start < 800:
+            if int(time.time() - start) % 10 == 0:
+                print("Elapsed time: ",time.time() - start,"s")
             try:
                 res,states = next(gen)
             except StopIteration as si:
@@ -182,6 +186,7 @@ if __name__ == "__main__":
         os.mkdir("Vectors")
     #play_as_human()
     #exit()
+    #"""
     def to_minimize(params,**kwargs):
         coeffs = {
             "fall_card_already_played_value" : params[0],
@@ -222,10 +227,10 @@ if __name__ == "__main__":
         (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO}),
                ]
     players = [
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-1-","log_file":f"Game-{x}-R-1.log","log_level" : logging.ERROR}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-2-","log_file":f"Game-{x}-R-2.log","log_level" : logging.ERROR}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-R-3.log","log_level" : logging.ERROR}),
-        (RandomPlayer,lambda x : {"name" : f"R-{x}-4-","log_file":f"Game-{x}-¤-4.log","log_level" : logging.ERROR}),
+        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING}),
+        (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
+        (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING,"max_num_states":200}),
     ]
     #players = [
     #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
@@ -236,15 +241,14 @@ if __name__ == "__main__":
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.INFO,
-        "timeout" : 5,
+        "timeout" : 30,
     }
-    for i in range(2):
-        pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
-        players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
+    for i in range(100):
+        #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
+        #pl_types = [RandomPlayer,ModelBot]
+        #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         #print(players)
-        play_games(players, gamekwargs, n=10, cpus=15, chunksize=1,disable_logging=False)
+        play_games(players, gamekwargs, n=1000, cpus=10, chunksize=100,disable_logging=False,shuffle_player_order=True)
     
     #play_as_human()
-    
-    
-
+    #"""
