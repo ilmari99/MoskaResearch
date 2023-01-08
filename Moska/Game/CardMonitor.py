@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
+
+from Moska.Player.AbstractPlayer import AbstractPlayer
 from .Deck import Card, StandardDeck
 from .utils import check_can_fall_card
 if TYPE_CHECKING:
@@ -34,6 +36,23 @@ class CardMonitor:
         assert len(self.cards_fall_dict) == 52, f"Invalid make cards fall dict"
         self.started = True
         return
+    
+    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None) -> set[Card]:
+        """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
+        """
+        cards_not_in_deck = self.game.fell_cards + self.game.cards_to_fall
+        if player is not None:
+            cards_not_in_deck += player.hand.copy().cards
+        for pl, cards in self.player_cards.items():
+            if player is not None and pl == player.name:
+                continue
+            for card in cards:
+                if card != Card(-1,"X"):
+                    cards_not_in_deck.append(card)
+        #self.player.plog.debug(f"Cards NOT in deck: {len(cards_not_in_deck)}")
+        cards_possibly_in_deck = set(self.game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
+        #self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
+        return cards_possibly_in_deck
         
     def make_cards_fall_dict(self):
         """Create the cards_fall_dict by going through each card and checking if each card can be fell with the card
@@ -119,7 +138,7 @@ class CardMonitor:
         if missing == 0:
             return
         # Either add unknown cards, or remove unknown cards from the players hand
-        self.update_known(player_name,[Card(-1,"X") for _ in range(missing)],add=add)
+        self.update_known(player_name,[Card(-1,"X") for _ in range(abs(missing))],add=add)
         return
     
     def update_known(self, player_name : str, cards : List[Card], add : bool = False) -> None:
@@ -138,7 +157,11 @@ class CardMonitor:
                 if card not in self.player_cards[player_name]:
                     card = Card(-1,"X")
                 self.game.glog.info(f"CardMonitor: Removed {card} from {player_name}")
-                self.player_cards[player_name].remove(card)
+                try:
+                    self.player_cards[player_name].remove(card)
+                except:
+                    print(f"CardMonitor: Tried to remove {card} from {player_name}, but it was not in the players hand")
+                    raise ValueError(f"CardMonitor: Tried to remove {card} from {player_name}, but it was not in the players hand")
         # If we want to add cards to the players hand
         else:
             self.player_cards[player_name] += cards
