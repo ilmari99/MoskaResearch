@@ -77,6 +77,13 @@ class MoskaHand:
         """ Return a copy of the hand"""
         return _MoskaHandCopy([card for card in self.cards],self.moskaGame)
     
+    def __eq__(self,other):
+        """ Check if the cards are the same, and if the moskaGame -instances are the same.
+        """
+        if not isinstance(other,MoskaHand):
+            return False
+        return self.cards == other.cards
+    
 
 class _MoskaHandCopy(MoskaHand):
     def __init__(self, cards, moskaGame):
