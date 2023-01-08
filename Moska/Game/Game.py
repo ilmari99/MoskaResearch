@@ -1,5 +1,8 @@
 import contextlib
+import copy
 import os
+import tensorflow as tf
+from Moska.Game.GameState import GameState
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -15,7 +18,7 @@ import threading
 import logging
 import random
 #import tensorflow as tf
-from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip
+from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip, PlayToSelfFromDeck
 
 
 class MoskaGame:
@@ -53,6 +56,11 @@ class MoskaGame:
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
+        self.interpreter = tf.lite.Interpreter(model_path="/home/ilmari/python/moska/Model6-39/model.tflite")
+        self.interpreter.allocate_tensors()
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+        #print(self.input_details)
         self.threads = {}
         if self.players or self.nplayers > 0:
             print("LEFTOVER PLAYERS FOUND!!!!!!!!!!!!!")
@@ -71,6 +79,15 @@ class MoskaGame:
         self._set_turns()
         #self.model = tf.keras.models.load_model("/home/ilmari/python/moska/Model5-300/model.h5")
     
+    def model_predict(self, X):
+        self.threads[threading.get_native_id()].plog.debug(f"Predicting with model, X.shape = {X.shape}")
+        self.interpreter.resize_tensor_input(self.input_details[0]["index"],X.shape)
+        self.interpreter.allocate_tensors()
+        self.interpreter.set_tensor(self.input_details[0]['index'], X)
+        self.interpreter.invoke()
+        output_data = self.interpreter.get_tensor(self.output_details[0]['index'])
+        return output_data
+    
     def _set_turns(self):
         self.turns = {
         "PlayFallFromHand" : PlayFallFromHand(self),
@@ -80,6 +97,7 @@ class MoskaGame:
         "InitialPlay" : InitialPlay(self),
         "EndTurn": EndTurn(self),
         "Skip":Skip(self),
+        "PlayToSelfFromDeck":PlayToSelfFromDeck(self)
         }
         return
 
@@ -223,8 +241,91 @@ class MoskaGame:
         except AssertionError as ae:
             self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{ae}")
             return False, str(ae)
+        except TypeError as te:
+            self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{te}")
+            return False, str(te)
         self.card_monitor.update_from_move(move,args)
         return True, ""
+    
+    def _make_mock_move(self,move,args) -> GameState:
+        """ Makes a move, like '_make_move', but returns the game state after the move and restores self and attributes to its original state.
+        """
+        # Save information about the game state
+        curr_state = GameState.from_game(self)
+        curr_card_monitor_player_cards = copy.deepcopy(self.card_monitor.player_cards)
+        curr_card_monitor_cards_fall_dict = copy.deepcopy(self.card_monitor.cards_fall_dict)
+        curr_tc_ptr = self.turnCycle.ptr
+        curr_deck_state = copy.deepcopy(self.deck.cards)
+        curr_pl_hands = {pl.pid:pl.hand.copy() for pl in self.players}
+        # Normally play the move; change games state precisely as it would actually change.
+        success, msg = self._make_move(move,args)
+        if not success:
+            raise AssertionError(f"Mock move failed: {msg}")
+        # Save the new game state, for evaluation of the move
+        new_state = GameState.from_game(self)
+        
+        # Restore the game state to its original state
+        # Restore the turn cycle
+        self.turnCycle.ptr = curr_tc_ptr
+        # Restore the deck
+        self.deck.cards = curr_deck_state
+        # Restore the players ACTUAL hands
+        for pid, hand in curr_pl_hands.items():
+            self.players[pid].hand = hand
+        # Restore the cards on the table; fell cards and cards_to_fall
+        self.fell_cards = curr_state.fell_cards
+        self.cards_to_fall = curr_state.cards_on_table
+        
+        # Restore card monitors Fall dictionary, and MONITORED player hands
+        self.card_monitor.cards_fall_dict = curr_card_monitor_cards_fall_dict
+        self.card_monitor.player_cards = curr_card_monitor_player_cards
+    
+        
+        if self.card_monitor.cards_fall_dict != curr_card_monitor_cards_fall_dict:
+            print("Fall dict was: ",curr_card_monitor_cards_fall_dict)
+            print("Fall dict is: ",self.card_monitor.cards_fall_dict)
+            raise AssertionError(f"Mock move failed: Incorrect fall dict!")
+        
+        if self.card_monitor.player_cards != curr_card_monitor_player_cards:
+            print("Player CARD MONITOR cards were: ",{self.players[pid].name : cards for pid, cards in enumerate(curr_state.player_cards)})
+            print("Player CARD MONITOR cards are: ",self.card_monitor.player_cards)
+            raise AssertionError(f"Mock move failed: Incorrect card monitor!")
+        
+        # The actual hands on players
+        restored_hands = {pl.pid:pl.hand for pl in self.players}
+        if curr_pl_hands != restored_hands:  # Check that the hands are the same
+            print("Actual hands were: ",curr_pl_hands)
+            print("Actual hands are: ",restored_hands)
+            print("Difference: ", list(set(curr_pl_hands.items()) - set(restored_hands.items())))
+            raise AssertionError(f"Mock move failed: Incorrect player hands!")
+        
+        if curr_tc_ptr != self.turnCycle.ptr:
+            print("TC was: ",curr_tc_ptr)
+            print("TC is: ",self.turnCycle.ptr)
+            raise AssertionError(f"Mock move failed: Incorrect turn cycle pointer!")
+        
+        if curr_deck_state != self.deck.cards:
+            print("Deck was: ",curr_deck_state)
+            print("Deck is: ",self.deck.cards)
+            raise AssertionError(f"Mock move failed: Incorrect order of deck!")
+        
+        if curr_state.fell_cards != self.fell_cards:
+            print("Fell cards were: ",curr_state.fell_cards)
+            print("Fell cards are: ",self.fell_cards)
+            raise AssertionError(f"Mock move failed: Incorrect fell cards!")
+        
+        if curr_state.cards_on_table != self.cards_to_fall:
+            print("Cards to fall were: ",curr_state.cards_on_table)
+            print("Cards to fall are: ",self.cards_to_fall)
+            raise AssertionError(f"Mock move failed: Incorrect cards to fall!")
+        
+        if curr_state.as_vector(normalize=False) != GameState.from_game(self).as_vector(normalize=False):
+            print("State was: ",curr_state.as_vector(normalize=False))
+            print("State is: ",GameState.from_game(self).as_vector(normalize=False))
+            raise AssertionError(f"Mock move failed: Incorrect state vector! {msg}")
+        return new_state
+        
+        
     
     
     def __repr__(self) -> str:
@@ -344,22 +445,32 @@ class MoskaGame:
             return None, None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
-        state_results = []
+        losers = []
+        not_losers = []
         # Combine the players vectors into one list
         for pl in self.players:
             # If the player lost, append 0 to the end of the vector, else append 1
             pl_not_lost = 0 if pl.rank == len(self.players) else 1
             for state in pl.state_vectors:
-                # Randomly remove roughly 50% of vectors, where the player did not lose to balance the data and reduce the size of the dataset
-                if pl_not_lost == 1 and random.random() < 0.55:
-                    continue
-                state.append(pl_not_lost)
-                state_results.append(state)
+                if pl_not_lost == 0:
+                    losers.append(state + [0])
+                else:
+                    not_losers.append(state + [1])
+                
+        state_results = losers + random.sample(not_losers,min(len(losers),len(not_losers)))
+        state_results.sort(key = lambda x : random.random())
+        #print(f"Losers: {len(losers)}, Not losers: {len(not_losers)}")
+        #print(f"Writing {len(state_results)} vectors to file.")
 
-        def get_file_name():
-            fname = "data_"+str(random.randint(0,10000000000000))+".out"
-            while os.path.exists(fname):
-                fname = "data_"+str(random.randint(0,10000000000000))+".out"
+        def get_file_name(min_val = 0, max_val = 1000000000):
+            fname = "data_"+str(random.randint(min_val,max_val))+".out"
+            tries = 0
+            while os.path.exists(fname) and tries < 1000:
+                fname = "data_"+str(random.randint(0,max_val))+".out"
+                tries += 1
+            if tries == 1000:
+                print("Could not find a unique file name. Saving to custom file name.")
+                fname = "data_new_"+str(random.randint(0,max_val))+".out"
             return fname
         
         #print(f"Writing {len(state_results)} vectors to file.")
