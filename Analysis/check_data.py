@@ -117,7 +117,7 @@ def balance_data(path):
 
 if __name__ == "__main__":
     CWD = os.getcwd()
-    PATH = "./RandomLogs/Vectors/"
+    PATH = "./Logs/Vectors/"
     print("Current working directory: " + CWD)
     
     #balance_data()
