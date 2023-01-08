@@ -1,8 +1,9 @@
+import copy
 from dataclasses import dataclass
 from typing import Dict, List, TYPE_CHECKING
 from .Deck import Card
 if TYPE_CHECKING:
-    from Moska.Game import MoskaGame
+    from .Game import MoskaGame
     from Moska.Player.AbstractPlayer import AbstractPlayer
 from .Deck import StandardDeck
 REFERENCE_DECK = tuple(StandardDeck(shuffle = False).cards)
@@ -24,22 +25,22 @@ class GameState:
             - 2 : The player has the turn to fall cards
         """
         self.deck_left = deck_left
-        self.player_cards = tuple((tuple(cards) for cards in player_cards))
-        self.cards_fall = {card : len(cards) for card,cards in cards_fall.items()}
-        self.cards_on_table = tuple(cards_on_table)
-        self.fell_cards = tuple(fell_cards)
+        self.player_cards = player_cards#tuple((tuple(cards) for cards in player_cards))
+        self.cards_fall = cards_fall#{card : len(cards) for card,cards in cards_fall.items()}
+        self.cards_on_table = cards_on_table#tuple(cards_on_table)
+        self.fell_cards = fell_cards#tuple(fell_cards)
         self.player_status = tuple(player_status)
     
     @classmethod
     def from_game(cls, game : 'MoskaGame'):
         """ Creates a GameState object from a MoskaGame object."""
-        player_hands_dict = game.card_monitor.player_cards
+        player_hands_dict = copy.deepcopy(game.card_monitor.player_cards)
         player_names = [pl.name for pl in game.players]
         player_hands = []
         # Loop through the list by pid, and add the player's hand to the list.
         for pl in player_names:
             player_hands.append(player_hands_dict[pl])
-        return cls(len(game.deck), player_hands, game.card_monitor.cards_fall_dict.copy(), game.cards_to_fall.copy(), game.fell_cards.copy(), cls._get_player_status(cls,game))
+        return cls(len(game.deck), player_hands, copy.deepcopy(game.card_monitor.cards_fall_dict), game.cards_to_fall.copy(), game.fell_cards.copy(), cls._get_player_status(cls,game))
     
     def encode_cards(self, cards : List[Card],normalize : bool = False) -> List[int]:
         """Encodes a list of cards into a list of integers.
@@ -51,7 +52,10 @@ class GameState:
             raise ValueError("The reference deck is not 52 cards long.")
         for card in cards:
             # If no such card exists, the value is -1, which indicates that the card is not in the game.
-            encoding_value = self.cards_fall.get(card,-1)
+            #encoding_value = self.cards_fall.get(card,-1)
+            encoding_value = -1
+            if card in self.cards_fall:
+                encoding_value = len(self.cards_fall[card])
             try:
                 out[REFERENCE_DECK.index(card)] = encoding_value/52 if normalize else encoding_value
             # If the card is not in the reference deck it is likely an unknown card
