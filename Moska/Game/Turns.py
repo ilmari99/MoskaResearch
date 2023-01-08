@@ -68,7 +68,6 @@ class InitialPlay(_PlayToPlayer):
         self.player = player
         self.target = target
         self.cards = cards
-        # TODO: Check whether player is the initiating player
         assert self.player is self.moskaGame.get_initiating_player(), f"Player is not the initiating player."
         assert len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards) == 0, "The game is already initiated"
         assert self.check_single_or_multiple(), "Selected values could not be played. Only pairs or greater, cards of same values can be played."
@@ -116,7 +115,18 @@ class PlayToOther(_PlayToPlayer):
         """ Check that the cards have already been played by either the player or an opponent"""
         playable_values = self._playable_values()
         return all((card.value in playable_values for card in self.cards))
-    
+
+class PlayToSelfFromDeck(_PlayToPlayer):
+    def __call__(self, player : AbstractPlayer, target : AbstractPlayer, cards : List[Card]):
+        assert utils.check_signature([AbstractPlayer,AbstractPlayer,list],[player,target,cards]), "Incorrect input signature"
+        self.player = player
+        self.target = target
+        self.cards = cards
+        assert self.player is self.target, "Player is not playing to self"
+        assert self.check_cards_available(), "Some of the played cards are not available"
+        assert self.check_target_active(self.target), "The specified target is not active"
+        self.play()
+
 class PlayToSelf(PlayToOther):
     pass
 
