@@ -56,7 +56,7 @@ class MoskaGame:
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
-        self.interpreter = tf.lite.Interpreter(model_path="/home/ilmari/python/moska/Model6-39/model.tflite")
+        self.interpreter = tf.lite.Interpreter(model_path="/home/ilmari/python/moska/ModelMB2/model.tflite",)
         self.interpreter.allocate_tensors()
         self.input_details = self.interpreter.get_input_details()
         self.output_details = self.interpreter.get_output_details()
