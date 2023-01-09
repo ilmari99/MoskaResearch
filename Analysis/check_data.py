@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 import os
+import random
 import re
 import pandas as pd
 import tensorflow as tf
 
-def create_tf_dataset(path, add_channel=False):
+def create_tf_dataset(paths, add_channel=False) -> tf.data.Dataset:
     """ Create a tf dataset from a folder of files"""
-    file_paths = [os.path.join(path, file) for file in os.listdir(path)]
-    file_paths.sort()
+    if not isinstance(paths, (list, tuple)):
+        try:
+            paths = [paths]
+        except:
+            raise ValueError("Paths should must be a list of strings")
+    file_paths = []
+    for path in paths:
+        if not os.path.isdir(path):
+            raise ValueError(f"Path {path} is not a directory")
+        file_paths += [os.path.join(path, file) for file in os.listdir(path)]
+    print("Number of files: " + str(len(file_paths)))
+    file_paths.sort(key = lambda x : random.random())
+    print("Shuffled files.")
     print(file_paths[0:10])
     dataset = tf.data.TextLineDataset(file_paths)
     dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "))
@@ -114,12 +126,28 @@ def balance_data(path):
     print(f"Saved data to 'balanced-{fname}.pkl'")
     print(data.head())
     print(data.describe())
+    
+def find_duplicate_files(remove=False):
+    folder_one = "./MB1Logs/Logs/Vectors/"
+    folder_two = "./Logs/Vectors/"
+    files_in_one = set(os.listdir(folder_one))
+    files_in_two = set(os.listdir(folder_two))
+    duplicate_files = files_in_one.intersection(files_in_two)
+    print(f"Number of duplicate files: {len(duplicate_files)}")
+    if not remove:
+        return
+    count = 0
+    for i,file in enumerate(duplicate_files):
+        os.remove(folder_two + file)
+        if i % 100 == 0:
+            print(f"{i/len(duplicate_files)*100}% complete")
+    return
 
 if __name__ == "__main__":
     CWD = os.getcwd()
-    PATH = "./Logs/Vectors/"
+    PATH = "./Data/MB1Logs168k/Logs/Vectors/"
     print("Current working directory: " + CWD)
-    
+    #find_duplicate_files()
     #balance_data()
     check_line_lengths_equal(PATH)
     #combine_files(PATH,output="combined.csv")
