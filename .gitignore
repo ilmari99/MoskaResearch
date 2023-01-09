@@ -5,10 +5,10 @@ __pycache__/
 
 #Moska logs and data
 *Logs*
-Data
-*data*.out
+Data/
+*.out
 # Models
-*Model/*
+Models/
 
 # VSCode
 .VSCodeCounter
