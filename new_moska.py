@@ -227,10 +227,10 @@ if __name__ == "__main__":
         (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO}),
                ]
     players = [
-        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING}),
-        (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
-        (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING,"max_num_states":200}),
+        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.INFO}),
+        (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.INFO}),
+        (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.INFO,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.INFO,"max_num_states":600}),
     ]
     #players = [
     #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
@@ -243,12 +243,12 @@ if __name__ == "__main__":
         "log_level" : logging.INFO,
         "timeout" : 30,
     }
-    for i in range(100):
+    for i in range(1):
         #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
         #pl_types = [RandomPlayer,ModelBot]
         #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         #print(players)
-        play_games(players, gamekwargs, n=1000, cpus=10, chunksize=100,disable_logging=False,shuffle_player_order=True)
+        play_games(players, gamekwargs, n=100, cpus=10, chunksize=10,disable_logging=False,shuffle_player_order=True)
     
     #play_as_human()
     #"""
