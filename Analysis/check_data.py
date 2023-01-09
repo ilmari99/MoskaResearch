@@ -18,7 +18,7 @@ def create_tf_dataset(paths, add_channel=False) -> tf.data.Dataset:
             raise ValueError(f"Path {path} is not a directory")
         file_paths += [os.path.join(path, file) for file in os.listdir(path)]
     print("Number of files: " + str(len(file_paths)))
-    file_paths.sort(key = lambda x : random.random())
+    random.shuffle(file_paths)
     print("Shuffled files.")
     print(file_paths[0:10])
     dataset = tf.data.TextLineDataset(file_paths)
