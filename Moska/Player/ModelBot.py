@@ -112,8 +112,12 @@ class ModelBot(AbstractPlayer):
                 #table_cards = [self.moskaGame.cards_to_fall[i] for i in range(1,len(play),2)]
                 plays.append({hc : tc for hc,tc in zip(hand_cards,table_cards)})
             states = []
-            self.plog.info(f"Found plays: {plays}")
+            self.plog.debug(f"Found plays: {plays}")
+            self.plog.info(f"Found {len(plays)} plays")
+            random.shuffle(plays)
             for play in plays:
+                if len(states) >= num_states:
+                    break
                 new_state = self.moskaGame._make_mock_move(move,[self, play])
                 state_vector = new_state.as_vector(normalize=False)
                 chand = self.hand.copy()
@@ -129,8 +133,11 @@ class ModelBot(AbstractPlayer):
             plays = []
             for i in range(1,len(playable_cards)+1):
                 plays += list(itertools.combinations(playable_cards,i))
+            random.shuffle(plays)
             states = []
             for i,play in enumerate(plays):
+                if len(states) >= num_states:
+                    break
                 plays[i] = list(play)
                 new_state = self.moskaGame._make_mock_move(move,[self, self, plays[i]])
                 state_vector = new_state.as_vector(normalize=False)
@@ -146,9 +153,12 @@ class ModelBot(AbstractPlayer):
             plays = []
             for i in range(1,min(len(playable_cards)+1,self._fits_to_table()+1)):
                 plays += list(itertools.combinations(playable_cards,i))
+            random.shuffle(plays)
             states = []
             target = self.moskaGame.get_target_player()
             for i,play in enumerate(plays):
+                if len(states) >= num_states:
+                    break
                 plays[i] = list(play)
                 # TODO: Currently the model has perfect information about the lifted cards
                 new_state = self.moskaGame._make_mock_move(move,[self, target, plays[i]])
@@ -173,7 +183,7 @@ class ModelBot(AbstractPlayer):
             for i in range(1,min(len(chand.cards)+1, self._fits_to_table()+1)):
                 plays += list(itertools.combinations(chand.cards,i))
             target = self.moskaGame.get_target_player()
-            plays.sort(key=lambda x : random.random())
+            random.shuffle(plays)
             legal_plays = []
             states = []
             
