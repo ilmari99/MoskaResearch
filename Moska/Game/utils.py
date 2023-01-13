@@ -72,8 +72,6 @@ def announce_new_card(self) -> None:
     """
     for pl in self.moskaGame.players:
         pl.ready = False
-    if self.requires_graphic:
-        print(self.moskaGame,flush=True)
     return
 
 def check_new_card(func : Callable) -> Callable:
