@@ -1,8 +1,9 @@
 import contextlib
 import copy
 import os
+import time
 import tensorflow as tf
-from Moska.Game.GameState import GameState
+from Moska.Game.GameState import FullGameState, GameState
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -41,7 +42,9 @@ class MoskaGame:
     random_seed = None
     nplayers : int = 0
     card_monitor : CardMonitor = None
+    gather_data : bool = True
     EXIT_FLAG = False
+    IS_RUNNING = False
     def __init__(self,
                  deck : StandardDeck = None,
                  players : List[AbstractPlayer] = [],
@@ -56,16 +59,25 @@ class MoskaGame:
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
-        self.interpreter = tf.lite.Interpreter(model_path="/home/ilmari/python/moska/ModelMB2/model.tflite",)
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
-        self.output_details = self.interpreter.get_output_details()
+        self.IS_RUNNING = False
+        paths = ["/home/ilmari/python/moska/Models/Model6-39/model.tflite"]
+        self.interpreters : List[tf.lite.Interpreter] = []
+        self.input_details = []
+        self.output_details = []
+        for path in paths:    
+            interpreter = tf.lite.Interpreter(model_path=path)
+            interpreter.allocate_tensors()
+            self.interpreters.append(interpreter)
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+            self.output_details.append(output_details)
+            self.input_details.append(input_details)
         #print(self.input_details)
         self.threads = {}
         if self.players or self.nplayers > 0:
             print("LEFTOVER PLAYERS FOUND!!!!!!!!!!!!!")
         if self.card_monitor is not None:
-            print("LEFOVER card_monitor!!!!!!!!!!!!1")
+            print("LEFTOVER card_monitor!!!!!!!!!!!!1")
         if self.threads:
             print("LEFTOVER THREAD!!!!!")
         self.log_level = log_level
@@ -81,12 +93,20 @@ class MoskaGame:
     
     def model_predict(self, X):
         self.threads[threading.get_native_id()].plog.debug(f"Predicting with model, X.shape = {X.shape}")
-        self.interpreter.resize_tensor_input(self.input_details[0]["index"],X.shape)
-        self.interpreter.allocate_tensors()
-        self.interpreter.set_tensor(self.input_details[0]['index'], X)
-        self.interpreter.invoke()
-        output_data = self.interpreter.get_tensor(self.output_details[0]['index'])
-        return output_data
+        output_data = []
+        for interpreter,input_details,output_details in zip(self.interpreters,self.input_details,self.output_details):
+            interpreter.resize_tensor_input(input_details[0]["index"],X.shape)
+            interpreter.allocate_tensors()
+            interpreter.set_tensor(input_details[0]['index'], X)
+            interpreter.invoke()
+            out = interpreter.get_tensor(output_details[0]['index'])
+            output_data.append(out)
+        #self.interpreter.resize_tensor_input(self.input_details[0]["index"],X.shape)
+        #self.interpreter.allocate_tensors()
+        #self.interpreter.set_tensor(self.input_details[0]['index'], X)
+        #self.interpreter.invoke()
+        #output_data = self.interpreter.get_tensor(self.output_details[0]['index'])
+        return np.mean(output_data, axis=0)
     
     def _set_turns(self):
         self.turns = {
@@ -250,79 +270,27 @@ class MoskaGame:
     def _make_mock_move(self,move,args) -> GameState:
         """ Makes a move, like '_make_move', but returns the game state after the move and restores self and attributes to its original state.
         """
-        # Save information about the game state
-        curr_state = GameState.from_game(self)
-        curr_card_monitor_player_cards = copy.deepcopy(self.card_monitor.player_cards)
-        curr_card_monitor_cards_fall_dict = copy.deepcopy(self.card_monitor.cards_fall_dict)
-        curr_tc_ptr = self.turnCycle.ptr
-        curr_deck_state = copy.deepcopy(self.deck.cards)
-        curr_pl_hands = {pl.pid:pl.hand.copy() for pl in self.players}
+        state = FullGameState.from_game(self)
+        self.glog.debug("Saved state data. Setting logger to level WARNING for Mock move")
+        player = args[0]
+        game_log_level = self.glog.getEffectiveLevel()
+        player_log_level = player.plog.getEffectiveLevel()
+        # Disable logging for Mock move
+        self.glog.setLevel(logging.WARNING)
+        player.plog.setLevel(logging.WARNING)
         # Normally play the move; change games state precisely as it would actually change.
         success, msg = self._make_move(move,args)
+        self.glog.setLevel(game_log_level)
+        player.plog.setLevel(player_log_level)
         if not success:
             raise AssertionError(f"Mock move failed: {msg}")
         # Save the new game state, for evaluation of the move
         new_state = GameState.from_game(self)
+        state.restore_game_state(self,check=False)
+        is_eq, msg = state.is_game_equal(self,return_msg=True)
+        if not is_eq:
+            raise AssertionError(f"Mock move failed: {msg}")
         
-        # Restore the game state to its original state
-        # Restore the turn cycle
-        self.turnCycle.ptr = curr_tc_ptr
-        # Restore the deck
-        self.deck.cards = curr_deck_state
-        # Restore the players ACTUAL hands
-        for pid, hand in curr_pl_hands.items():
-            self.players[pid].hand = hand
-        # Restore the cards on the table; fell cards and cards_to_fall
-        self.fell_cards = curr_state.fell_cards
-        self.cards_to_fall = curr_state.cards_on_table
-        
-        # Restore card monitors Fall dictionary, and MONITORED player hands
-        self.card_monitor.cards_fall_dict = curr_card_monitor_cards_fall_dict
-        self.card_monitor.player_cards = curr_card_monitor_player_cards
-    
-        
-        if self.card_monitor.cards_fall_dict != curr_card_monitor_cards_fall_dict:
-            print("Fall dict was: ",curr_card_monitor_cards_fall_dict)
-            print("Fall dict is: ",self.card_monitor.cards_fall_dict)
-            raise AssertionError(f"Mock move failed: Incorrect fall dict!")
-        
-        if self.card_monitor.player_cards != curr_card_monitor_player_cards:
-            print("Player CARD MONITOR cards were: ",{self.players[pid].name : cards for pid, cards in enumerate(curr_state.player_cards)})
-            print("Player CARD MONITOR cards are: ",self.card_monitor.player_cards)
-            raise AssertionError(f"Mock move failed: Incorrect card monitor!")
-        
-        # The actual hands on players
-        restored_hands = {pl.pid:pl.hand for pl in self.players}
-        if curr_pl_hands != restored_hands:  # Check that the hands are the same
-            print("Actual hands were: ",curr_pl_hands)
-            print("Actual hands are: ",restored_hands)
-            print("Difference: ", list(set(curr_pl_hands.items()) - set(restored_hands.items())))
-            raise AssertionError(f"Mock move failed: Incorrect player hands!")
-        
-        if curr_tc_ptr != self.turnCycle.ptr:
-            print("TC was: ",curr_tc_ptr)
-            print("TC is: ",self.turnCycle.ptr)
-            raise AssertionError(f"Mock move failed: Incorrect turn cycle pointer!")
-        
-        if curr_deck_state != self.deck.cards:
-            print("Deck was: ",curr_deck_state)
-            print("Deck is: ",self.deck.cards)
-            raise AssertionError(f"Mock move failed: Incorrect order of deck!")
-        
-        if curr_state.fell_cards != self.fell_cards:
-            print("Fell cards were: ",curr_state.fell_cards)
-            print("Fell cards are: ",self.fell_cards)
-            raise AssertionError(f"Mock move failed: Incorrect fell cards!")
-        
-        if curr_state.cards_on_table != self.cards_to_fall:
-            print("Cards to fall were: ",curr_state.cards_on_table)
-            print("Cards to fall are: ",self.cards_to_fall)
-            raise AssertionError(f"Mock move failed: Incorrect cards to fall!")
-        
-        if curr_state.as_vector(normalize=False) != GameState.from_game(self).as_vector(normalize=False):
-            print("State was: ",curr_state.as_vector(normalize=False))
-            print("State is: ",GameState.from_game(self).as_vector(normalize=False))
-            raise AssertionError(f"Mock move failed: Incorrect state vector! {msg}")
         return new_state
         
         
@@ -350,19 +318,40 @@ class MoskaGame:
             self.glog.debug("Started player threads")
             assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
             self.card_monitor.start()
+            self.IS_RUNNING = True
         return
     
     def _join_threads(self) -> None:
         """ Join all threads. """
-        for pl in self.players:
-            pl.thread.join(self.timeout,)
-            if pl.thread.is_alive():
-                with self.get_lock() as ml:
-                    self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
-                    pl.plog.error(f"Thread timedout!")
-                    print(f"Game with log {self.log_file} failed.")
-                    self.EXIT_FLAG = True
-                    return False
+        start = time.time()
+        alive = [pl.thread.is_alive() for pl in self.players]
+        while time.time() - start < self.timeout and any([pl.thread.is_alive() for pl in self.players]):
+            time.sleep(0.1)
+            if any((pl.EXIT_STATUS == 2 for pl in self.players)):
+                # If EXIT_FLAG is True, the lock is disabled, and we do not need the lock anymore
+                self.glog.error(f"Player thread failed. Exiting.")
+                #pl.plog.error(f"Thread timedout!")
+                print(f"Game with log {self.log_file} failed.")
+                return False
+            alive = [pl.thread.is_alive() for pl in self.players]
+        if any(alive):
+            with self.get_lock() as ml:
+                if not ml:
+                    self.glog.error(f"A rogue thread killed the game!!")
+                self.glog.error(f"Game timedout. Exiting.")
+                #pl.plog.error(f"Thread timedout!")
+                print(f"Game with log {self.log_file} failed.")
+                self.EXIT_FLAG = True
+                return False
+        #for pl in self.players:
+            #pl.thread.join(self.timeout)
+            #if pl.thread.is_alive():
+                #with self.get_lock() as ml:
+                #    self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
+                #    pl.plog.error(f"Thread timedout!")
+                #    print(f"Game with log {self.log_file} failed.")
+                #    self.EXIT_FLAG = True
+                #    return False
                 #raise multiprocessing.ProcessError(f"Game with log {self.log_file} failed.")
         self.glog.debug("Threads finished")
         return True
@@ -426,6 +415,36 @@ class MoskaGame:
         self.glog.info(f"Placed {self.triumph_card} to bottom of deck.")
         return
     
+    def get_player_state_vectors(self, shuffle = True, balance = True) -> List[List]:
+        losers = []
+        not_losers = []
+        # Combine the players vectors into one list
+        for pl in self.players:
+            # If the player lost, append 0 to the end of the vector, else append 1
+            pl_not_lost = 0 if pl.rank == len(self.players) else 1
+            for state in pl.state_vectors:
+                if pl_not_lost == 0:
+                    losers.append(state + [0])
+                else:
+                    not_losers.append(state + [1])
+        if balance:
+            state_results = losers + random.sample(not_losers,min(len(losers),len(not_losers)))
+        if shuffle:
+            random.shuffle(state_results)
+        return state_results
+        
+        
+    def get_random_file_name(self,min_val = 1, max_val = 1000000000):
+        fname = "data_"+str(random.randint(int(min_val),int(max_val)))+".out"
+        tries = 0
+        while os.path.exists(fname) and tries < 1000:
+            fname = "data_"+str(random.randint(0,max_val))+".out"
+            tries += 1
+        if tries == 1000:
+            print("Could not find a unique file name. Saving to custom file name.")
+            fname = "data_new_"+str(random.randint(0,max_val))+".out"
+        return fname
+    
     def start(self) -> bool:
         """The main method of MoskaGame. Sets the triumph card, locks the game to avoid race conditions between players,
         initializes and starts the player threads.
@@ -442,48 +461,24 @@ class MoskaGame:
         # Wait for the threads to finish
         success = self._join_threads()
         if not success:
+            #self.IS_RUNNING = False
             return None, None
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
-        losers = []
-        not_losers = []
-        # Combine the players vectors into one list
-        for pl in self.players:
-            # If the player lost, append 0 to the end of the vector, else append 1
-            pl_not_lost = 0 if pl.rank == len(self.players) else 1
-            for state in pl.state_vectors:
-                if pl_not_lost == 0:
-                    losers.append(state + [0])
-                else:
-                    not_losers.append(state + [1])
-                
-        state_results = losers + random.sample(not_losers,min(len(losers),len(not_losers)))
-        state_results.sort(key = lambda x : random.random())
-        #print(f"Losers: {len(losers)}, Not losers: {len(not_losers)}")
-        #print(f"Writing {len(state_results)} vectors to file.")
-
-        def get_file_name(min_val = 0, max_val = 1000000000):
-            fname = "data_"+str(random.randint(min_val,max_val))+".out"
-            tries = 0
-            while os.path.exists(fname) and tries < 1000:
-                fname = "data_"+str(random.randint(0,max_val))+".out"
-                tries += 1
-            if tries == 1000:
-                print("Could not find a unique file name. Saving to custom file name.")
-                fname = "data_new_"+str(random.randint(0,max_val))+".out"
-            return fname
-        
-        #print(f"Writing {len(state_results)} vectors to file.")
-        with open("Vectors/"+get_file_name(),"w") as f:
-            data = str(state_results).replace("], [","\n")
-            data = data.strip("[]")
-            f.write(data)
+        state_results = []
+        if self.gather_data:
+            state_results = self.get_player_state_vectors()
+            #print(f"Losers: {len(losers)}, Not losers: {len(not_losers)}")
+            #print(f"Writing {len(state_results)} vectors to file.")
+            
+            #print(f"Writing {len(state_results)} vectors to file.")
+            with open("Vectors/"+self.get_random_file_name(),"w") as f:
+                data = str(state_results).replace("], [","\n")
+                data = data.strip("[]")
+                f.write(data)
         
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
-        # Clean up just in case.
-        for pl in self.players:
-            del pl
-        del self.card_monitor, self.turnCycle, self.deck, self.players
+        #self.IS_RUNNING = False
         return ranks, state_results
