@@ -43,7 +43,11 @@ class HeuristicParameters():
     
     def _calculate_score(self, cards_after_play : List[Card], lifted_from_deck : int, most_falls : int, e_lifted : float) -> float:
         """ Evaluate the hand after playing, or the excpected value of the hand"""
-        sc = sum((c.score for c in cards_after_play)) + self._adjust_for_missing_cards(cards_after_play,most_falls,lifted=lifted_from_deck) + self._e_score_from_lifted(e_lifted, lifted_from_deck)
+        try:
+            sc = sum((c.score for c in cards_after_play)) + self._adjust_for_missing_cards(cards_after_play,most_falls,lifted=lifted_from_deck) + self._e_score_from_lifted(e_lifted, lifted_from_deck)
+        except TypeError as te:
+            print([c.score for c in cards_after_play])
+            raise TypeError(te)
         try:
             sc = sc / (len(cards_after_play) + lifted_from_deck)
         except ZeroDivisionError as zde:
@@ -84,6 +88,7 @@ class HeuristicParameters():
                 played_cards = list(self.player.play_fall_card_from_hand().keys())
                 cards_after_play = list(set(self.player.hand.cards).difference(played_cards))
                 liftn = self._lift_n_from_deck(cards_after_play)
+            
             elif move == "PlayToSelf":
                 played_cards = self.player.play_to_self()
                 cards_after_play = list(set(self.player.hand.cards).difference(played_cards))
@@ -113,7 +118,12 @@ class HeuristicParameters():
         self.player.plog.debug(f"Cards NOT in deck: {len(cards_not_in_deck)}")
         cards_possibly_in_deck = set(game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
         self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
-        total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
+        try:
+            total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
+        except TypeError as te:
+            print(f"Cards possibly in deck: {cards_possibly_in_deck}")
+            print([c.score for c in cards_possibly_in_deck])
+            raise TypeError(te)
         try:
             e_lifted = total_possible_falls / len(cards_possibly_in_deck)
         except ZeroDivisionError as ze:
