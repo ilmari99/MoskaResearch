@@ -2,7 +2,7 @@
 import os
 import tensorflow as tf
 
-file_path = "/home/ilmari/python/moska/ModelMB2/model.h5"
+file_path = "/home/ilmari/python/moska/Models/ModelMB4/model.h5"
 output_file = None
 
 if output_file is None:
