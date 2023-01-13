@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 
 
 class CardMonitor:
+    """
+    CardMonitor is a class that keeps track of the cards that are known to each player, and which cards have fallen.
+    """
+    
+    
     player_cards : dict[str,List[Card]]= {}
     cards_fall_dict : dict[Card,List[Card]] = {}
     game : MoskaGame = None
@@ -21,9 +26,13 @@ class CardMonitor:
         self.cards_fall_dict = {}
         self.started = False
         
-    def start(self):
+    def start(self) -> None:
+        """ Start tracking cards.
+        This can only be done right when the game starts, as for ex the triumph card is not known until then.
+        """
         if self.started:
             return
+        # 
         for pl in self.game.players:
             self.player_cards[pl.name] = []
             self.update_known(pl.name,cards=[Card(-1,"X") for _ in range(6)],add=True)
@@ -35,11 +44,17 @@ class CardMonitor:
         self.make_cards_fall_dict()
         assert len(self.cards_fall_dict) == 52, f"Invalid make cards fall dict"
         self.started = True
+        self.game.glog.info(f"Card monitor started")
         return
     
     def get_cards_possibly_in_deck(self,player : AbstractPlayer = None) -> set[Card]:
         """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
         """
+        # If there is only one card left in the deck, it is the triumph card
+        if len(self.game.deck) == 1:
+            return [self.game.triumph_card]
+        if len(self.game.deck) == 0:
+            return []
         cards_not_in_deck = self.game.fell_cards + self.game.cards_to_fall
         if player is not None:
             cards_not_in_deck += player.hand.copy().cards
@@ -108,15 +123,15 @@ class CardMonitor:
             # Remove the fallen card as a key
             if card in self.cards_fall_dict:
                 self.cards_fall_dict.pop(card)
-                self.game.glog.debug(f"Removed {card} from cards_fall_dict keys")
+                #self.game.glog.debug(f"Removed {card} from cards_fall_dict keys")
         # Remove the card as value from the list
         for card_d, falls in self.cards_fall_dict.copy().items():
             for card in cards:
                 if card in falls:
                     self.cards_fall_dict[card_d].remove(card)
-                    self.game.glog.debug(f"Removed {card} from {card_d} list of cards")
+                    #self.game.glog.debug(f"Removed {card} from {card_d} list of cards")
         for card,falls in self.cards_fall_dict.items():
-            self.game.glog.info(f"{card} : {len(falls)}")
+            pass#self.game.glog.info(f"{card} : {len(falls)}")
         return
         
     
@@ -156,7 +171,7 @@ class CardMonitor:
                 # If the card we want to remove from the players hand is not known, then mark it as an unknown card
                 if card not in self.player_cards[player_name]:
                     card = Card(-1,"X")
-                self.game.glog.info(f"CardMonitor: Removed {card} from {player_name}")
+                #self.game.glog.info(f"CardMonitor: Removed {card} from {player_name}")
                 try:
                     self.player_cards[player_name].remove(card)
                 except:
@@ -164,10 +179,10 @@ class CardMonitor:
                     raise ValueError(f"CardMonitor: Tried to remove {card} from {player_name}, but it was not in the players hand")
         # If we want to add cards to the players hand
         else:
-            self.player_cards[player_name] += cards
-            self.game.glog.info(f"CardMonitor: Added {cards} to {player_name}")
+            self.player_cards[player_name] = cards + self.player_cards[player_name]
+            #self.game.glog.info(f"CardMonitor: Added {cards} to {player_name}")
         # Print the players cards
-        for pl, cards in self.player_cards.items():
-            self.game.glog.debug(f"{pl} : {cards}")
-        self.game.glog.debug("\n")
+        #for pl, cards in self.player_cards.items():
+        #    self.game.glog.debug(f"{pl} : {cards}")
+        #self.game.glog.debug("\n")
         return
