@@ -132,6 +132,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     Returns:
         Dict: _description_
     """
+    
     start_time = time.time()
     # Select the specified number of cpus, or how many cpus are available
     cpus = min(os.cpu_count(),n) if cpus==-1 else cpus
@@ -149,7 +150,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
         start = time.time()
         while gen and time.time() - start < 800:
             if int(time.time() - start) % 10 == 0:
-                print("Elapsed time: ",time.time() - start,"s")
+                print(f"Simulated {len(results)/n*100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
             try:
                 res,states = next(gen)
             except StopIteration as si:
@@ -161,7 +162,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                 state_data += states
             #print(res)
             results.append(res)
-    print(f"Simulated {len(results)} games. {len(results) - failed_games} succesful games. {failed_games} failed.")
+    print(f"Simulated {len(results)/n * 100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
     ranks = {}
     for res in results:
@@ -175,7 +176,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     rank_list.sort(key=lambda x : x[1])
     for pl,rank in rank_list:
         print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
-    return 100*(ranks["Bot3"]/(len(results) - failed_games)) if "Bot3" in ranks else 0
+    return 100*(ranks["MB1"]/(len(results) - failed_games)) if "MB1" in ranks else 0
 
 if __name__ == "__main__":
     n = 5
@@ -186,69 +187,60 @@ if __name__ == "__main__":
         os.mkdir("Vectors")
     #play_as_human()
     #exit()
-    #"""
+    """
     def to_minimize(params,**kwargs):
         coeffs = {
-            "fall_card_already_played_value" : params[0],
-            "fall_card_same_value_already_in_hand" : params[1],
-             "fall_card_card_is_preventing_kopling" : params[2],
-             "fall_card_deck_card_not_played_to_unique" : params[3],
-             "fall_card_threshold_at_start" : params[4],
-             "initial_play_quadratic_scaler" : params[5]
+            "PlayFallFromDeck" : params[0],
+            "PlayFallFromHand" : params[1],
+            "PlayToSelf" : params[2],
+            "InitialPlay" : params[3],
+            "Skip" : params[4],
+            "EndTurn" : params[5],
+            "PlayToOther" : params[6]
         }
         print("coeffs",coeffs)
         print("params",params)
-        print("kwargs",kwargs)
         players = [
-            (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":f"Game-{x}-Bot3-1.log","log_level" : logging.INFO,"coefficients" : coeffs}),
-            (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":f"Game-{x}-Bot3-2.log","log_level" : logging.INFO, "coefficients" : coeffs}),
-            (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.INFO}),
-            (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO})
-               ]
+            (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING,"max_num_states":100, "parameters":coeffs}),
+            (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
+            (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+            (MoskaBot2,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING}),
+        ]
         gamekwargs = lambda x : {
             "log_file" : f"Game-{x}.log",
             "log_level" : logging.INFO,
-            "timeout" : 1,
+            "timeout" : 15,
         }
         #out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
-        out = play_games(players, gamekwargs, n=3200, cpus=16, chunksize=20,disable_logging=False)
+        out = play_games(players, gamekwargs, n=600, cpus=10, chunksize=6,disable_logging=False)
         print(f"Result: {out}")
         print("")
         return out
-    #x0=[-0.76918911, 0.67376208, -0.61803399, 0.85455507, 33.55246691, 0.61818669]
-    #bounds = [(-5,0), (0,5), (-5,0), (0,5), (1,50), (0,5)]
-    #res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
-    #print(f"Minimization result: {res}")
-    #exit()
+    x0 = [1 for _ in range(7)]
+    bounds = [(0,1) for _ in range(7)]
+    res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
+    print(f"Minimization result: {res}")
+    exit()
+    #"""
+    
     players = [
-        (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":f"Game-{x}-Bot3-1.log","log_level" : logging.DEBUG}),
-        (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":f"Game-{x}-Bot3-2.log","log_level" : logging.DEBUG}),
-        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":f"Game-{x}-Bot2-1.log","log_level" : logging.INFO}),
-        (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":f"Game-{x}-Bot2-2.log","log_level" : logging.INFO}),
-               ]
-    players = [
-        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.INFO}),
+        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.DEBUG,"max_num_states":600}),
         (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.INFO}),
         (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.INFO,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.INFO,"max_num_states":600}),
+        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.DEBUG,"max_num_states":600}),
     ]
-    #players = [
-    #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-1-","log_file":None}),
-    #    (MoskaBot3,lambda x : {"name" : f"Bot3-{x}-2-","log_file":None}),
-    #    (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-1-","log_file":None}),
-    #    (MoskaBot2,lambda x : {"name" : f"Bot2-{x}-2-","log_file":None})
-    #           ]
+
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.INFO,
         "timeout" : 30,
     }
+    
     for i in range(1):
         #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
         #pl_types = [RandomPlayer,ModelBot]
         #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         #print(players)
         play_games(players, gamekwargs, n=100, cpus=10, chunksize=10,disable_logging=False,shuffle_player_order=True)
-    
-    #play_as_human()
-    #"""
+        
+        
