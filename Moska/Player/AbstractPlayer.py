@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import numpy as np
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
-from ..Game.GameState import GameState
+from ..Game.GameState import FullGameState
 from ..Game.Deck import Card
 if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typechecking
     from ..Game.Game import MoskaGame
@@ -22,6 +22,8 @@ class AbstractPlayer(ABC):
     When subclassing, the abstract methods must be implemented to decide actions.
     
     """
+    # -1 = Not-running, 0 = Running, 1 = Clean exit, 2 = Error
+    EXIT_STATUS : int = -1
     hand : MoskaHand = None
     pid : int = None
     moskaGame : MoskaGame = None
@@ -232,6 +234,8 @@ class AbstractPlayer(ABC):
             # If the player doesn't have a hand and there are no cards left, or there are no players left
             if (not self.hand and len(self.moskaGame.deck) == 0) or len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is None)) <= 1:
                 self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
+                # If exit was clean, 1
+                self.EXIT_STATUS = 1
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
@@ -244,16 +248,21 @@ class AbstractPlayer(ABC):
             Tuple[bool,str]: _description_
         """
         success = False
+        # Playable moves
         playable = self._playable_moves()
+        # Return the move id to play
         move = self.choose_move(playable)
+        # Get the function to call, which returns the arguments to pass to the game
         extra_args = self.moves[move]()
+        # Copy lists, so that they are not modified by the game
         extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
         args = [self] + extra_args
+        # Call the game to play the move. Catches Assertion (incorrect move) and Type errors
         success, msg  = self.moskaGame._make_move(move,args)
-        if success and (move != "Skip" or len(self.state_vectors) == 0):
-            state = GameState.from_game(self.moskaGame)
-            vec = state.as_vector(normalize=False)
-            vec = vec + state.encode_cards(self.hand.cards,normalize=False)
+        # If gathering data, save the state vector
+        if (success and (move != "Skip" or len(self.state_vectors) == 0)) and self.moskaGame.gather_data:
+            state = FullGameState.from_game(self.moskaGame, copy=False)
+            vec = state.as_perspective_vector(self)
             self.state_vectors.append(vec)
         return success, msg
     
@@ -324,6 +333,7 @@ class AbstractPlayer(ABC):
             self.plog.info("Initialized thread")
             self.thread.start()
             self.thread_id = self.thread.native_id
+        self.EXIT_STATUS = 0
         return self.thread_id
     
     def _continuous_play(self) -> None:
@@ -335,14 +345,23 @@ class AbstractPlayer(ABC):
                    }
         self.plog.info(f"Table info: {tb_info}")
         #random.seed(self.moskaGame.random_seed)
+        curr_target = self.moskaGame.get_target_player()
+        turns_taken_for_this_player = 0
         while self.rank is None:
             time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
             # Acquire the lock for moskaGame, returns true if the lock was acquired, and False if there was a problem
             with self.moskaGame.get_lock(self) as ml:
+                
+                target = self.moskaGame.get_target_player()
+                if target is not curr_target:
+                    turns_taken_for_this_player = 0
+                    curr_target = target
+                turns_taken_for_this_player += 1
+                
                 if not ml:
                     continue
                 msgd = {
-                    "target" : self.moskaGame.get_target_player().name,
+                    "target" : curr_target.name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,
                     "fell_cards" : self.moskaGame.fell_cards,
                     "hand" : self.hand,
@@ -360,6 +379,7 @@ class AbstractPlayer(ABC):
                 self.plog.debug(f"{msgd}")
                 try:
                     # Try to play moves, as long as a valid move is played.
+                    # At _play_move, the self.ready is set to True
                     success, msg = self._play_move()    # Return (True, "") if a valid move, else (False, <error>)
                     while not success:
                         self.plog.warning(msg)
@@ -368,7 +388,11 @@ class AbstractPlayer(ABC):
                         success, msg = self._play_move()
                 except Exception as e:
                     self.plog.error(traceback.format_exc())
+                    self.EXIT_STATUS = 2
                     sys.exit(e)
+                # The target player is not ready, until they play "EndTurn"
+                if (self is curr_target and self.moskaGame.cards_to_fall):
+                    self.ready = False
                 # Set the players rank
                 self._set_rank()
                 # Check if self is target and finished
