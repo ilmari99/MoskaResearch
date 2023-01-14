@@ -1,5 +1,4 @@
 import copy
-from dataclasses import dataclass
 from typing import Dict, List, TYPE_CHECKING
 import warnings
 from .Deck import Card
