@@ -5,7 +5,6 @@ from .AbstractPlayer import AbstractPlayer
 if TYPE_CHECKING:
     from ..Game.Game import MoskaGame
 from ..Game.Deck import Card
-from ..Game import utils
 import logging
 
 

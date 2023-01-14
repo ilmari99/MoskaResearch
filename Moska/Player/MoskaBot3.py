@@ -1,5 +1,4 @@
 from __future__ import annotations
-from collections import Counter
 import logging
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
