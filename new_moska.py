@@ -115,7 +115,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                chunksize : int = -1,
                shuffle_player_order : bool = True,
                ):
-    """ Simulate moska games with specified players. Return loss percent of each player.
+    """ Simulate moska games with specified players. Return the rankings in finishing order.
     The players are specified by a list of tuples, with AbstractPlayer subclass and argument pairs.
 
     Args:
@@ -146,7 +146,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
         start = time.time()
         # Loop while there are games.
         while gen:
-            # Print statistics every 10 seconds. TODO: Try to fix.
+            # Print statistics every 10 seconds. TODO: Not working, fix.
             if int(time.time() - start) % 10 == 0:
                 print(f"Simulated {len(results)/n*100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
             try:
@@ -181,18 +181,18 @@ def get_loss_percents(results, player="all", show = True):
     # Return the losses as a dictionary. The dictionary is ordered
     loss_percentages = {k : round((v/games)*100,4) for k,v in loss_list}
     if show:
-        for pl,loss_perc in loss_percentages:
+        for pl,loss_perc in loss_percentages.items():
             print(f"{pl} was last {loss_perc} % times")
     # return the full dictionary if player="all"
     if player=="all":
         return loss_percentages
     else:
-        return loss_percentages[player]
+        return loss_percentages[player] if player in loss_percentages else 0
 
 
 
 
-def to_minimize_func(params,**kwargs):
+def to_minimize_func(params):
     """ The function to minimize. You must change the parameters here."""
     # Mapping of the coefficients to the names of the parameters
     params = {
@@ -205,18 +205,21 @@ def to_minimize_func(params,**kwargs):
     "PlayToOther" : params[6]
     }
     print("coeffs",params)
+    shared_kwargs = {
+        "log_level" : logging.WARNING,
+    }
     players = [
-            (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING,"max_num_states":100, "parameters":params}),
-            (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
-            (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-            (MoskaBot2,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING}),
+            (ModelBot, lambda x : shared_kwargs | {"name" : f"MB-1","log_file":f"Game-{x}-MB-1.log","max_num_states":100, "parameters":params}),
+            (MoskaBot3, lambda x : shared_kwargs | {"name" : f"B3-1","log_file":f"Game-{x}-B-2.log"}),
+            (MoskaBot2, lambda x : shared_kwargs |  {"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}),
+            (MoskaBot2, lambda x : shared_kwargs | {"name" : f"B2-2","log_file":f"Game-{x}-MB-4.log"}),
             ]
     gamekwargs = lambda x : {
             "log_file" : f"Game-{x}.log",
             "log_level" : logging.WARNING,
             "timeout" : 15,
         }
-    player_to_minimize = "MB1"
+    player_to_minimize = "MB1-1"
     results = play_games(players, gamekwargs, n=600, cpus=10, chunksize=6,disable_logging=False)
     out = get_loss_percents(results,player=player_to_minimize, show=False)
     print(f"Player {player_to_minimize} lost: {out} %")
@@ -238,25 +241,30 @@ if __name__ == "__main__":
         os.mkdir("Vectors")
     #play_as_human()
     #exit()
-    
+
+    shared_kwargs = {
+        "log_level" : logging.ERROR,
+        "delay":0,
+    }
+
+    # The | operator is used to merge dictionaries, with the latter overwriting the former for shared keys
     players = [
-        (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.DEBUG,"max_num_states":600}),
-        (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.INFO}),
-        (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.INFO,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (ModelBot,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.DEBUG,"max_num_states":600}),
+        (MoskaBot2, lambda x : shared_kwargs | {"name" : f"B2-1","log_file":f"Game-{x}-MB-1.log"}),
+        (MoskaBot3, lambda x : shared_kwargs | {"name" : f"B3-1","log_file":f"Game-{x}-B-2.log"}),
+        (MoskaBot2, lambda x : shared_kwargs | {"name" : f"B2-2","log_file":f"Game-{x}-B-3.log"}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+        (MoskaBot3, lambda x : shared_kwargs | {"name" : f"B3-2","log_file":f"Game-{x}-MB-4.log"}),
     ]
 
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
-        "log_level" : logging.INFO,
+        "log_level" : logging.DEBUG,
         "timeout" : 30,
+        "gather_data":False,
     }
-    
+
     for i in range(1):
-        #pl_types = [MoskaBot3,MoskaBot2,RandomPlayer, MoskaBot0, MoskaBot1]
-        #pl_types = [RandomPlayer,ModelBot]
-        #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
-        #print(players)
-        play_games(players, gamekwargs, n=10, cpus=10, chunksize=10,shuffle_player_order=True)
+        #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
+        results = play_games(players, gamekwargs, n=1000, cpus=5, chunksize=10,shuffle_player_order=True)
+        get_loss_percents(results,player="all", show=True)
         
         
