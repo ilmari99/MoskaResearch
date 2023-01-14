@@ -4,12 +4,9 @@ import itertools
 import logging
 import random
 import threading
-import time
 import numpy as np
-import copy
 from .AbstractPlayer import AbstractPlayer
 from typing import Dict, List,TYPE_CHECKING, Tuple
-import tensorflow as tf
 from ..Game.GameState import FullGameState, GameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
