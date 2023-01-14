@@ -4,6 +4,7 @@ import random
 import re
 import pandas as pd
 import tensorflow as tf
+import sys
 
 def create_tf_dataset(paths, norm=False, add_channel=False) -> tf.data.Dataset:
     """ Create a tf dataset from a folder of files"""
@@ -37,7 +38,10 @@ def check_data(path, count_unique=False):
     nlines = 0
     nlosses = 0
     uniques = set()
-    for file in os.listdir(path):
+    files = os.listdir(path)
+    for i,file in enumerate(files):
+        if i % 10:
+            print(f"Checking file: {i/len(files)*100}% complete")
         with open(path+file,"r") as f:
             for line in f:
                 nlines += 1
@@ -80,7 +84,6 @@ def find_duplicate_files(remove=False):
     print(f"Number of duplicate files: {len(duplicate_files)}")
     if not remove:
         return
-    count = 0
     for i,file in enumerate(duplicate_files):
         os.remove(folder_two + file)
         if i % 10 == 0:
@@ -88,13 +91,11 @@ def find_duplicate_files(remove=False):
     return
 
 if __name__ == "__main__":
-    CWD = os.getcwd()
     PATH = "./Logs/Vectors/"
+    CWD = os.getcwd()
+    if len(sys.argv) > 1:
+        PATH = sys.argv[1]
     print("Current working directory: " + CWD)
-    #find_duplicate_files()
-    #balance_data()
+    print("Checking data for path: " + PATH)
     check_data(PATH, count_unique=True)
-    #combine_files(PATH,output="combined.csv")
-    #get_n_losses("combined.csv")
-    #check_unique_vectors("combined.csv")
 
