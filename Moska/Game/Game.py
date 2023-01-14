@@ -1,8 +1,6 @@
 import contextlib
-import copy
 import os
 import time
-import tensorflow as tf
 from Moska.Game.GameState import FullGameState, GameState
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
@@ -18,7 +16,8 @@ from .CardMonitor import CardMonitor
 import threading
 import logging
 import random
-#import tensorflow as tf
+#import tensorflow as tf is done at set_model_vars_from_path IF a path is given.
+# This is to gain a speedup when not using tensorflow
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip, PlayToSelfFromDeck
 
 
@@ -43,6 +42,7 @@ class MoskaGame:
     nplayers : int = 0
     card_monitor : CardMonitor = None
     model_paths : List[str] = ""
+    __prev_lock_holder__ = None
     GATHER_DATA : bool = True
     EXIT_FLAG = False
     IS_RUNNING = False
@@ -75,7 +75,7 @@ class MoskaGame:
         self.log_level = log_level
         self.log_file = log_file if log_file else os.devnull
         self.model_paths = model_paths
-        self.set_model_vars(model_paths)
+        self.set_model_vars_from_paths()
         self.random_seed = random_seed if random_seed else int(100000*random.random())
         self.deck = deck if deck else StandardDeck(seed = self.random_seed)
         self.players = players if players else self._get_random_players(nplayers)
@@ -85,17 +85,22 @@ class MoskaGame:
         self._set_turns()
         #self.model = tf.keras.models.load_model("/home/ilmari/python/moska/Model5-300/model.h5")
 
-    def set_model_vars(self,paths):
-        if isinstance(paths,str):
-            paths = [paths]
-            self.paths = paths
-        self.interpreters : List[tf.lite.Interpreter] = []
+    def set_model_vars_from_paths(self):
+        if isinstance(self.model_paths,str):
+            self.model_paths = [self.model_paths] if self.model_paths else []
+        self.interpreters = []
         self.input_details = []
         self.output_details = []
-        if not paths:
+        if not self.model_paths:
             self.glog.info("No model paths given, not loading any models.")
             return
-        for path in paths:    
+        self.glog.debug("Importing Tensorflow and loading models from paths: {}".format(self.model_paths))
+        # NOTE: Import tensorflow only if there are models to load! This speeds up the process.
+        # This also allows the user to run the game without tensorflow installed.
+        # Furthermore, Tensorflow cannot be run with optimizations (-OO flag),
+        # So this allows us to simulate games without tensorflow bots with optmizations
+        import tensorflow as tf
+        for path in self.model_paths:    
             interpreter = tf.lite.Interpreter(model_path=path)
             interpreter.allocate_tensors()
             self.interpreters.append(interpreter)
@@ -103,7 +108,7 @@ class MoskaGame:
             output_details = interpreter.get_output_details()
             self.output_details.append(output_details)
             self.input_details.append(input_details)
-        self.glog.info(f"Loaded {paths} models.")
+        self.glog.info(f"Loaded {self.model_paths} models.")
         return
     
     def model_predict(self, X):
@@ -234,6 +239,10 @@ class MoskaGame:
         """
         with self.main_lock as lock:
             self.lock_holder = threading.get_native_id()
+            if self.lock_holder == self.__prev_lock_holder__:
+                self.lock_holder = None
+                yield False
+                return
             og_state = len(self.cards_to_fall + self.fell_cards)
             if self.lock_holder not in self.threads:
                 self.lock_holder = None
@@ -256,6 +265,7 @@ class MoskaGame:
                 #print(inp)
                 possib_to_not_lose = self.model.predict(np.array([inp]),verbose=0)
                 print(f"{pl.name} has {possib_to_not_lose[0]} chance of not losing")
+            self.__prev_lock_holder__ = self.lock_holder
             self.lock_holder = None
         return
     
