@@ -19,6 +19,8 @@ import numpy as np
 from scipy.optimize import minimize
 #from noisyopt import minimizeCompass,minimize
 
+
+
 def set_game_args(game : MoskaGame, gamekwargs : Dict[str,Any]) -> None:
     """Sets a game instances variables from a dictionary of key-value pairs.
     If value is Callable, the returned value is assigned.
@@ -59,14 +61,13 @@ def set_player_args_optimize_bot3(players : Iterable[AbstractPlayer], plkwargs :
             pl.__setattr__(k,v)
     return
 
-def args_to_game(
+def args_to_gamekwargs(
     game_kwargs : Callable,
     players : List[Tuple[AbstractPlayer,Callable]],
     gameid : int,
     shuffle : False,
-    disable_logging : bool = False,
-                        ):
-    """Start a moska game with callable game arguments and players with callable arguments
+                        ) -> Dict[str,Any]:
+    """Turn a dynamic arguments (for ex callable changing game log), to a static gamekwargs dictionary.
 
     Args:
         game_kwargs (Callable): _description_
@@ -79,9 +80,6 @@ def args_to_game(
     """
     game_args = game_kwargs(gameid)
     players = [pl(**args(gameid)) for pl, args in players]
-    if disable_logging:
-        set_player_args(players,{"log_file" : os.devnull})
-        game_args["log_file"] = os.devnull
     if not players:
         assert "nplayers" in game_args or "players" in game_args
     else:
@@ -93,9 +91,9 @@ def args_to_game(
 def play_as_human():
     players = [
         (HumanPlayer,lambda x : {"name":"Human-","log_file":"human.log"}),
-        (ModelBot,lambda x : {"name" : f"M-{x}-1-","log_file":f"Game-{x}-M-1.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"}),
-        (ModelBot,lambda x : {"name" : f"M-{x}-2-","log_file":f"Game-{x}-M-2.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"}),
-        (ModelBot,lambda x :{f"log_file" : f"M-{x}-3-.log","log_level" : logging.DEBUG, "model_file":"/home/ilmari/python/moska/Model5-300/model.h5"})
+        (ModelBot,lambda x : {"name" : f"M-{x}-1-","log_file":f"Game-{x}-M-1.log","log_level" : logging.DEBUG,}),
+        (ModelBot,lambda x : {"name" : f"M-{x}-2-","log_file":f"Game-{x}-M-2.log","log_level" : logging.DEBUG}),
+        (ModelBot,lambda x :{f"log_file" : f"M-{x}-3-.log","log_level" : logging.DEBUG,})
                ]
     gamekwargs = lambda x : {
         "log_file" : "Humangame.log",
@@ -103,7 +101,7 @@ def play_as_human():
         "log_level" : logging.DEBUG,
         "timeout" : 1000,
     }
-    game = args_to_game(gamekwargs,players,0,True)
+    game = args_to_gamekwargs(gamekwargs,players,gameid = 0,shuffle = True)
     game = MoskaGame(**game)
     return game.start()
 
@@ -115,8 +113,7 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                n : int = 1,
                cpus :int = -1,
                chunksize : int = -1,
-               shuffle_player_order = True,
-               disable_logging = False,
+               shuffle_player_order : bool = True,
                ):
     """ Simulate moska games with specified players. Return loss percent of each player.
     The players are specified by a list of tuples, with AbstractPlayer subclass and argument pairs.
@@ -139,47 +136,101 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     # Select the chunksize, so that it is close to 'chunksize * cpus = ngames'
     chunksize = n//cpus if chunksize == -1 else chunksize
     
-    arg_gen = (args_to_game(game_kwargs,players,i,shuffle_player_order,disable_logging=disable_logging) for i in range(n))
+    arg_gen = (args_to_gamekwargs(game_kwargs,players,i,shuffle_player_order) for i in range(n))
     results = []
     print(f"Starting a pool with {cpus} processes and {chunksize} chunksize...")
     with multiprocessing.Pool(cpus) as pool:
-        print("Games running...")
+        # Lazily run games distributing 'chunksize' games to a process. The results will not be ordered.
         gen = pool.imap_unordered(run_game,arg_gen,chunksize = chunksize)
         failed_games = 0
-        state_data = []
         start = time.time()
-        while gen and time.time() - start < 800:
+        # Loop while there are games.
+        while gen:
+            # Print statistics every 10 seconds. TODO: Try to fix.
             if int(time.time() - start) % 10 == 0:
                 print(f"Simulated {len(results)/n*100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
             try:
-                res,states = next(gen)
+                # res contains either the finish ranks, or None if the game failed
+                res = next(gen)
             except StopIteration as si:
                 break
             if res is None:
                 failed_games += 1
                 res = None
-            if states is not None:
-                state_data += states
-            #print(res)
             results.append(res)
     print(f"Simulated {len(results)/n * 100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
-    ranks = {}
-    for res in results:
-        if res is None:
-            continue
-        lastid = res[-1][0].split("-")[0]
-        if lastid not in ranks:
-            ranks[lastid] = 0
-        ranks[lastid] += 1
-    rank_list = list(ranks.items())
-    rank_list.sort(key=lambda x : x[1])
-    for pl,rank in rank_list:
-        print(f"{pl} was last {round(100*rank/(len(results)-failed_games),2)} % times")
-    return 100*(ranks["MB1"]/(len(results) - failed_games)) if "MB1" in ranks else 0
+    return results
+
+def get_loss_percents(results, player="all", show = True):
+    # Return the results as a dictionary of player names and their loss percentage
+    losses = {}
+    games = 0
+    results_filtered = filter(lambda x : x is not None,results)
+    # A single results is represented as a List[Tuple[playername,rank]]
+    for res in results_filtered:
+        games += 1
+        lastid = res[-1][0]
+        #lastid = res[-1][0].split("-")[0]
+        if lastid not in losses:
+            losses[lastid] = 0
+        losses[lastid] += 1
+    loss_list = list(losses.items())
+    # Sort the losses by the number of losses
+    loss_list.sort(key=lambda x : x[1])
+    # Return the losses as a dictionary. The dictionary is ordered
+    loss_percentages = {k : round((v/games)*100,4) for k,v in loss_list}
+    if show:
+        for pl,loss_perc in loss_percentages:
+            print(f"{pl} was last {loss_perc} % times")
+    # return the full dictionary if player="all"
+    if player=="all":
+        return loss_percentages
+    else:
+        return loss_percentages[player]
+
+
+
+
+def to_minimize_func(params,**kwargs):
+    """ The function to minimize. You must change the parameters here."""
+    # Mapping of the coefficients to the names of the parameters
+    params = {
+    "PlayFallFromDeck" : params[0],
+    "PlayFallFromHand" : params[1],
+    "PlayToSelf" : params[2],
+    "InitialPlay" : params[3],
+    "Skip" : params[4],
+    "EndTurn" : params[5],
+    "PlayToOther" : params[6]
+    }
+    print("coeffs",params)
+    players = [
+            (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING,"max_num_states":100, "parameters":params}),
+            (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
+            (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+            (MoskaBot2,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING}),
+            ]
+    gamekwargs = lambda x : {
+            "log_file" : f"Game-{x}.log",
+            "log_level" : logging.WARNING,
+            "timeout" : 15,
+        }
+    player_to_minimize = "MB1"
+    results = play_games(players, gamekwargs, n=600, cpus=10, chunksize=6,disable_logging=False)
+    out = get_loss_percents(results,player=player_to_minimize, show=False)
+    print(f"Player {player_to_minimize} lost: {out} %")
+    return out
+
+def to_minimize_call():
+    x0 = [1 for _ in range(7)]
+    bounds = [(0,1) for _ in range(7)]
+    res = minimize(to_minimize_func,x0=x0,method="Nelder-Mead",bounds=bounds)
+    print(f"Minimization result: {res}")
+    return
+
 
 if __name__ == "__main__":
-    n = 5
     if not os.path.isdir("Logs"):
         os.mkdir("Logs")
     os.chdir("Logs/")
@@ -187,41 +238,6 @@ if __name__ == "__main__":
         os.mkdir("Vectors")
     #play_as_human()
     #exit()
-    """
-    def to_minimize(params,**kwargs):
-        coeffs = {
-            "PlayFallFromDeck" : params[0],
-            "PlayFallFromHand" : params[1],
-            "PlayToSelf" : params[2],
-            "InitialPlay" : params[3],
-            "Skip" : params[4],
-            "EndTurn" : params[5],
-            "PlayToOther" : params[6]
-        }
-        print("coeffs",coeffs)
-        print("params",params)
-        players = [
-            (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.WARNING,"max_num_states":100, "parameters":coeffs}),
-            (MoskaBot3,lambda x : {"name" : f"B3-{x}-","log_file":f"Game-{x}-B-2.log","log_level" : logging.WARNING}),
-            (MoskaBot2,lambda x : {"name" : f"B2-{x}-","log_file":f"Game-{x}-B-3.log","log_level" : logging.WARNING,}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-            (MoskaBot2,lambda x : {"name" : f"MB2-{x}-2","log_file":f"Game-{x}-MB-4.log","log_level" : logging.WARNING}),
-        ]
-        gamekwargs = lambda x : {
-            "log_file" : f"Game-{x}.log",
-            "log_level" : logging.INFO,
-            "timeout" : 15,
-        }
-        #out = play_games(1600,5,log_prefix="moskafile",cpus=16,chunksize=5,coeffs=coeffs)
-        out = play_games(players, gamekwargs, n=600, cpus=10, chunksize=6,disable_logging=False)
-        print(f"Result: {out}")
-        print("")
-        return out
-    x0 = [1 for _ in range(7)]
-    bounds = [(0,1) for _ in range(7)]
-    res = minimize(to_minimize,x0=x0,method="powell",bounds=bounds)
-    print(f"Minimization result: {res}")
-    exit()
-    #"""
     
     players = [
         (ModelBot,lambda x : {"name" : f"MB1-{x}-1","log_file":f"Game-{x}-MB-1.log","log_level" : logging.DEBUG,"max_num_states":600}),
@@ -241,6 +257,6 @@ if __name__ == "__main__":
         #pl_types = [RandomPlayer,ModelBot]
         #players = [(pl,lambda x : {"log_level" : logging.ERROR}) for pl in random.choices(pl_types,k=4) ]
         #print(players)
-        play_games(players, gamekwargs, n=100, cpus=10, chunksize=10,disable_logging=False,shuffle_player_order=True)
+        play_games(players, gamekwargs, n=10, cpus=10, chunksize=10,shuffle_player_order=True)
         
         
