@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import random
 import numpy as np
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set, Tuple
 from ..Game.GameState import FullGameState
@@ -31,7 +32,7 @@ class AbstractPlayer(ABC):
     thread : threading.Thread = None
     name : str = ""
     ready : bool = False
-    delay : float = 10**-6
+    delay : float = 0
     requires_graphic : bool = False
     plog : logging.Logger = None
     log_level = logging.INFO
@@ -42,7 +43,7 @@ class AbstractPlayer(ABC):
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  name : str = "", 
-                 delay=10**-6,
+                 delay=0,
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
                  log_file = ""):
@@ -69,7 +70,7 @@ class AbstractPlayer(ABC):
         NOTE: This must be called AFTER starting the process in which this player is run in.
         Currently this is called in the `_start` method, which is called from Game when the game begins.
         """
-        plog = logging.getLogger(self.name)    # TODO: This is why the logs might sometimes display multiple games in one file
+        plog = logging.getLogger(self.name + str(random.randint(0,1000000)))    # TODO: This is why the logs might sometimes display multiple games in one file
         plog.setLevel(self.log_level)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
         formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
@@ -103,7 +104,7 @@ class AbstractPlayer(ABC):
     def _set_pid_name_logfile(self,pid) -> None:
         """ Set the players pid. The pid is used to identify the player in the game. The pid is the index of the player in the players list of the game."""
         self.pid = pid
-        self.name += str(pid)
+        #self.name += str(pid)
         if self.log_file is not os.devnull:
             self.log_file = utils.add_before("(",self.log_file,str(pid))
     
@@ -348,7 +349,8 @@ class AbstractPlayer(ABC):
         curr_target = self.moskaGame.get_target_player()
         turns_taken_for_this_player = 0
         while self.rank is None:
-            time.sleep(self.delay)     # To avoid one player having the lock at all times, due to a small delay when releasing the lock. This actually makes the program run faster
+            # Incase we want to slow down the player
+            time.sleep(self.delay)
             # Acquire the lock for moskaGame, returns true if the lock was acquired, and False if there was a problem
             with self.moskaGame.get_lock(self) as ml:
                 
@@ -359,7 +361,9 @@ class AbstractPlayer(ABC):
                 turns_taken_for_this_player += 1
                 
                 if not ml:
+                    self.plog.warning("Could not acquire lock")
                     continue
+
                 msgd = {
                     "target" : curr_target.name,
                     "cards_to_fall" : self.moskaGame.cards_to_fall,
