@@ -4,6 +4,8 @@ import itertools
 import logging
 import random
 import threading
+import time
+import warnings
 import numpy as np
 from .AbstractPlayer import AbstractPlayer
 from typing import Dict, List,TYPE_CHECKING, Tuple
@@ -21,6 +23,7 @@ Assignment.__eq__ = lambda self, other : self.inds.copy().sort() == other.inds.c
 class ModelBot(AbstractPlayer):
     max_num_states : int = 1000
     parameters : dict = {}
+    state_prediction_format : str = ""
     def __init__(self, moskaGame: MoskaGame = None,
                  name: str = "",
                  delay=10 ** -6,
@@ -29,6 +32,7 @@ class ModelBot(AbstractPlayer):
                  log_file="",
                  max_num_states = 1000,
                  parameters : Dict[str,float] = {},
+                 state_prediction_format : str = "FullGameState"
                  ):
         if not name:
             name = "MB-"
@@ -43,6 +47,22 @@ class ModelBot(AbstractPlayer):
         }
         for param in parameters:
             self.parameters[param] = parameters[param]
+        self.state_prediction_format = ""
+        self.state_vector_prediction_format = ""
+        if "FullGameState" in state_prediction_format:
+            self.state_prediction_format = "FullGameState"
+            if state_prediction_format != "FullGameState":
+                self.state_vector_prediction_format = "old"
+            else:
+                self.state_vector_prediction_format = "new"
+        elif "GameState" in state_prediction_format:
+            self.state_prediction_format = "GameState"
+            self.state_vector_prediction_format = "old"
+        if not self.state_prediction_format:
+            warnings.warn("No state prediction format specified, or the specified was incorrect. Using 'FullGameState' and 'new'.")
+            self.state_prediction_format = "FullGameState"
+            self.state_vector_prediction_format = "new"
+        
         self.max_num_states = max_num_states
         #self.model = tf.keras.models.load_model(model_file,compile=False)
         #converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
@@ -113,17 +133,32 @@ class ModelBot(AbstractPlayer):
             states = ["unknown"]
             evals = [float(np.mean(evals))]
         combined = list(zip(plays, states, evals))
-        best = max(combined, key=lambda x : x[2])
+        try:
+            best = max(combined, key=lambda x : x[2])
+        except:
+            print("Combined: ", combined, flush=True)
+            print("Evals: ", evals, flush=True)
+            print("Plays: ", plays, flush=True)
+            raise Exception("Could not find best play")
         #print("Best play: ", best[0], " with eval: ", best[2], flush=True)
         return best[0],best[2]*self.parameters[move]
+
+    def _make_mock_move_vec(self,move,args, ret_vec = True):
+        new_state = self.moskaGame._make_mock_move(move,args,state_fmt=self.state_prediction_format)
+        if not ret_vec:
+            return new_state
+        if isinstance(new_state,FullGameState):
+            states = [new_state.as_perspective_vector(self,fmt=self.state_vector_prediction_format)]
+        elif isinstance(new_state,GameState):
+            states = [new_state.as_vector(normalize=False) + new_state.encode_cards(self.hand.cards)]
+        return states
     
     def _get_skip_play_states(self, state : GameState):
         """ Get the states for the skip play """
         plays = [[]]
         # The state should be the same, so this is likely unnecessary
-        new_state = self.moskaGame._make_mock_move("Skip",[self])
-        states = [new_state.as_vector(normalize=False) + new_state.encode_cards(self.hand.cards)]
-        return plays, states
+        new_state_vec = self._make_mock_move_vec("Skip",[self])
+        return plays, new_state_vec
     
     def _get_play_fall_from_hand_play_states(self, state : GameState):
         # Get a list of tuples, where each odd is a card index from hand, and each even index is a card on the table
@@ -146,12 +181,7 @@ class ModelBot(AbstractPlayer):
         self.plog.info(f"Found a SAMPLE of {len(plays)} plays to 'PlayFallFromHand'")
         for play in plays:
             # Get the state after playing 'play' from hand
-            new_state = self.moskaGame._make_mock_move("PlayFallFromHand",[self, play])
-            state_vector = new_state.as_vector(normalize=False)
-            # Remove the played cards from hand, and encode them
-            chand = self.hand.copy()
-            chand.pop_cards(cond=lambda c : c in play.keys())
-            state_vector += state.encode_cards(chand.cards)
+            state_vector = self._make_mock_move_vec("PlayFallFromHand",[self, play])
             states.append(state_vector)
         return plays, states
     
@@ -170,12 +200,7 @@ class ModelBot(AbstractPlayer):
             for i,play in enumerate(plays):
                 # Convert play to a list, required by Turns
                 plays[i] = list(play)
-                new_state = self.moskaGame._make_mock_move("PlayToSelf",[self, self, plays[i]])
-                state_vector = new_state.as_vector(normalize=False)
-                # Remove the played cards from hand, and encode them
-                chand = self.hand.copy()
-                chand.pop_cards(cond=lambda c : c in play)
-                state_vector += state.encode_cards(chand.cards)
+                state_vector = self._make_mock_move_vec("PlayToSelf",[self, self, plays[i]])
                 states.append(state_vector)
             return plays, states
         
@@ -198,10 +223,12 @@ class ModelBot(AbstractPlayer):
             playable_cards = chand.pop_cards(cond=lambda c : c.value in playable_from_hand)
             self.plog.debug(f"Playable cards: {playable_cards}")
             plays = []
+            start = time.time()
             for i in range(1,min(len(playable_cards)+1,self._fits_to_table()+1)):
                 plays += list(itertools.combinations(playable_cards,i))
             self.plog.debug(f"Found plays to 'PlayToOther': {plays}")
             self.plog.info(f"Found {len(plays)} plays to 'PlayToOther'. Sampling {min(len(plays),self.max_num_states)}.")
+            self.plog.debug(f"Time taken {time.time() - start}")
             plays = random.sample(plays,min(len(plays),self.max_num_states))
             states = []
             target = self.moskaGame.get_target_player()
@@ -211,12 +238,7 @@ class ModelBot(AbstractPlayer):
                 
                 # TODO: Currently the model has perfect information about the lifted cards
                 # Create separate models with PIF and HIF
-                new_state = self.moskaGame._make_mock_move(move,[self, target, plays[i]])
-                state_vector = new_state.as_vector(normalize=False)
-                # Remove the played cards from hand, and encode them
-                chand = self.hand.copy()
-                chand.pop_cards(cond=lambda c : c in play)
-                state_vector += new_state.encode_cards(chand.cards)
+                state_vector = self._make_mock_move_vec(move,[self, target, plays[i]])
                 states.append(state_vector)
                 
         if move == "EndTurn":
@@ -224,8 +246,7 @@ class ModelBot(AbstractPlayer):
             states = []
             for play in plays:
                 # TODO: Currently the model has perfect information about the lifted cards
-                new_state = self.moskaGame._make_mock_move(move,[self, play])
-                state_vector = new_state.as_vector(normalize=False) + new_state.encode_cards(self.hand.cards + play)
+                state_vector = self._make_mock_move_vec(move,[self, play])
                 states.append(state_vector)
         
         if move == "InitialPlay":
@@ -233,8 +254,12 @@ class ModelBot(AbstractPlayer):
             # Also this is a very inefficient way of doing this.
             chand = self.hand.copy()
             plays = []
+            start = time.time()
             for i in range(1,min(len(chand.cards)+1, self._fits_to_table()+1)):
                 plays += list(itertools.combinations(chand.cards,i))
+            self.plog.debug(f"Found plays to 'InitialPlay': {plays}")
+            self.plog.info(f"Found {len(plays)} plays to 'InitialPlay'. Sampling {min(len(plays),self.max_num_states)}.")
+            self.plog.debug(f"Time taken {time.time() - start}")
             target = self.moskaGame.get_target_player()
             random.shuffle(plays)
             legal_plays = []
@@ -247,12 +272,7 @@ class ModelBot(AbstractPlayer):
                 if not (len(play) == 1 or all((count >= 2 for count in c.values()))):
                     continue
                 legal_plays.append(list(play))
-                
-                new_state = self.moskaGame._make_mock_move(move,[self, target, list(play)])
-                
-                chand = self.hand.copy()
-                chand.pop_cards(cond=lambda c : c in play)
-                state_vector = new_state.as_vector(normalize=False) + new_state.encode_cards(chand.cards)
+                state_vector = self._make_mock_move_vec(move,[self, target, list(play)])
                 states.append(state_vector)
             self.plog.debug(f"Found legal plays: {legal_plays}")
             self.plog.info(f"Found {len(legal_plays)} legal plays.")
@@ -276,26 +296,21 @@ class ModelBot(AbstractPlayer):
                         self.hand.add([card])
                         # The card must be added to hand to be able to check the state
                         self.moskaGame.card_monitor.update_unknown(self.name)
-                        new_state = self.moskaGame._make_mock_move("PlayFallFromHand",[self, {play[0]:play[1]}])
+                        state_vector = self._make_mock_move_vec("PlayFallFromHand",[self, {play[0]:play[1]}])
                         # Remove the card from the hand
                         self.hand.pop_cards(cond=lambda c : c == card)
                         # Remove the card and update card_monitor
                         self.moskaGame.card_monitor.update_unknown(self.name)
-                        #print(self.moskaGame.card_monitor.player_cards[self.name], flush=True)
-                        
-                        state_vector = new_state.as_vector(normalize=False) + new_state.encode_cards(self.hand.cards)
                         states.append(state_vector)
                 else:
                     play = [card]
                     plays.append(play)
                     # Add the card to the hand and check the state after playing the card TO SELF
                     self.hand.add(play)
-                    new_state = self.moskaGame._make_mock_move("PlayToSelfFromDeck",[self, self, play])
-                    state_vector = new_state.as_vector(normalize=False)
+                    state_vector = self._make_mock_move_vec("PlayToSelfFromDeck",[self, self, play])
                     # Remove the card from the hand
                     self.hand.pop_cards(cond=lambda c : c == card)
                     
-                    state_vector += new_state.encode_cards(self.hand.cards)
                     states.append(state_vector)
         
         is_eq, msg = state.is_game_equal(self.moskaGame,return_msg=True)
