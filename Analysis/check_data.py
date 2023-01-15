@@ -40,7 +40,7 @@ def check_data(path, count_unique=False):
     uniques = set()
     files = os.listdir(path)
     for i,file in enumerate(files):
-        if i % 10:
+        if i % 1000:
             print(f"Checking file: {i/len(files)*100}% complete")
         with open(path+file,"r") as f:
             for line in f:
