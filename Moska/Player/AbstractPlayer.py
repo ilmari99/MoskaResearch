@@ -361,7 +361,6 @@ class AbstractPlayer(ABC):
                 turns_taken_for_this_player += 1
                 
                 if not ml:
-                    self.plog.warning("Could not acquire lock")
                     continue
 
                 msgd = {
