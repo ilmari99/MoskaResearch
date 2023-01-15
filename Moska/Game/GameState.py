@@ -27,6 +27,7 @@ class FullGameState:
                  players_ready : List[bool],
                  players_in_game : List[bool],
                  tc_index : int,
+                 target_pid : int,
                  ):
         self.deck = deck # The deck of cards
         self.full_player_cards = full_player_cards # Complete information about the players current cards
@@ -37,6 +38,7 @@ class FullGameState:
         self.players_ready = players_ready # A list of booleans representing if each player is ready
         self.players_in_game = players_in_game # A list of booleans representing if each player is in the game
         self.tc_index = tc_index # The index in turn cycle. Ensures the target player is saved
+        self.target_pid = target_pid
         
         
     def __init__with_copy(self,
@@ -49,6 +51,7 @@ class FullGameState:
                 players_ready : List[bool],
                 players_in_game : List[bool],
                 tc_index : int,
+                target_pid : int,
                 ):
         self.deck = copy.deepcopy(deck) # The deck of cards
         self.full_player_cards = copy.deepcopy(full_player_cards) # Complete information about the players current cards
@@ -59,6 +62,7 @@ class FullGameState:
         self.players_ready = copy.copy(players_ready) # A list of booleans representing if each player is ready
         self.players_in_game = copy.copy(players_in_game) # A list of booleans representing if each player is in the game
         self.tc_index = tc_index # The index in turn cycle. Ensures the target player is saved
+        self.target_pid = target_pid
         
         
     def restore_game_state(self,game : 'MoskaGame', check : bool = False):
@@ -91,6 +95,7 @@ class FullGameState:
         known_player_cards = [game.card_monitor.player_cards[pl.name] for pl in game.players]
         players_ready = [pl.ready for pl in game.players]
         players_in_game = [pl.rank is None for pl in game.players]
+        target_pid = game.get_target_player().pid
         return cls(game.deck,
                    known_player_cards,
                    full_player_cards,
@@ -100,6 +105,7 @@ class FullGameState:
                    players_ready,
                    players_in_game,
                    game.turnCycle.ptr,
+                   target_pid,
                    copy = copy,
                    )
         
@@ -194,7 +200,7 @@ class FullGameState:
             out += self.encode_cards(cards)
         return out
         
-    def as_perspective_vector(self, player : 'AbstractPlayer'):
+    def as_perspective_vector(self, player : 'AbstractPlayer', fmt : str = "new"):
         """Returns a numeric vector representation of the state.
         The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
         The vector is ordered as follows:
@@ -222,7 +228,11 @@ class FullGameState:
         # Whether each player is ready, ordered by pid. This tells whether the player might play new cards to the current table.
         out += [1 if ready else 0 for ready in self.players_ready]
         # Whether each player is in the game, ordered by pid. This tells whether the player is still in the game.
-        out += [1 if in_game else 0 for in_game in self.players_in_game]
+        in_game_vec = [1 if in_game else 0 for in_game in self.players_in_game]
+        # In the new format, we mark player as a two, if they are in the game, and the target
+        if fmt=="new":
+            in_game_vec[self.target_pid] = 2 if in_game_vec[0] == 1 else 0
+        out += in_game_vec
         # Whether there is kopled card on the table
         out += [1] if any([card.kopled for card in self.cards_to_fall]) else [0]
         # Encoded player hands from the perspective of the player: All picked up cards
