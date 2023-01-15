@@ -243,7 +243,7 @@ if __name__ == "__main__":
     #exit()
 
     shared_kwargs = {
-        "log_level" : logging.ERROR,
+        "log_level" : logging.DEBUG,
         "delay":0,
     }
 
@@ -252,7 +252,7 @@ if __name__ == "__main__":
         (MoskaBot2, lambda x : shared_kwargs | {"name" : f"B2-1","log_file":f"Game-{x}-MB-1.log"}),
         (MoskaBot3, lambda x : shared_kwargs | {"name" : f"B3-1","log_file":f"Game-{x}-B-2.log"}),
         (MoskaBot2, lambda x : shared_kwargs | {"name" : f"B2-2","log_file":f"Game-{x}-B-3.log"}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (MoskaBot3, lambda x : shared_kwargs | {"name" : f"B3-2","log_file":f"Game-{x}-MB-4.log"}),
+        (ModelBot, lambda x : shared_kwargs | {"name" : f"MB","log_file":f"Game-{x}-MB.log", "max_num_states":100,"state_prediction_format":"FullGameState-old"}),
     ]
 
     gamekwargs = lambda x : {
@@ -260,11 +260,12 @@ if __name__ == "__main__":
         "log_level" : logging.DEBUG,
         "timeout" : 30,
         "gather_data":False,
+        "model_paths":["../model.tflite"]
     }
 
     for i in range(1):
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
-        results = play_games(players, gamekwargs, n=1000, cpus=5, chunksize=10,shuffle_player_order=True)
+        results = play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)
         get_loss_percents(results,player="all", show=True)
         
         
