@@ -211,9 +211,9 @@ class PlayFallFromDeck:
         If the card can't fall any card, add it to table.
         """
         self.card = self.moskaGame.deck.pop_cards(1)[0]
-        self.card.kopled = True
         self.moskaGame.glog.info(f"{self.player.name} kopled {self.card}")
         if self.check_can_fall():
+            # Return the card from deck, and the chosen card to fall
             play_fall = self.fall_method(self.card)
             # If an incorrect card is selected to fall, then a random card is picked.
             if not self.check_can_fall(in_=[play_fall[1]]):
@@ -221,12 +221,14 @@ class PlayFallFromDeck:
                 for card in self.moskaGame.cards_to_fall:
                     if utils.check_can_fall_card(self.card, card, self.moskaGame.triumph):
                         play_fall = (self.card,card)
+                        break
             self.player.plog.info(f"Playing kopled card {play_fall[0]} to {play_fall[1]}")
             self.moskaGame.glog.info(f"{self.player.name} played {play_fall[0]}:{play_fall[1]}")
             self.moskaGame.cards_to_fall.pop(self.moskaGame.cards_to_fall.index(play_fall[1]))
             self.moskaGame.fell_cards.append(play_fall[1])
             self.moskaGame.fell_cards.append(play_fall[0])
         else:
+            self.card.kopled = True
             self.player.plog.debug(f"Adding {self.card} to cards_to_fall")
             self.moskaGame.glog.info(f"Adding {self.card} to cards_to_fall")
             self.moskaGame.add_cards_to_fall([self.card])
@@ -301,6 +303,7 @@ class EndTurn:
         self.player.hand.cards += self.pick_cards
         self.player.hand.draw(6 - len(self.player.hand))
         for card in self.player.hand.cards:
+            # Mark each card as not kopled
             card.kopled = False
         self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.moskaGame.glog.info(f"{self.player.name} ending turn.")
