@@ -109,11 +109,20 @@ class MoskaGame:
             self.output_details.append(output_details)
             self.input_details.append(input_details)
         self.glog.info(f"Loaded {self.model_paths} models.")
+        self.glog.debug(f"Input details: {self.input_details}")
+        self.glog.debug(f"Output details: {self.output_details}")
         return
     
     def model_predict(self, X):
         self.threads[threading.get_native_id()].plog.debug(f"Predicting with model, X.shape = {X.shape}")
         output_data = []
+        if not isinstance(X,np.ndarray):
+            try:
+                X = np.array(X)
+            except:
+                raise Exception(f"Could not convert {X} to np.ndarray")
+        if not X.shape:
+            raise Exception(f"X.shape is empty: {X.shape}")
         if not self.interpreters:
             raise Exception("No model found for prediction. Model paths: {}".format(self.model_paths))
         for interpreter,input_details,output_details in zip(self.interpreters,self.input_details,self.output_details):
@@ -289,7 +298,7 @@ class MoskaGame:
         self.card_monitor.update_from_move(move,args)
         return True, ""
     
-    def _make_mock_move(self,move,args) -> GameState:
+    def _make_mock_move(self,move,args,state_fmt="FullGameState") -> FullGameState:
         """ Makes a move, like '_make_move', but returns the game state after the move and restores self and attributes to its original state.
         """
         state = FullGameState.from_game(self)
@@ -300,19 +309,25 @@ class MoskaGame:
         # Disable logging for Mock move
         self.glog.setLevel(logging.WARNING)
         player.plog.setLevel(logging.WARNING)
+
         # Normally play the move; change games state precisely as it would actually change.
         success, msg = self._make_move(move,args)
         self.glog.setLevel(game_log_level)
         player.plog.setLevel(player_log_level)
         if not success:
             raise AssertionError(f"Mock move failed: {msg}")
+        if state_fmt == "FullGameState" or "FullGameState-Depr":
+            new_state = FullGameState.from_game(self,copy=True)
+        elif state_fmt == "GameState":
+            new_state = GameState.from_game(self)
+        else:
+            raise NameError(f"Argument 'state_fmt' was not recognized. Given argument: {state_fmt}")
         # Save the new game state, for evaluation of the move
-        new_state = GameState.from_game(self)
         state.restore_game_state(self,check=False)
         is_eq, msg = state.is_game_equal(self,return_msg=True)
         if not is_eq:
             raise AssertionError(f"Mock move failed: {msg}")
-        
+        # Return the new_state
         return new_state
         
         
