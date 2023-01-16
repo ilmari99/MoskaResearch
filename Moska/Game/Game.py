@@ -16,6 +16,7 @@ from .CardMonitor import CardMonitor
 import threading
 import logging
 import random
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 #import tensorflow as tf is done at set_model_vars_from_path IF a path is given.
 # This is to gain a speedup when not using tensorflow
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip, PlayToSelfFromDeck
@@ -362,36 +363,21 @@ class MoskaGame:
     def _join_threads(self) -> None:
         """ Join all threads. """
         start = time.time()
-        alive = [pl.thread.is_alive() for pl in self.players]
         while time.time() - start < self.timeout and any([pl.thread.is_alive() for pl in self.players]):
             time.sleep(0.1)
             if any((pl.EXIT_STATUS == 2 for pl in self.players)):
-                # If EXIT_FLAG is True, the lock is disabled, and we do not need the lock anymore
-                self.glog.error(f"Player thread failed. Exiting.")
-                #pl.plog.error(f"Thread timedout!")
-                print(f"Game with log {self.log_file} failed.")
+                with self.get_lock() as ml:
+                    print(f"Game with log {self.log_file} failed.")
+                    self.glog.error(f"Game FAILED. Exiting.")
+                    self.EXIT_FLAG = True
                 return False
-            alive = [pl.thread.is_alive() for pl in self.players]
-        if any(alive):
+        if any((pl.EXIT_STATUS != 1 for pl in self.players)):
             with self.get_lock() as ml:
-                if not ml:
-                    self.glog.error(f"A rogue thread killed the game!!")
+                print(f"Game with log {self.log_file} timedout.")
                 self.glog.error(f"Game timedout. Exiting.")
-                #pl.plog.error(f"Thread timedout!")
-                print(f"Game with log {self.log_file} failed.")
                 self.EXIT_FLAG = True
-                return False
-        #for pl in self.players:
-            #pl.thread.join(self.timeout)
-            #if pl.thread.is_alive():
-                #with self.get_lock() as ml:
-                #    self.glog.error(f"Player {pl.name} thread timedout. Exiting.")
-                #    pl.plog.error(f"Thread timedout!")
-                #    print(f"Game with log {self.log_file} failed.")
-                #    self.EXIT_FLAG = True
-                #    return False
-                #raise multiprocessing.ProcessError(f"Game with log {self.log_file} failed.")
-        self.glog.debug("Threads finished")
+            return False
+        self.glog.info("Threads finished")
         return True
     
     
@@ -499,6 +485,7 @@ class MoskaGame:
         # Wait for the threads to finish
         success = self._join_threads()
         if not success:
+            #del self
             #self.IS_RUNNING = False
             return None
         self.glog.info("Final ranking: ")
@@ -506,10 +493,6 @@ class MoskaGame:
         state_results = []
         if self.GATHER_DATA:
             state_results = self.get_player_state_vectors()
-            #print(f"Losers: {len(losers)}, Not losers: {len(not_losers)}")
-            #print(f"Writing {len(state_results)} vectors to file.")
-            
-            #print(f"Writing {len(state_results)} vectors to file.")
             with open("Vectors/"+self.get_random_file_name(),"w") as f:
                 data = str(state_results).replace("], [","\n")
                 data = data.strip("[]")
@@ -518,6 +501,4 @@ class MoskaGame:
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
-        #self.IS_RUNNING = False
-        # Return the finish order
         return ranks
