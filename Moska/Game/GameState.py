@@ -200,7 +200,7 @@ class FullGameState:
             out += self.encode_cards(cards)
         return out
         
-    def as_perspective_vector(self, player : 'AbstractPlayer', fmt : str = "new"):
+    def as_perspective_vector(self, player : 'AbstractPlayer', norm : bool = False, fmt : str = "new"):
         """Returns a numeric vector representation of the state.
         The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
         The vector is ordered as follows:
@@ -231,7 +231,7 @@ class FullGameState:
         in_game_vec = [1 if in_game else 0 for in_game in self.players_in_game]
         # In the new format, we mark player as a two, if they are in the game, and the target
         if fmt=="new":
-            in_game_vec[self.target_pid] = 2 if in_game_vec[0] == 1 else 0
+            in_game_vec[self.target_pid] = 2 if in_game_vec[self.target_pid] == 1 else 0
         out += in_game_vec
         # Whether there is kopled card on the table
         out += [1] if any([card.kopled for card in self.cards_to_fall]) else [0]
@@ -241,6 +241,8 @@ class FullGameState:
         # Encode the players own hand (full information)
         out += self.encode_cards(player.hand.cards)
         # len should be 1 + 4 +52 + 52 + 52 + 4 + 4 + 1 + 4*52 (+1) = 431/432
+        if norm:
+            out = [x/51 for x in out]
         return out
 
 
