@@ -13,6 +13,7 @@ from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.Player.MoskaBot0 import MoskaBot0
 from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
+from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.ModelBot import ModelBot
 import random
 import numpy as np
@@ -156,7 +157,6 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
                 break
             if res is None:
                 failed_games += 1
-                res = None
             results.append(res)
     print(f"Simulated {len(results)/n * 100:.2f}% of games. {len(results) - failed_games} succesful games. {failed_games} failed.")
     print(f"Time taken: {time.time() - start_time}")
@@ -188,9 +188,6 @@ def get_loss_percents(results, player="all", show = True):
         return loss_percentages
     else:
         return loss_percentages[player] if player in loss_percentages else 0
-
-
-
 
 def to_minimize_func(params):
     """ The function to minimize. You must change the parameters here."""
@@ -234,9 +231,9 @@ def to_minimize_call():
 
 
 if __name__ == "__main__":
-    if not os.path.isdir("Logs"):
-        os.mkdir("Logs")
-    os.chdir("Logs/")
+    if not os.path.isdir("Logs2"):
+        os.mkdir("Logs2")
+    os.chdir("Logs2/")
     if not os.path.isdir("Vectors"):
         os.mkdir("Vectors")
     #play_as_human()
@@ -249,16 +246,16 @@ if __name__ == "__main__":
 
     # The {**dict1, **dict2} operation is used to merge dictionaries, with the latter overwriting the former for shared keys
     players = [
-        (ModelBot, lambda x : {**shared_kwargs, **{"name" : f"MB-1","log_file":f"Game-{x}-MB-1.log","max_num_states":1000,
-                                                  "state_prediction_format":"FullGameState-old", 
-                                                  "normalize_state_vector" : False}}),
+        #(ModelBot, lambda x : {**shared_kwargs, **{"name" : f"MB-1","log_file":f"Game-{x}-MB-1.log","max_num_states":1000,
+        #                                          "state_prediction_format":"FullGameState-old", 
+        #                                          "normalize_state_vector" : False}}),
         (MoskaBot3, lambda x : {**shared_kwargs,**{"name" : f"B3-1","log_file":f"Game-{x}-B-2.log"}}),
         (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (ModelBot, lambda x : {**shared_kwargs,**{"name" : f"MB-2",
-                                                  "log_file":f"Game-{x}-MB-2.log", 
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV",
+                                                  "log_file":f"Game-{x}-NNEV.log", 
                                                   "max_num_states":1000,
-                                                  "state_prediction_format":"FullGameState-old", 
-                                                  "normalize_state_vector" : False}}),
+                                                  "pred_format":"old", 
+                                                  "normalize" : False}}),
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log","parameters" : {'fall_card_already_played_value': -0.5, 
          'fall_card_same_value_already_in_hand': 0.2, 
          'fall_card_card_is_preventing_kopling': -0.4, 
@@ -275,11 +272,12 @@ if __name__ == "__main__":
         "gather_data":True,
         "model_paths":["../Models/ModelMB7-300/model.tflite"]
     }
-
-    for i in range(10000):
+    
+    for i in range(1000):
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
-        act_players = random.sample(players, 4)
-        results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
+        #act_players = random.sample(players, 4)
+        results = play_games(players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
+        #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         get_loss_percents(results,player="all", show=True)
         
         
