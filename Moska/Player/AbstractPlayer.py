@@ -334,6 +334,7 @@ class AbstractPlayer(ABC):
             self.plog.info("Initialized thread")
             self.thread.start()
             self.thread_id = self.thread.native_id
+        # Means running
         self.EXIT_STATUS = 0
         return self.thread_id
     
@@ -353,7 +354,9 @@ class AbstractPlayer(ABC):
             time.sleep(self.delay)
             # Acquire the lock for moskaGame, returns true if the lock was acquired, and False if there was a problem
             with self.moskaGame.get_lock(self) as ml:
-                
+                if self.moskaGame.EXIT_FLAG:
+                    self.EXIT_STATUS = 2
+                    break
                 target = self.moskaGame.get_target_player()
                 if target is not curr_target:
                     turns_taken_for_this_player = 0
@@ -401,7 +404,10 @@ class AbstractPlayer(ABC):
                 # Check if self is target and finished
                 if self.rank is not None and self is self.moskaGame.get_target_player():
                     self.moskaGame._make_move("EndTurn",[self,[]])
-        self.plog.info(f"Finished as {self.rank}")
+        if self.EXIT_STATUS == 1:
+            self.plog.info(f"Finished as {self.rank}")
+        elif self.EXIT_STATUS == 2:
+            self.plog.info("Finished with error")
         return
     
     @abstractmethod
