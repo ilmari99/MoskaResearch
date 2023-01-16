@@ -159,7 +159,7 @@ class ModelBot(AbstractPlayer):
             raise Exception("The class of the new state is not recognized: " + str(type(new_state)))
         return state
     
-    def _get_skip_play_states(self, state : GameState):
+    def _get_skip_play_states(self):
         """ Get the states for the skip play """
         plays = [[]]
         # The state should be the same, so this is likely unnecessary
@@ -200,6 +200,7 @@ class ModelBot(AbstractPlayer):
             self.plog.debug(f"Found playable cards to 'PlayToSelf': {playable_cards}")
             plays = []
             start = time.time()
+            #plays = itertools.chain.from_iterable((itertools.combinations(playable_cards,i) for i in range(1,len(playable_cards) + 1)))
             for i in range(1,len(playable_cards)+1):
                 plays += list(itertools.combinations(playable_cards,i,))
             self.plog.debug(f"Found plays to 'PlayToSelf': {plays}")
@@ -222,6 +223,7 @@ class ModelBot(AbstractPlayer):
         plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,fits + 1)))
         #for i in range(1,fits + 1):
         #    plays += list(itertools.combinations(cards,i))
+        # TODO: convert to a filter expression, or a generator
         legal_plays = []
         count = 0
         for play in plays:
@@ -236,7 +238,7 @@ class ModelBot(AbstractPlayer):
         state = FullGameState.from_game(self.moskaGame,copy=True)
         self.plog.info("Getting possible next states for move: " + move)
         if move == "Skip":
-            plays, states = self._get_skip_play_states(state)
+            plays, states = self._get_skip_play_states()
             
         if move == "PlayFallFromHand":
             plays, states = self._get_play_fall_from_hand_play_states()
@@ -295,8 +297,6 @@ class ModelBot(AbstractPlayer):
                     break
                 legal_plays.append(list(play))
                 state_vector = self._make_mock_move_vec(move,[self, target, list(play)])
-                if random.random() > 0.95:
-                    self.plog.info(f"Vector: {state_vector}")
                 states.append(state_vector)
             self.plog.debug(f"Found legal plays: {legal_plays}")
             self.plog.info(f"Found {len(legal_plays)} legal plays.")
