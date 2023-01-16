@@ -243,29 +243,43 @@ if __name__ == "__main__":
     #exit()
 
     shared_kwargs = {
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.WARNING,
         "delay":0,
     }
 
-    # The | operator is used to merge dictionaries, with the latter overwriting the former for shared keys
+    # The {**dict1, **dict2} operation is used to merge dictionaries, with the latter overwriting the former for shared keys
     players = [
-        (MoskaBot2, lambda x : {**shared_kwargs, **{"name" : f"B2-1","log_file":f"Game-{x}-MB-1.log"}}),
+        (ModelBot, lambda x : {**shared_kwargs, **{"name" : f"MB-1","log_file":f"Game-{x}-MB-1.log","max_num_states":1000,
+                                                  "state_prediction_format":"FullGameState-old", 
+                                                  "normalize_state_vector" : False}}),
         (MoskaBot3, lambda x : {**shared_kwargs,**{"name" : f"B3-1","log_file":f"Game-{x}-B-2.log"}}),
-        (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-2","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (ModelBot, lambda x : {**shared_kwargs,**{"name" : f"MB","log_file":f"Game-{x}-MB.log", "max_num_states":100,"state_prediction_format":"FullGameState-old"}}),
+        (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+        (ModelBot, lambda x : {**shared_kwargs,**{"name" : f"MB-2",
+                                                  "log_file":f"Game-{x}-MB-2.log", 
+                                                  "max_num_states":1000,
+                                                  "state_prediction_format":"FullGameState-old", 
+                                                  "normalize_state_vector" : False}}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log","parameters" : {'fall_card_already_played_value': -0.5, 
+         'fall_card_same_value_already_in_hand': 0.2, 
+         'fall_card_card_is_preventing_kopling': -0.4, 
+         'fall_card_deck_card_not_played_to_unique': 0.2, 
+         'fall_card_threshold_at_start': 15.0, 
+         'initial_play_quadratic_scaler': 0.7
+         }}}),
     ]
 
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
-        "log_level" : logging.DEBUG,
-        "timeout" : 30,
-        "gather_data":False,
-        "model_paths":["../Models/ModelMB2-T/model.tflite"]
+        "log_level" : logging.WARNING,
+        "timeout" : 10,
+        "gather_data":True,
+        "model_paths":["../Models/ModelMB7-300/model.tflite"]
     }
 
-    for i in range(1):
+    for i in range(10000):
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
-        results = play_games(players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
+        act_players = random.sample(players, 4)
+        results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         get_loss_percents(results,player="all", show=True)
         
         
