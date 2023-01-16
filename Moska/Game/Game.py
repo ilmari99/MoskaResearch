@@ -118,6 +118,7 @@ class MoskaGame:
         output_data = []
         if not isinstance(X,np.ndarray):
             try:
+                self.glog.debug(f"Converting X {type(X)} to np.ndarray")
                 X = np.array(X)
             except:
                 raise Exception(f"Could not convert {X} to np.ndarray")
