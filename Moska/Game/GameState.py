@@ -172,6 +172,7 @@ class FullGameState:
         return out
     
     def as_full_information_vector(self):
+        raise NotImplementedError("This method is not implemented correctly yet.")
         out = []
         # How many cards are left in the deck
         out += [len(self.deck.cards)]
@@ -239,7 +240,8 @@ class FullGameState:
         for known_cards in self.known_player_cards:
             out += self.encode_cards(known_cards)
         # Encode the players own hand (full information)
-        out += self.encode_cards(player.hand.cards)
+        player_cards = self.full_player_cards[player.pid]
+        out += self.encode_cards(player_cards)
         # len should be 1 + 4 +52 + 52 + 52 + 4 + 4 + 1 + 4*52 (+1) = 431/432
         if norm:
             out = [x/51 for x in out]
