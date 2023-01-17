@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from typing import Callable, TYPE_CHECKING, Dict, List
 from collections import Counter
 from .Deck import Card
@@ -7,8 +8,17 @@ if TYPE_CHECKING:
     from .Game import MoskaGame
 from . import utils
 
+class Turn(ABC):
+    @abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass
 
-class _PlayToPlayer:
+    @abstractmethod
+    def play(self):
+        pass
+
+
+class _PlayToPlayer(Turn):
     """ This is the class of plays, that players can make, when they play cards to someone else or to themselves.    
     """
     player : AbstractPlayer = None
@@ -131,7 +141,7 @@ class PlayToSelf(PlayToOther):
     pass
 
 
-class PlayFallFromHand:
+class PlayFallFromHand(Turn):
     """ A class, that is used when playing cards from the hand, to fall cards on the table"""
     moskaGame : MoskaGame = None
     player : AbstractPlayer = None
@@ -174,7 +184,7 @@ class PlayFallFromHand:
             self.moskaGame.fell_cards.append(pc)                                            # Add card to fell cards
         
             
-class PlayFallFromDeck:
+class PlayFallFromDeck(Turn):
     """ Koplaus"""
     moskaGame : MoskaGame = None
     fall_method : Callable = None
@@ -193,7 +203,7 @@ class PlayFallFromDeck:
         assert self.fall_method is not None, "No fall_method specified"
         assert self.check_cards_on_table(), "There are no cards on the table which should be fell"
         assert self.check_cards_in_deck(), "There are no cards from which to draw"
-        self.play_card()
+        self.play()
     
     def check_cards_on_table(self):
         """ Check if there are un-fallen cards on the table"""
@@ -206,7 +216,7 @@ class PlayFallFromDeck:
     def check_not_already_kopled(self):
         return not any((c.kopled for c in self.moskaGame.cards_to_fall))
     
-    def play_card(self):
+    def play(self):
         """ Pop a card from deck, if the card can fall a card on the table, use fall_method to select the card.
         If the card can't fall any card, add it to table.
         """
@@ -238,7 +248,7 @@ class PlayFallFromDeck:
         in_ = self.moskaGame.cards_to_fall if not in_ else in_
         return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in in_])
 
-class EndTurn:
+class EndTurn(Turn):
     """ Class representing ending a turn. """
     moskaGame : MoskaGame = None
     player : AbstractPlayer = None
@@ -261,7 +271,7 @@ class EndTurn:
         else:
             assert self.check_pick_all_cards() or self.check_pick_cards_to_fall(), f"Either pick all cards that have not been fallen, or pick all cards from table"
             assert self.check_turn(), "It is not this players turn to lift the cards"
-        self.pick_the_cards()
+        self.play()
     
     def clear_table(self):
         # Only remove cards from game, if they were not picked. Then they were lifted by the player
@@ -296,7 +306,7 @@ class EndTurn:
         """ Check if there are cards that are not fallen or that are fallen"""
         return bool(self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)
     
-    def pick_the_cards(self):
+    def play(self):
         """ End the turn by picking selected cards, drawing from the deck to fill hand,
         Turn the TurnCycle instance once if no cards picked, twice else
         """
@@ -313,7 +323,7 @@ class EndTurn:
             self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.clear_table()
         
-class Skip:
+class Skip(Turn):
     moskaGame : MoskaGame = None
     def __init__(self, moskaGame : MoskaGame):
         self.moskaGame = moskaGame
@@ -334,6 +344,9 @@ class Skip:
         if self.player is self.moskaGame.get_target_player():
             return self.player._must_end_turn()
         return False
+    
+    def play(self):
+        pass
     
     
     
