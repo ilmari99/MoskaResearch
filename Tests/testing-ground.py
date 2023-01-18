@@ -9,8 +9,11 @@ CARD_VALUES = tuple(range(1,14))
 CARD_SUITS = ("C","D","H","S") # Clubs, Diamonds, Hearts, Spades
 CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion table
 
+case1_as_tuple = ([(2,"S"), (2,"H"), (2,"C"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C"),(13,"S"),(13,"C"),(13,"D"),(7,"H"), (7,"D"), (7,"S")],16)
+case2_as_tuple = ([(5,"S"), (3,"S"), (2,"C"), (5,"D"), (5,"H"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C"),(13,"S"),(13,"C"),(13,"D"),(7,"H"), (7,"D"), (7,"S")],20)
 
-@dataclass
+
+@dataclass()
 class Card:
     def __init__(self, value, suit):
         self.value = value
@@ -18,30 +21,20 @@ class Card:
 
     def __repr__(self):
         return f"{CARD_SUIT_SYMBOLS[self.suit]}{self.value}"
-
-
-def get_initial_plays_faster(cards : List[Card], n : int) -> List[Tuple[Card]]:
-    plays = []
-    plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,n + 1)))
-    #for i in range(1,fits + 1):
-    #    plays += list(itertools.combinations(cards,i))
-    legal_plays = []
-    count = 0
-    for play in plays:
-        count += 1
-        c = Counter([c.value for c in play])
-        if (len(play) == 1 or all((count >= 2 for count in c.values()))):
-            legal_plays.append(play)
-    print(f"Compared {count} plays, found {len(legal_plays)} legal plays")
-    return legal_plays
-
-def get_initial_plays_even_faster(cards : List[Card], n : int) -> List[Tuple[Card]]:
-    plays = []
-    plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,n + 1)))
-    filter_func = lambda play: (len(play) == 1 or all((count >= 2 for count in Counter([c.value for c in play]).values())))
-    return list(filter(filter_func, plays))
+    
+    def __hash__(self):
+        return hash((self.value, self.suit))
+    
+def _make_case(ncards_in_hand = 6, fits = 6):
+    """ Get a random hand, and a random number that can be played to the table.
+    For timing, a large hand is recommended.
+    """
+    deck = list(Card(val,suit) for val, suit in itertools.product(CARD_VALUES,CARD_SUITS))
+    cards = random.sample(deck, ncards_in_hand)
+    return cards, min(fits,ncards_in_hand)
 
 def get_initial_plays_brute(cards : List[Card], n : int) -> List[Tuple[Card]]:
+    """ See the logic of the brute force solution here: """
     plays = []
     #plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,n + 1)))
     for i in range(1,fits + 1):
@@ -53,29 +46,60 @@ def get_initial_plays_brute(cards : List[Card], n : int) -> List[Tuple[Card]]:
         c = Counter([c.value for c in play])
         if (len(play) == 1 or all((count >= 2 for count in c.values()))):
             legal_plays.append(play)
-    print(f"Compared {count} plays, found {len(legal_plays)} legal plays")
     return legal_plays
 
-def make_case(ncards_in_hand = 6, fits = 6, get_pre_made_case = False):
-    PRE_MADE_CASES = [
-        ([(2,"S"), (2,"H"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C")],9),
-        ([(2,"S"), (2,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C")],7),
-        ([(2,"S"), (2,"H"), (2,"C"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C"),(13,"S"),(13,"C"),(13,"D"),(7,"H"), (7,"D"), (7,"S")],16),
-    ]
-    if isinstance(get_pre_made_case, int):
-        cards = [Card(val,suit) for val, suit in PRE_MADE_CASES[get_pre_made_case][0]]
-        fits = PRE_MADE_CASES[get_pre_made_case][1]
-    else:
-        deck = list(Card(val,suit) for val, suit in itertools.product(CARD_VALUES,CARD_SUITS))
-        cards = random.sample(deck, ncards_in_hand)
-    return cards, min(fits,ncards_in_hand)
+def get_initial_plays_faster(cards : List[Card], n : int) -> List[Tuple[Card]]:
+    plays = []
+    # Then we speed up, by creating a generator instead of a list
+    plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,n + 1)))
+    legal_plays = []
+    count = 0
+    for play in plays:
+        count += 1
+        c = Counter([c.value for c in play])
+        if (len(play) == 1 or all((count >= 2 for count in c.values()))):
+            legal_plays.append(play)
+    return legal_plays
 
-import timeit
-cards, fits = make_case(6,8, get_pre_made_case=2)
-print(cards)
-print(timeit.timeit("get_initial_plays_brute(cards, fits)", number=10, globals=globals()))
-print(timeit.timeit("get_initial_plays_faster(cards, fits)", number=10, globals=globals()))
-print(timeit.timeit("get_initial_plays_even_faster(cards, fits)", number=10, globals=globals()))
+def get_initial_plays_even_faster(cards : List[Card], n : int) -> List[Tuple[Card]]:
+    # And finally, we use a filter function to filter out the illegal plays, instead of a for loop
+    plays = []
+    plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,n + 1)))
+    filter_func = lambda play: (len(play) == 1 or all((count >= 2 for count in Counter([c.value for c in play]).values())))
+    return list(filter(filter_func, plays))
+
+def compare_ans(ans1 : List[Tuple[Card]], ans2 : List[Tuple[Card]]) -> bool:
+    # Set is unordered, so we can compare the the lists of tuples
+    ans1 = set(ans1)
+    ans2 = set(ans2)
+    if ans1 == ans2:
+        return True
+    return False
+
+case1 = ([Card(val,suit) for val, suit in case1_as_tuple[0]], case1_as_tuple[1])
+case2 = ([Card(val,suit) for val, suit in case2_as_tuple[0]], case2_as_tuple[1])
+
+
+def your_solution(cards : List[Card], fits : int) -> List[Tuple[Card]]:
+    """ Write here"""
+    return get_initial_plays_brute(cards, fits)
+
+import time
+
+for case_i, case in enumerate([case1, case2, _make_case(20,20)]):
+    cards, fits = case
+    print(f"Case {case_i + 1}:")
+    print(f"Cards: {cards}")
+    start = time.time()
+    ans1 = get_initial_plays_even_faster(cards, fits)
+    print(f"Time taken with gen-filter brute force: {time.time() - start}")
+    start = time.time()
+    ans2 = your_solution(cards, fits)
+    print(f"Time taken with your solution: {time.time() - start}")
+    is_correct = compare_ans(ans1, ans2)
+    if not is_correct:
+        print("Incorrect Answer to case: ", case_i + 1)
+    print("\n")
 
     
 
