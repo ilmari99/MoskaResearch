@@ -22,8 +22,8 @@ def create_tf_dataset(paths, norm=False, add_channel=False) -> tf.data.Dataset:
     random.shuffle(file_paths)
     print("Shuffled files.")
     dataset = tf.data.TextLineDataset(file_paths)
-    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "))
-    dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])))
+    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])), num_parallel_calls=6)
     if norm:
         dataset = dataset.map(lambda x,y : (tf.divide(x,51),y))
     if add_channel:
@@ -91,10 +91,14 @@ def find_duplicate_files(remove=False):
     return
 
 if __name__ == "__main__":
-    PATH = "./Logs/Vectors/"
+    PATH = "./Logs2/Vectors/"
     CWD = os.getcwd()
     if len(sys.argv) > 1:
         PATH = sys.argv[1]
+    l = ["./Data/NewerLogs-Inc-ModelBot/Vectors/",
+                                     "./Data/NewerLogs60k/Vectors/",
+                                     "./Logs/Vectors/",
+                                     "./Logs2/Vectors"],
     print("Current working directory: " + CWD)
     print("Checking data for path: " + PATH)
     check_data(PATH, count_unique=True)
