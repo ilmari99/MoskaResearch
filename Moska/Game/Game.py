@@ -42,7 +42,7 @@ class MoskaGame:
     random_seed = None
     nplayers : int = 0
     card_monitor : CardMonitor = None
-    model_paths : List[str] = ""
+    model_paths : List[str] = [""]
     __prev_lock_holder__ = None
     GATHER_DATA : bool = True
     EXIT_FLAG = False
@@ -56,7 +56,7 @@ class MoskaGame:
                  timeout=3,
                  random_seed=None,
                  gather_data : bool = True,
-                 model_paths : List[str] = "",
+                 model_paths : List[str] = [""],
                  ):
         """Create a MoskaGame -instance.
 
@@ -89,6 +89,8 @@ class MoskaGame:
     def set_model_vars_from_paths(self):
         if isinstance(self.model_paths,str):
             self.model_paths = [self.model_paths] if self.model_paths else []
+        # remove "" paths
+        self.model_paths = [path for path in self.model_paths if path]
         self.interpreters = []
         self.input_details = []
         self.output_details = []
@@ -114,8 +116,17 @@ class MoskaGame:
         self.glog.debug(f"Output details: {self.output_details}")
         return
     
-    def model_predict(self, X):
+    def model_predict(self, X : np.ndarray, model_id : (str or int) = "all"):
         self.threads[threading.get_native_id()].plog.debug(f"Predicting with model, X.shape = {X.shape}")
+        if model_id == "all":
+            model_id = list(range(len(self.interpreters)))
+        if isinstance(model_id,int):
+            model_id = [model_id]
+        if isinstance(model_id,str):
+            try:
+                model_id = self.model_paths.index(model_id)
+            except:
+                raise Exception(f"Could not find model path {model_id} in {self.model_paths}")
         output_data = []
         if not isinstance(X,np.ndarray):
             try:
@@ -123,11 +134,16 @@ class MoskaGame:
                 X = np.array(X)
             except:
                 raise Exception(f"Could not convert {X} to np.ndarray")
+        if not model_id:
+            raise Exception(f"model_id is empty: {model_id}")
         if not X.shape:
             raise Exception(f"X.shape is empty: {X.shape}")
         if not self.interpreters:
             raise Exception("No model found for prediction. Model paths: {}".format(self.model_paths))
-        for interpreter,input_details,output_details in zip(self.interpreters,self.input_details,self.output_details):
+        for m_id,model_info in enumerate(zip(self.interpreters,self.input_details,self.output_details)):
+            interpreter,input_details,output_details = model_info
+            if m_id not in model_id:
+                continue
             interpreter.resize_tensor_input(input_details[0]["index"],X.shape)
             interpreter.allocate_tensors()
             interpreter.set_tensor(input_details[0]['index'], X)
