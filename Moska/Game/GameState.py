@@ -146,6 +146,9 @@ class FullGameState:
         if return_msg:
             return out,msg
         return out
+    
+    def _get_card_score(self,card : Card) -> int:
+        return len(self.cards_fall_dict[card])
 
     def encode_cards(self, cards : List[Card],cards_fall_dict = None) -> List[int]:
         """Encodes a list of cards into a list of integers.
