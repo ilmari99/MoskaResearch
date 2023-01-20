@@ -545,9 +545,9 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        self.plog.debug(f"Making cost matrix from {from_} to {to}")
+        #self.plog.debug(f"Making cost matrix from {from_} to {to}")
         can_fall = self._map_each_to_list(from_,to)
-        self.plog.debug(f"can_fall: {can_fall}")
+        #self.plog.debug(f"can_fall: {can_fall}")
         # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
         C = np.full((len(from_),len(to)),max_val)
         #self.plog.info(f"can_fall: {can_fall}")
