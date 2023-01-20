@@ -25,6 +25,18 @@ class _ScoreCards:
         self.default_method = self.methods[default_method]
         self.methods["default"] = self.default_method
         self.player = player
+        
+    def _assign_scores_from_to(self, cards : List[Card], card_counter : dict[Card,List[Card]]):
+        """ Assign scores to cards in the input list, using the card_counter.
+        """
+        if self.methods["default"] != self._count_cards_score:
+            raise Exception("This method is only for the 'counter' method!")
+        for card in cards:
+            # Only assign score if card is in card_counter. We cant assign a score to unknown cards in the player hand
+            if card in card_counter:
+                card.score = len(card_counter[card])
+            #card.score = len(card_counter[card])
+        return cards
     
     def assign_scores_inplace(self, method : str = "default") -> None:
         """ Assign scores to cards in the players hand and in the table inplace. The method
