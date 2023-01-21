@@ -1,14 +1,37 @@
 # Moska Card game simulator
-A project for simulating Moska card games, and trying different play algorithms.
 
-This project focuses mostly on 4 player games, for the agents to get a constant input shape for the neural network. The algorithms are optimized for 4 player games. Moska can have 2-8 players, and 4 player games were chosen as a middle ground, for having a long enough preparation period (optimizing the cards in hand, while there is deck left), and the end-game, where players try to get rid of cards in hand.
+## **Abstract** <!-- omit in toc -->
+Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other, according to the Merriam-Webster dictionary.
+Researchers have been studying games for a long time. Games and the strategies used by players are generally very complex, despite having only simple rules. Computer scientists often use games as a testbed for algorithms and AI.
+
+Hidden information games are a subset of games where players have incomplete information about the game state. This is a common feature in many games. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state.
+
+In this project, I use agent based modelling to simulate a finnish Moska card game, and gather data from these simulated games. A neural network for evaluating the game position is then trained with supervised learning. An agent is then implemented, which uses the neural network to evaluate each possible move and select the best move.
+
+The NN based agent performs better than hand-crafted agents. Tests with humans are on-going.
+
+
+## Table of Contents <!-- omit in toc -->
+- [**1 Introduction**](#1-introduction)
+- [**2 Moska game**](#2-rules-of-the-game)
+
+
+## **1 Introduction**
+The goal of this project is to create a simulation environment for the moska card game, and implement agents with different algorithms for playing the game. 
+
+This project focuses mostly on 4 player games, for the NNs to get a constant input shape. The algorithms are optimized for 4 player games. Moska can have 2-8 players, and 4 player games were chosen as a middle ground, for having a long enough preparation period (optimizing the cards in hand, while there is deck left), and the end-game, where players try to get rid of cards in hand.
 It is reasonable to assume that 2 player games have more to do with skill, than 8 player games, because players have more moves to optimize their end-game cards.
 
 The simulation fully supports 2-8 player games, but the agents are only trained for 4 player games.
 
 This is designed for simulations of moska games with different algorithms, and playing as a human can be quite tedious since playing happens through the command line.
 
-## **Rules of the game**
+
+## **2 Moska game**
+The moska card game is a finnish card game, that is played with a standard 52 card deck. The game is played with 2-8 players, and the goal is to not be the last player with cards in hand.
+
+
+### **2.1 Rules of the game**
 
 In finnish: https://korttipeliopas.fi/moska
 
