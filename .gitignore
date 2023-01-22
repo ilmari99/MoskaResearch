@@ -7,8 +7,10 @@ __pycache__/
 *Logs*
 Data/
 *.out
+tensorboard-log/
 # Models
 Models/
+model-checkpoints/
 
 # VSCode
 .VSCodeCounter
