@@ -70,12 +70,11 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         missing_from_hand = 6 - len(cards) - lifted
         return max(most_falls * missing_from_hand,0)
     
-    def _lift_n_from_deck(self, state : FullGameState) -> float:
+    def _lift_n_from_deck(self, cards : List[Card], state : FullGameState) -> float:
         """ Return how many cards must be lifted from the deck, given current state.
         The player might not have to instantly lift cards from the deck.
         If that is the case, this function corresponds to the number of cards that must be lifted from the deck, if the turn ends now.
         """
-        cards = state.full_player_cards[self.pid]
         deck = state.deck
         missing = 6 - len(cards)
         liftn = 0
@@ -92,7 +91,7 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         # Calculate the expected score of a card that is lifted from the deck
         expected_score_from_lift = self._calc_expected_value_from_lift(state)
         # Calculate the number of cards that must be lifted from the deck
-        liftn = self._lift_n_from_deck(state)
+        liftn = self._lift_n_from_deck(my_cards, state)
         # How many cards can the best card in game fall
         most_falls = max((c.score for c in state.cards_fall_dict.keys()))
         # Calculate the score of the hand, not accounting for missing cards
@@ -110,10 +109,10 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         score_from_lifted = expected_score_from_lift * liftn
         self.plog.debug(f"Score from lifted score: {score_from_lifted}")
         self.plog.debug("Total cards in hand: " + str(len(my_cards) + liftn))
-        # Return the average score/card of the hand
         if len(my_cards) + liftn == 0:
             return float("inf")
-        avg_score = (hand_score + score_from_lifted) / (len(my_cards) + liftn)
+        avg_hand_score = (hand_score + score_from_lifted) / (len(my_cards) + liftn)
+        avg_score = avg_hand_score
         return avg_score
     
     def _assign_score_to_state_cards(self, state : FullGameState) -> None:
