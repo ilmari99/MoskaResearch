@@ -21,8 +21,20 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
                  log_level=logging.INFO,
                  log_file="",
                  max_num_states : int = 1000,
+                 coefficients : Dict[str,float] = {}
                  ):
         self.scorer : _ScoreCards = _ScoreCards(self,default_method="counter")
+        self.coefficients = {
+            "my_cards" : 1,
+            "len_set_my_cards" : 1,
+            "len_my_cards" : -1,
+            "kopled":1,
+            "missing_card" : 51  
+        }
+        for coef, value in coefficients.items():
+            if coef not in self.coefficients:
+                raise ValueError(f"Unknown coefficient name: {coef}")
+            self.coefficients[coef] = value
         if not name:
             name = "HEV"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states)
@@ -88,32 +100,40 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         """
         # Cards in my hand at the state
         my_cards = state.full_player_cards[self.pid]
+        my_cards += state.cards_to_fall if self.pid == state.target_pid else []
+        my_cards_score = sum((c.score for c in my_cards))
+        
         # Calculate the expected score of a card that is lifted from the deck
         expected_score_from_lift = self._calc_expected_value_from_lift(state)
+        
         # Calculate the number of cards that must be lifted from the deck
         liftn = self._lift_n_from_deck(my_cards, state)
-        # How many cards can the best card in game fall
-        most_falls = max((c.score for c in state.cards_fall_dict.keys()))
+        
+        from_lifted_score = expected_score_from_lift * liftn
+        
         # Calculate the score of the hand, not accounting for missing cards
         self.plog.debug(f"Cards in hand scores: {[c.score for c in my_cards]}")
-        _pure_hand_score = sum((c.score for c in my_cards))
-        self.plog.debug(f"Pure hand score: {_pure_hand_score}")
+        #_pure_hand_score = sum((c.score for c in my_cards))
+        
         # How many cards are missing from hand, after possibly lifting cards from deck
-        _missing_from_hand = 6 - len(my_cards) - liftn
+        missing_from_hand = max(6 - len(my_cards) - liftn,0)
+        
         # If the player is the target he has to lift cards from the deck after the turn.
         # This is accounted for by subtracting the number of cards that must be lifted from the deck from the number of missing cards.
         # Take missing cards into account. The score of a missing card is as valuable as the most falling card
-        _score_from_missing = max(_missing_from_hand*most_falls,0)
-        self.plog.debug(f"Score from missing cards: {_score_from_missing}")
-        hand_score = _pure_hand_score + _score_from_missing
-        score_from_lifted = expected_score_from_lift * liftn
-        self.plog.debug(f"Score from lifted score: {score_from_lifted}")
+        #self.plog.debug(f"Score from missing cards: {_score_from_missing}")
+        #hand_score = _pure_hand_score + _score_from_missing
         self.plog.debug("Total cards in hand: " + str(len(my_cards) + liftn))
         if len(my_cards) + liftn == 0:
             return float("inf")
-        avg_hand_score = (hand_score + score_from_lifted) / (len(my_cards) + liftn)
-        avg_score = avg_hand_score
-        return avg_score
+        avg_hand_score = (my_cards_score + from_lifted_score) / (len(my_cards) + liftn)
+        
+        score = avg_hand_score * self.coefficients["my_cards"]
+        score += self.coefficients["kopled"] if any((c.kopled for c in state.cards_to_fall)) else 0
+        score += len(set(my_cards)) * self.coefficients["len_set_my_cards"]
+        score += missing_from_hand * self.coefficients["missing_card"]
+        score += len(my_cards) * self.coefficients["len_my_cards"]
+        return score
     
     def _assign_score_to_state_cards(self, state : FullGameState) -> None:
         """ Assign score to cards in the state, based on how many cards they can fall.
