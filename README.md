@@ -1,31 +1,48 @@
 # Moska Card game simulator
 
 ## **Abstract** <!-- omit in toc -->
-Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other, according to the Merriam-Webster dictionary.
-Researchers have been studying games for a long time. Games and the strategies used by players are generally very complex, despite having only simple rules. Computer scientists often use games as a testbed for algorithms and AI.
+Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other.
+Games and the strategies used by players can be very complex, despite having possibly simple rules. Computer scientists often use games as a testbed for algorithms and AI.
 
-Hidden information games are a subset of games where players have incomplete information about the game state. This is a common feature in many games. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state.
+Hidden information games are a subset of games where players have incomplete information about the game state. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state.
 
-In this project, I use agent based modelling to simulate a finnish Moska card game, and gather data from these simulated games. A neural network for evaluating the game position is then trained with supervised learning. An agent is then implemented, which uses the neural network to evaluate each possible move and select the best move.
+In this project, I use agent based modelling to simulate a finnish card game, and gather data from these simulated games. A neural network for evaluating the game position is then trained with supervised learning. An agent which uses the neural network to evaluate each possible move is then implemented and its performance evalued.
 
 The NN based agent performs better than hand-crafted agents. Tests with humans are on-going.
 
 
 ## Table of Contents <!-- omit in toc -->
 - [**1 Introduction**](#1-introduction)
+  - [**1.1 Games and hidden information**](#games-and-hidden-informatio)
+  - [**1.2 Evaluation function**](#evaluation-function)
+  - [**1.3 Moska card game**](#moska-card-game)
 - [**2 Moska game**](#2-rules-of-the-game)
 
 
 ## **1 Introduction**
-The goal of this project is to create a simulation environment for the moska card game, and implement agents with different algorithms for playing the game. 
+### **1.1 Games and hidden information**
+Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other, according to the Merriam-Webster dictionary.
+Games and the strategies used by players can be very complex in games, despite having possibly simple rules. Computer scientists often use games as a testbed for algorithms and AI. Neural-networks have succesfully been used in many algorithms as an evaluation function for the game state, such as in chess and go.
 
-This project focuses mostly on 4 player games, for the NNs to get a constant input shape. The algorithms are optimized for 4 player games. Moska can have 2-8 players, and 4 player games were chosen as a middle ground, for having a long enough preparation period (optimizing the cards in hand, while there is deck left), and the end-game, where players try to get rid of cards in hand.
-It is reasonable to assume that 2 player games have more to do with skill, than 8 player games, because players have more moves to optimize their end-game cards.
+Hidden information games are a subset of games where players have incomplete information about the game state. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state. Hidden information makes using Monte Carlo simulation methods significantly more complex, though methods to reduce complexity exist. [Monte Carlo Tree Search for Games with Hidden Information and Uncertainty](https://etheses.whiterose.ac.uk/8117/1/Feb%2016%20-%20FINAL.pdf).
 
-The simulation fully supports 2-8 player games, but the agents are only trained for 4 player games.
 
-This is designed for simulations of moska games with different algorithms, and playing as a human can be quite tedious since playing happens through the command line.
+### **1.2 Evaluation function**
+Evaluation function is a function, that evaluates a game state. Evaluation functions can be hand-crafted or learned from data. For complex games, hand-crafted evaluation functions can be very hard to create. Usually a hand-crafted evaluation function is a linear combination of features, that are extracted from the game state, and then weighted.
 
+Evaluation functions can be learned from data, by training a neural network. If data is available, the evaluation function can be trained from human games, and later iteratively improved with self-play. If data is not available, agent based modelling can be used to simulate games, and gather data from the simulated games. The evaluation function can then be trained with supervised learning.
+
+Because there is no data from human games for the Moska card game, I use agent based modelling to simulate games with hand-crafted agents and gather data from these simulated games to model the evaluation function with a neural network.
+
+### **1.3 Moska card game**
+
+Moska is a non-sequential, hidden information game. The game is played with a standard 52 card deck, and 2-8 players. The goal of the game is to not be the last player with cards in hand.
+
+Moska is a traditional Eastern finnish card game that is popular for example in Lappeenranta University of Technology and Tampere University. Moska shares similarities with the popular russian game *"Durak"* and another finnish game called *"Musta Maija"* (Black Mary). Moska is arguably more complex than Durak, due to the fact that Moska is played with a full standard deck instead of 36 cards, allows playing directly from the deck, and allows players to play to themselves. Moska is also considered to be more complex than Black Mary.
+
+I focus on the 4 player game, to have a constant input shape for the neural network, and to balance the preparation period and the end-game. The rules and general strategy of the game are explained later.
+
+The simulation engine implements the version, that is most popular in LUT university among Computational Engineering students, with a a few changes detailed later.
 
 ## **2 Moska game**
 The moska card game is a finnish card game, that is played with a standard 52 card deck. The game is played with 2-8 players, and the goal is to not be the last player with cards in hand.
