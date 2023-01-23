@@ -1,3 +1,4 @@
+import functools
 import itertools
 import random
 import time
@@ -10,7 +11,7 @@ CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion 
 
 
 class Assignment:
-    def __init__(self, inds : Tuple[int],hash_method = "frozenset"):
+    def __init__(self, inds : Tuple[int],hash_method = "sortedtuple"):
         self.inds = inds
         self._hand_inds = self.inds[::2]
         self._table_inds = self.inds[1::2]
@@ -18,7 +19,8 @@ class Assignment:
     
     def __eq__(self, other):
         """ Two assignments are equal if the same cards are played to the same cards, regardless of order."""
-        return set(self._hand_inds) == set(other._hand_inds) and set(self._table_inds) == set(other._table_inds)
+        return tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))) == tuple(sorted(list(other._hand_inds)) + sorted(list(other._table_inds)))
+        #return set(self._hand_inds) == set(other._hand_inds) and set(self._table_inds) == set(other._table_inds)
     
     def __repr__(self):
         return f"{self.inds}"
@@ -28,7 +30,7 @@ class Assignment:
         if self.hash_method == "frozenset":
             return hash(frozenset(self._hand_inds)) + hash(frozenset(self._table_inds))
         elif self.hash_method == "sortedtuple":
-            return hash(frozenset(self._hand_inds)) + hash(frozenset(self._table_inds))
+            return hash(tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))))
         #return hash(tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))))
 
 class Card:
@@ -146,10 +148,11 @@ def _get_assignments(matrix : np.ndarray, start = [], found_assignments = None, 
             # Restore matrix
             matrix[hand_cards,:] = row_vals
             matrix[:,table_cards] = col_vals
+        if not start:
+            print(f"Found {len(found_assignments)} assignments")
         return found_assignments
     
-    
-def _get_assignments_custom(matrix : np.ndarray, start = [], found_assignments = None, max_num_states = 1000) -> Set[Assignment]:
+def _get_assignments_custom(matrix : np.ndarray, start = [], found_assignments = None, max_num_states = 1000000000000000) -> Set[Assignment]:
         """ Return a set of found Assignments, containing all possible assignments of cards from the hand to the cards to fall.
         Symmetrical assignments are considered the same: where the same cards are played to the same cards, regardless of order.
         
@@ -159,7 +162,6 @@ def _get_assignments_custom(matrix : np.ndarray, start = [], found_assignments =
         - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
         - Repeat
         """
-        global TRIED
         # Create a set of found assignments, if none is given (first call)
         if not found_assignments:
             found_assignments = set()
@@ -196,9 +198,27 @@ def _get_assignments_custom(matrix : np.ndarray, start = [], found_assignments =
             # Restore matrix
             matrix[hand_cards,:] = row_vals
             matrix[:,table_cards] = col_vals
+        if not start:
+            print(f"Found {len(found_assignments)} assignments")
         return found_assignments
 
+def create_mat(n):
+    """ Create a matrix of size n x n, with 1s randomly """
+    mat = np.zeros((n,n))
+    for i in range(n):
+        mat[random.randint(0,n-1),random.randint(0,n-1)] = 1
+    print(mat.shape)
+    print()
+    return mat
+
+def test_complexity():
+    best,others = big_o.big_o(_get_assignments_custom, create_mat, n_repeats=1,min_n=2, max_n=24, n_measures = 22)
+    print(best)
+    for class_, residuals in others.items():
+        print('{!s:<60s}    (res: {:.2G})'.format(class_, residuals))
+
 import cProfile
+import big_o
 if __name__ == "__main__":
     for i in range(1):
         deck = [Card(val,s) for val,s in itertools.product(CARD_VALUES, CARD_SUITS)]
@@ -209,11 +229,14 @@ if __name__ == "__main__":
         print(f"Hand: {hand}")
         print(f"Table: {table}")
         #cProfile.run('_get_assignments(_make_matrix(hand,table),max_num_states = 1000000)', sort='tottime')
+        start_mat = time.time()
+        mat = _make_matrix(hand,table)
+        print(f"Time to make matrix: {time.time() - start_mat} seconds")
         start_assignments = time.time()
-        #assignments = _get_assignments(_make_matrix(hand,table),max_num_states = 1000000)
+        #assignments = _get_assignments(mat,max_num_states = 1000000)
         print(f"Time to find assignments with old method: {time.time() - start_assignments} seconds")
         start_custom_assignments = time.time()
-        custom_assignments = _get_assignments_custom(_make_matrix(hand,table),max_num_states = 1000000)
+        custom_assignments = _get_assignments_custom(mat,max_num_states = 1000000)
         print(f"Time to find assignments with new method: {time.time() - start_custom_assignments} seconds")
         #if assignments == custom_assignments:
         #    print("Assignments ARE equal")
