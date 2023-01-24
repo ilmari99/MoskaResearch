@@ -25,11 +25,11 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
                  ):
         self.scorer : _ScoreCards = _ScoreCards(self,default_method="counter")
         self.coefficients = {
-            "my_cards" : 1,
-            "len_set_my_cards" : 1,
-            "len_my_cards" : -1,
-            "kopled":1,
-            "missing_card" : 51  
+            "my_cards" : 2.31923085,
+            "len_set_my_cards" : 0.76678776,
+            "len_my_cards" : -1.99658315,
+            "kopled":0.39232656,
+            "missing_card" : 51.86727724  
         }
         for coef, value in coefficients.items():
             if coef not in self.coefficients:
@@ -75,13 +75,6 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         e_lifted = total_possible_falls / len(cards_possibly_in_deck)
         return e_lifted
     
-    
-    def _adjust_for_missing_cards(self, cards: List[Card], most_falls,lifted = 0) -> float:
-        """ Adjust score for missing cards (each card missing from hand is as valuable as the most falling card)
-        """
-        missing_from_hand = 6 - len(cards) - lifted
-        return max(most_falls * missing_from_hand,0)
-    
     def _lift_n_from_deck(self, cards : List[Card], state : FullGameState) -> float:
         """ Return how many cards must be lifted from the deck, given current state.
         The player might not have to instantly lift cards from the deck.
@@ -96,10 +89,18 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
     
     def _evaluate_single_state(self, state: FullGameState) -> float:
         """ Evaluate heuristically, how good a state is for the player.
-        The score of the player is
+        The evaluation is a linear combination of the following features:
+        - The score/card of the cards in hand 
+            - if player is target, we evaluate the hand assuming he lifts the unfallen cards from the table
+            - If the player lifts cards from the deck, we add the expected score of the lifted cards
+        - The number of cards in the hand
+        - The number of unique values in the hand
+        - The number of cards that are missing from the hand (after possibly lifting cards from deck, or from the table)
+        - Whether there is a kopled card on the table
         """
-        # Cards in my hand at the state
+        # Cards in hand at the state
         my_cards = state.full_player_cards[self.pid]
+        # If the player is the target, we evaluate the position assuming he lifts the cards from the table
         my_cards += state.cards_to_fall if self.pid == state.target_pid else []
         my_cards_score = sum((c.score for c in my_cards))
         
@@ -109,25 +110,19 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         # Calculate the number of cards that must be lifted from the deck
         liftn = self._lift_n_from_deck(my_cards, state)
         
+        # Calculate the expected score of the lifted cards
         from_lifted_score = expected_score_from_lift * liftn
         
-        # Calculate the score of the hand, not accounting for missing cards
-        self.plog.debug(f"Cards in hand scores: {[c.score for c in my_cards]}")
-        #_pure_hand_score = sum((c.score for c in my_cards))
-        
-        # How many cards are missing from hand, after possibly lifting cards from deck
+        # How many cards are missing from hand, after possibly lifting cards from deck or table
         missing_from_hand = max(6 - len(my_cards) - liftn,0)
-        
-        # If the player is the target he has to lift cards from the deck after the turn.
-        # This is accounted for by subtracting the number of cards that must be lifted from the deck from the number of missing cards.
-        # Take missing cards into account. The score of a missing card is as valuable as the most falling card
-        #self.plog.debug(f"Score from missing cards: {_score_from_missing}")
-        #hand_score = _pure_hand_score + _score_from_missing
-        self.plog.debug("Total cards in hand: " + str(len(my_cards) + liftn))
+
+        # If the player has no cards, the score is infinite -> player doesn't lose
         if len(my_cards) + liftn == 0:
             return float("inf")
-        avg_hand_score = (my_cards_score + from_lifted_score) / (len(my_cards) + liftn)
         
+        # Calculate the average score of the cards in hand
+        avg_hand_score = (my_cards_score + from_lifted_score) / (len(my_cards) + liftn)
+        # Create a linear combination of the different factors using weights from self.coefficients
         score = avg_hand_score * self.coefficients["my_cards"]
         score += self.coefficients["kopled"] if any((c.kopled for c in state.cards_to_fall)) else 0
         score += len(set(my_cards)) * self.coefficients["len_set_my_cards"]
