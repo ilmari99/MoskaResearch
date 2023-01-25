@@ -11,7 +11,7 @@ CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣'}    #Conversion 
 
 case1_as_tuple = ([(2,"S"), (2,"H"), (2,"C"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C"),(13,"S"),(13,"C"),(13,"D"),(7,"H"), (7,"D"), (7,"S")],16)
 case2_as_tuple = ([(5,"S"), (3,"S"), (2,"C"), (5,"D"), (5,"H"), (3,"H"),(3,"H"),(3,"C"),(3,"D"),(10,"S"),(10,"H"),(10,"C"),(13,"S"),(13,"C"),(13,"D"),(7,"H"), (7,"D"), (7,"S")],20)
-
+case3_as_tuple = ([(2,"H"), (14,"S"), (5,"S"),(5,"C"),(8,"S"),(8,"C"),(8,"H"),(10,"S"),(10,"C")],10)
 
 @dataclass()
 class Card:
@@ -78,7 +78,7 @@ def compare_ans(ans1 : List[Tuple[Card]], ans2 : List[Tuple[Card]]) -> bool:
 
 case1 = ([Card(val,suit) for val, suit in case1_as_tuple[0]], case1_as_tuple[1])
 case2 = ([Card(val,suit) for val, suit in case2_as_tuple[0]], case2_as_tuple[1])
-
+case3 = ([Card(val,suit) for val, suit in case3_as_tuple[0]], case3_as_tuple[1])
 
 def your_solution(cards : List[Card], fits : int) -> List[Tuple[Card]]:
     """ Write here"""
@@ -86,7 +86,7 @@ def your_solution(cards : List[Card], fits : int) -> List[Tuple[Card]]:
 
 import time
 
-for case_i, case in enumerate([case1, case2, _make_case(20,20)]):
+for case_i, case in enumerate([case3, case1, case2, _make_case(20,20)]):
     cards, fits = case
     print(f"Case {case_i + 1}:")
     print(f"Cards: {cards}")
