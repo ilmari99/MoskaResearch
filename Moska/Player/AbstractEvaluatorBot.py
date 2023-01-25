@@ -54,6 +54,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
                  log_file="",
                  max_num_states : int = 1000,
                  ):
+        self.get_nmoves = True
         self.max_num_states = max_num_states
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
@@ -121,7 +122,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         self.plog.debug(f"Duplicate assignments: {duplicate_count}")
         return found_assignments
     
-    def _get_move_prediction(self, move : str) -> Tuple[Any,float]:
+    def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
         if move == "PlayFallFromDeck":
@@ -139,6 +140,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
             print("Plays: ", plays, flush=True)
             raise Exception("Could not find best play")
         #print("Best play: ", best[0], " with eval: ", best[2], flush=True)
+        if get_n:
+            return best[0],best[2],len(plays)
         return best[0],best[2]
 
     def _make_mock_move(self,move,args):
@@ -357,8 +360,16 @@ class AbstractEvaluatorBot(AbstractPlayer):
         self.plog.debug(f"Table: {self.moskaGame.cards_to_fall}")
         self.plog.debug(f"Fell: {self.moskaGame.fell_cards}")
         move_scores = {}
+        total_n_moves = 0
         for move in playable:
-            move_scores[move] = self._get_move_prediction(move)
+            if self.get_nmoves:
+                play,eval_,nmoves = self._get_move_prediction(move,get_n=True)
+                move_scores[move] = (play,eval_)
+                total_n_moves += nmoves
+            else:
+                move_scores[move] = self._get_move_prediction(move)
+        if self.get_nmoves:
+            self.plog.info(f"NMOVES: {len(self.moskaGame.deck)} , {total_n_moves}")
         self.plog.info(f"Move scores: {move_scores}")
         self.move_play_scores = move_scores
         if self.requires_graphic:
