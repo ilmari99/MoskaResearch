@@ -167,30 +167,36 @@ The games are parallelized by using the `multiprocessing` library Pool. The game
 
 The speed of the simulation depends on the parallelization, algorithms used, and whether we are collecting data vectors. The bots using neural networks are considerably slower than the other bots. A tensorflow .h5 file must be converted to a .tflite file, to be used in the simulation. This is done by the `Analysis/convert-to-tflite.py` script. The tflite models are MUCH smaller and faster than using a tensorflow model.
 
-#### **Agents**
+![game-flowchart](Game-diagram.png)
+*Flowchart of the games logic after starting a simulation.*
+
+#### **Agent interfaces**
+
+![player-flowchart](player-diagram.png)
+*Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
 
 The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
 
 **AbstractPlayer**
 
 The `AbstractPlayer` is the base class of all agents. It contains the general logic of the player, and some helper methods. The following logic needs to be implemented by the subclasses of `AbstractPlayer`:
-- choose_move(playable_moves : List[str]) -> str
-- end_turn() -> List[Card]
-- play_fall_card_from_hand() : Dict[Card,Card]
-- deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)
-- play_to_self() -> List[Card]
-- play_initial() -> List[Card]
-- play_to_target() -> List[Card]
+- `choose_move(playable_moves : List[str]) -> str`
+- `end_turn() -> List[Card]`
+- `play_fall_card_from_hand() : Dict[Card,Card]`
+- `deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)`
+- `play_to_self() -> List[Card]`
+- `play_initial() -> List[Card]`
+- `play_to_target() -> List[Card]`
 
 The agents implementing the `AbstractPlayer` class can try to play illegal moves if the methods are implemented incorrectly, but they should eventually be designed to only make valid moves, to improve performance. Also, if the player is fully deterministic, and it can make invalid moves, the game will timeout, because an Agent is only making invalid moves and the game will never end, since the agent will get into a loop of attempting to play the same move.
 
-Agents only implementing the AbstractPlayer, can be made significantly faster than the `AbstractEvaluatorBot`.
+Agents only implementing the AbstractPlayer, can be made significantly faster than the `AbstractEvaluatorBot`, because they do not need to generate all possible plays.
 
 **AbstractEvaluatorBot**
 
-The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
+The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
 
-Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. Some of the problems can have very large search spaces.
+Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, since for example finding all distinct matchings from a bipartite graph is NP-hard. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
 
 ### **Players based on heuristics**
 These players calculate scores based on heuristics, and choose the move with the highest score. The heuristics are fairly simple. They contain some weightings, and the weighings have been optimized with scipy, by simulating thousands of games with different weightings, and choosing the best weightings to minimize the chance to lose.
