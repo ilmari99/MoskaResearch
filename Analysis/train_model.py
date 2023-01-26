@@ -34,10 +34,12 @@ def get_nn_model(channels=None):
     #norm_layer,
         tf.keras.layers.Input(shape=INPUT_SHAPE),
         #tf.keras.layers.BatchNormalization(axis=-1),
+        tf.keras.layers.Dense(600, activation="elu"),
+        tf.keras.layers.Dropout(0.35),
         tf.keras.layers.Dense(600, activation="relu"),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.35),
         tf.keras.layers.Dense(600, activation="relu"),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.3),
         tf.keras.layers.Dense(500, activation="relu"),
         tf.keras.layers.Dropout(0.4),
         tf.keras.layers.Dense(400, activation="relu"),
@@ -76,16 +78,17 @@ def get_transfer_model(base_model_path):
 
 
 def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
-    model.load_weights(checkpoint_path)
+    model.load_weights(checkpoint_path,)
     return model
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./3ModelsLog/Vectors/", "./1ModelsLog/Vectors/"],
+    all_dataset = create_tf_dataset(["./Data/3ModelsLog/Vectors/", "./Data/1ModelsLog/Vectors/","./Data/NewerLogs400k/Vectors/"],
                                     add_channel=False,
                                     norm=False,
                                     )
     print(all_dataset.take(1).as_numpy_iterator().next())
+    #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
     model = get_nn_model()
     VALIDATION_LENGTH = 100000
     TEST_LENGTH = 100000
@@ -103,10 +106,10 @@ if __name__ == "__main__":
         raise Exception("Tensorboard log directory already exists")
     
     early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=20, restore_best_weights=True, start_from_epoch=10)
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-log/",histogram_freq=1,profile_batch=(50,100),)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-log/",histogram_freq=5,profile_batch=(50,100),)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
-        save_weights_only=True,
+        save_weights_only=False,
         monitor='val_loss',
         mode='min',
         save_best_only=True)
@@ -115,7 +118,7 @@ if __name__ == "__main__":
     
     model.fit(x=train_ds, 
               validation_data=validation_ds, 
-              epochs=160, 
+              epochs=180, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
     
