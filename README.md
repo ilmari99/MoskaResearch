@@ -6,11 +6,11 @@ Games and the strategies used by players can be very complex, despite having pos
 
 Hidden information games are a subset of games where players have incomplete information about the game state. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state, and Monte Carlo simulation methods get very complex as hidden information increases.
 
-In this project, I use agent based modelling to simulate a finnish 'Moska' card game, and gather data from these simulated games. A neural network for evaluating the game position is then trained with supervised learning, and implemented as an evaluation function for an agent.
+In this project, I use agent based modelling to simulate a finnish 'Moska' card game, and gather data from these simulated games. The data is used to train a neural network predicting how good a position is. An agent based on this neural network is then used to play against the hand-crafted agents, and the results are compared.
 
 The NN based agents perform better than the hand-crafted agents, from which the data was gathered.
 
-The complexity of Moska was approximated by running simulations, and the state space was found to be roughly 3*10^159, with a branching factor of 3.9 and depth of 268. With the total number of possible initial states of 3*10^29, the total number of possible games is roughly 10^189.
+The complexity of Moska was approximated by running simulations, and the state space was found to be roughly *3x10^159*, with a branching factor of 3.9 and depth of 268. The total number of possible initial states is *3x10^29* and hence the total number of possible games is roughly *10^189*.
 
 
 ## Table of Contents <!-- omit in toc -->
@@ -24,9 +24,7 @@ The complexity of Moska was approximated by running simulations, and the state s
       - [**Goal**](#goal)
       - [**Dealing**](#dealing)
       - [**Flow of the game**](#flow-of-the-game)
-    - [**2 General techniques**](#2-general-techniques)
-      - [**Preparation phase**](#preparation-phase)
-      - [**End-game phase**](#end-game-phase)
+      - [**General techniques**](#general-techniques)
     - [**3 Simulation**](#3-simulation)
       - [**In general**](#in-general)
       - [**Agents**](#agents)
@@ -124,12 +122,12 @@ If the target has to or chooses to pick cards, the player on the targets left ha
 When the deck is finished, the game continues as before. In this stage, players attempt to play their cards intelligently, so they will not be the last player with cards in hand. The last person with cards in hand is the loser.
 
 
-### **2 General techniques**
+#### **General techniques**
 The game can be though of as having 2 phases:
 - Preparation phase
 - End-game phase
 
-#### **Preparation phase**
+**Preparation phase**
 A game is in the preparation phase, when there are still cards in the deck.
 In the preparation phase, players try to get a good hand for the end game. A good hand is a hand with high cards and combinations. This allows the player to kill cards played to them, and play multiple cards simultaneously to others. Personally, in this phase there are many variables to consider, and I just try to assess whether a move likely results in a better hand. The evaluation process is purely an approximation based on previous experience.
 The end of the preparation phase is also important, since the triumph card is the bottom card on the deck (This is visible to all players). So the player who gets to lift the last card, is guaranteed to have the triumph card in their hand for the end-game.
@@ -140,7 +138,7 @@ An example of a simple evaluation process,
 
 **A:** *Usually, if I don't have a triumph card, I would play them for a chance at a triumph card. If I have a triumph card, I would probably not play them, since I would rather have a hand with this combination. This also depends on whether 10s have already been played and a number of other factors.*
 
-#### **End-game phase**
+**End-game phase**
 The end-game phase starts when the deck is empty.
 In the end-game phase, players try to get rid of their cards. In this phase, more logic, and knowledge from previous moves can be used (for example which cards a player has lifted), especially when the number of players left in the game is small (2-4). Players generally try to assess the future of the game in a Tree Search manner. This can be quite hard, since there is hidden information and the number of plays is usually too large for humans.
 
