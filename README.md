@@ -10,7 +10,7 @@ In this project, I use agent based modelling to simulate a finnish 'Moska' card 
 
 The NN based agents perform better than the hand-crafted agents, from which the data was gathered.
 
-The complexity of Moska was approximated by running simulations, and the state space was found to be roughly *3x10^159*, with a branching factor of 3.9 and depth of 268. The total number of possible initial states is *3x10^29* and hence the total number of possible games is roughly *10^189*.
+The complexity of Moska was approximated by running simulations, and the game tree complexity was found to be roughly *3x10^159*, with a branching factor of 3.9 and depth of 268. The total number of possible initial states is *3x10^29* and hence the total number of possible games is roughly *10^189*.
 
 
 ## Table of Contents <!-- omit in toc -->
@@ -27,7 +27,7 @@ The complexity of Moska was approximated by running simulations, and the state s
       - [**General techniques**](#general-techniques)
     - [**3 Simulation**](#3-simulation)
       - [**In general**](#in-general)
-      - [**Agents**](#agents)
+      - [**Agent interfaces**](#agent-interfaces)
     - [**Players based on heuristics**](#players-based-on-heuristics)
     - [**Players based on Neural Network evaluations**](#players-based-on-neural-network-evaluations)
   - [Data collection](#data-collection)
