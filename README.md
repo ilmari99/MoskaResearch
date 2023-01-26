@@ -172,7 +172,7 @@ The speed of the simulation depends on the parallelization, algorithms used, and
 ![game-flowchart](Game-diagram.png)
 *Flowchart of the games logic after starting a simulation.*
 
-#### **Agents**
+#### **Agent interfaces**
 
 ![player-flowchart](player-diagram.png)
 *Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
@@ -198,7 +198,7 @@ Agents only implementing the AbstractPlayer, can be made significantly faster th
 
 The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
 
-Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, since for example choosing which cards to fall with which cards is an NP-hard problem. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
+Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, since for example finding all distinct matchings from a bipartite graph is NP-hard. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
 
 ### **Players based on heuristics**
 These players calculate scores based on heuristics, and choose the move with the highest score. The heuristics are fairly simple. They contain some weightings, and the weighings have been optimized with scipy, by simulating thousands of games with different weightings, and choosing the best weightings to minimize the chance to lose.
