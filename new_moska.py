@@ -257,8 +257,7 @@ def to_minimize_call():
 
 
 if __name__ == "__main__":
-    new_dir = "nmovesLogs"
-    
+    new_dir = "LastLogs"
     if not os.path.isdir(new_dir):
         os.mkdir(new_dir)
     os.chdir(new_dir + "/")
@@ -270,7 +269,7 @@ if __name__ == "__main__":
     #exit()
 
     shared_kwargs = {
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.WARNING,
         "delay":0,
     }
 
@@ -279,17 +278,17 @@ if __name__ == "__main__":
         #(ModelBot, lambda x : {**shared_kwargs, **{"name" : f"MB-1","log_file":f"Game-{x}-MB-1.log","max_num_states":1000,
         #                                          "state_prediction_format":"FullGameState-old", 
         #                                          "normalize_state_vector" : False}}),
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV","log_file":f"Game-{x}-HEV.log", "max_num_states":1000000}}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV","log_file":f"Game-{x}-HEV.log", "max_num_states":10000}}),
         (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV",
                                                   "log_file":f"Game-{x}-NNEV.log", 
-                                                  "max_num_states":1000000,
-                                                  "pred_format":"new", 
+                                                  "max_num_states":10000,
+                                                  "pred_format":"new",
                                                   "normalize" : False}}),
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
     ]
     
-    players = [
+    __players = [
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-1",
                                                   "log_file":f"Game-{x}-NNEV1.log", 
                                                   "max_num_states":1000000,
@@ -323,34 +322,18 @@ if __name__ == "__main__":
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.INFO,
-        "timeout" : 60,
+        "timeout" : 30,
         "gather_data":True,
         "model_paths":["../Models/ModelMB11-260/model.tflite"]#,"../Models/ModelMB9-125/model.tflite","../Models/ModelMB9-100/model.tflite"]
     }
-    for i in range(1):
+    for i in range(1000):
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
         #act_players = random.sample(players, 4)
         #cProfile.run("play_games(players, gamekwargs, n=20, cpus=10, chunksize=1,shuffle_player_order=True)")
-        results = play_games(players, gamekwargs, n=500, cpus=10, chunksize=2,shuffle_player_order=True)
+        results = play_games(players, gamekwargs, n=800, cpus=12, chunksize=2,shuffle_player_order=True,verbose=False)
         #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         res = get_loss_percents(results,player="all", show=True)
         print(res)
-        N = len([r for r in results if r is not None])
-        x = int(res["NNEV"]/100*N)
-        p0 = 0.25
-        print("N trials = ",N)
-        print("X succesfull trial = ",x)
-        print("p0 = ",p0)
-        # Null hypothesis is that the probability of losing is greater than or equal to 0.25
-        # H1 is that the probability of losing is less than 0.25
-        p_value = sc_stats.binom.cdf(x,N, p0)
-        ci = sc_stats.binom.interval(0.99, N, p0)
-        print(p_value)
-        print(ci)
-        p_value_for_human_game = sc_stats.binom.cdf(7,10, 0.75)
-        ci_human = sc_stats.binom.interval(0.95, 10, 0.75)
-        print(p_value_for_human_game)
-        print(ci_human)
         
         
         
