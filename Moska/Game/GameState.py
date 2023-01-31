@@ -150,14 +150,14 @@ class FullGameState:
     def _get_card_score(self,card : Card) -> int:
         return len(self.cards_fall_dict[card])
 
-    def encode_cards(self, cards : List[Card],cards_fall_dict = None) -> List[int]:
+    def encode_cards(self, cards : List[Card],fill = -1,cards_fall_dict = None) -> List[int]:
         """Encodes a list of cards into a list of integers.
         Returns a list of 52 zeros, with the index of the card in the reference deck set to the number of cards that the card can fall.
         If a card is not in the game (not in cards_fall), the value is -1.
         """
         if not cards_fall_dict:
             cards_fall_dict = self.cards_fall_dict
-        out = [0] * len(REFERENCE_DECK)
+        out = [fill] * len(REFERENCE_DECK)
         if len(out) != 52:
             raise ValueError("The reference deck is not 52 cards long.")
         # Loop through input cards
@@ -204,7 +204,7 @@ class FullGameState:
             out += self.encode_cards(cards)
         return out
         
-    def as_perspective_vector(self, player : 'AbstractPlayer', norm : bool = False, fmt : str = "new"):
+    def as_perspective_vector(self, player : 'AbstractPlayer', fmt : str = "new"):
         """Returns a numeric vector representation of the state.
         The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
         The vector is ordered as follows:
@@ -218,36 +218,39 @@ class FullGameState:
         - Whether there is a kopled card on the table.
         - Cards in each players hand, known to everyone. Recorded by card monitor
         """
+        if fmt == "old":
+            local_encode_cards = lambda cards : self.encode_cards(cards,fill=0)
+        elif fmt == "new":
+            local_encode_cards = self.encode_cards
+        else:
+            raise NameError("Unknown format: {}".format(fmt))
         out = []
         # How many cards are left in the deck
         out += [len(self.deck.cards)]
         # How many cards each player has in their hand
         out += [len(hand) for hand in self.known_player_cards]
         # Which cards are still in the game, and encoded as how many cards they can fall.
-        out += self.encode_cards(REFERENCE_DECK)
+        out += local_encode_cards(REFERENCE_DECK)
         # Which cards are on the table, waiting to be fell
-        out += self.encode_cards(self.cards_to_fall)
+        out += local_encode_cards(self.cards_to_fall)
         # Which cards have fallen during this turn
-        out += self.encode_cards(self.fell_cards)
+        out += local_encode_cards(self.fell_cards)
         # Whether each player is ready, ordered by pid. This tells whether the player might play new cards to the current table.
         out += [1 if ready else 0 for ready in self.players_ready]
         # Whether each player is in the game, ordered by pid. This tells whether the player is still in the game.
         in_game_vec = [1 if in_game else 0 for in_game in self.players_in_game]
         # In the new format, we mark player as a two, if they are in the game, and the target
-        if fmt=="new":
-            in_game_vec[self.target_pid] = 2 if in_game_vec[self.target_pid] == 1 else 0
+        in_game_vec[self.target_pid] = 2 if in_game_vec[self.target_pid] == 1 else 0
         out += in_game_vec
         # Whether there is kopled card on the table
         out += [1] if any([card.kopled for card in self.cards_to_fall]) else [0]
         # Encoded player hands from the perspective of the player: All picked up cards
         for known_cards in self.known_player_cards:
-            out += self.encode_cards(known_cards)
+            out += local_encode_cards(known_cards)
         # Encode the players own hand (full information)
         player_cards = self.full_player_cards[player.pid]
-        out += self.encode_cards(player_cards)
+        out += local_encode_cards(player_cards)
         # len should be 1 + 4 +52 + 52 + 52 + 4 + 4 + 1 + 4*52 (+1) = 431/432
-        if norm:
-            out = [x/51 for x in out]
         return out
 
 
