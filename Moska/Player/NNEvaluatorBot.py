@@ -19,11 +19,9 @@ class NNEvaluatorBot(AbstractEvaluatorBot):
                  log_level=logging.INFO,
                  log_file="",
                  max_num_states : int = 1000,
-                 normalize: bool = True,
                  pred_format : str ="new",
                  model_id : (str or int) = "all"
                  ):
-        self.normalize = normalize
         self.pred_format = pred_format
         self.max_num_states = max_num_states
         self.model_id = model_id
@@ -32,7 +30,7 @@ class NNEvaluatorBot(AbstractEvaluatorBot):
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states)
         
     def evaluate_states(self, states: List[FullGameState]) -> List[float]:
-        state_vectors = [state.as_perspective_vector(self, norm=self.normalize,fmt=self.pred_format) for state in states]
+        state_vectors = [state.as_perspective_vector(self,fmt=self.pred_format) for state in states]
         preds = self.moskaGame.model_predict(np.array(state_vectors, dtype=np.float32), model_id=self.model_id)
         return preds
 
