@@ -269,7 +269,7 @@ if __name__ == "__main__":
     #exit()
 
     shared_kwargs = {
-        "log_level" : logging.WARNING,
+        "log_level" : logging.DEBUG,
         "delay":0,
     }
 
@@ -283,8 +283,8 @@ if __name__ == "__main__":
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV",
                                                   "log_file":f"Game-{x}-NNEV.log", 
                                                   "max_num_states":10000,
-                                                  "pred_format":"new",
-                                                  "normalize" : False}}),
+                                                  "pred_format":"old",
+                                                  }}),
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
     ]
     
@@ -326,11 +326,11 @@ if __name__ == "__main__":
         "gather_data":True,
         "model_paths":["../Models/ModelMB11-260/model.tflite"]#,"../Models/ModelMB9-125/model.tflite","../Models/ModelMB9-100/model.tflite"]
     }
-    for i in range(1000):
+    for i in range(1):
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
         #act_players = random.sample(players, 4)
         #cProfile.run("play_games(players, gamekwargs, n=20, cpus=10, chunksize=1,shuffle_player_order=True)")
-        results = play_games(players, gamekwargs, n=800, cpus=12, chunksize=2,shuffle_player_order=True,verbose=False)
+        results = play_games(players, gamekwargs, n=100, cpus=12, chunksize=2,shuffle_player_order=True,verbose=False)
         #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         res = get_loss_percents(results,player="all", show=True)
         print(res)
