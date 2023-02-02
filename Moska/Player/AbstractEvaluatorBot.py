@@ -119,7 +119,6 @@ class AbstractEvaluatorBot(AbstractPlayer):
             # Restore matrix
             matrix[hand_cards,:] = row_vals
             matrix[:,table_cards] = col_vals
-        self.plog.debug(f"Duplicate assignments: {duplicate_count}")
         return found_assignments
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
@@ -266,8 +265,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
         target = self.moskaGame.get_target_player()
         for i,play in enumerate(plays):
             plays[i] = list(play)
-            state_vector = self._make_mock_move("PlayToOther",[self, target, plays[i]])
-            states.append(state_vector)
+            state = self._make_mock_move("PlayToOther",[self, target, plays[i]])
+            states.append(state)
         return plays, states
     
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
