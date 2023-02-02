@@ -6,32 +6,6 @@ import pandas as pd
 import tensorflow as tf
 import sys
 
-def create_tf_dataset(paths, norm=False, add_channel=False) -> tf.data.Dataset:
-    """ Create a tf dataset from a folder of files"""
-    if not isinstance(paths, (list, tuple)):
-        try:
-            paths = [paths]
-        except:
-            raise ValueError("Paths should must be a list of strings")
-    file_paths = []
-    for path in paths:
-        if not os.path.isdir(path):
-            raise ValueError(f"Path {path} is not a directory")
-        file_paths += [os.path.join(path, file) for file in os.listdir(path)]
-    print("Number of files: " + str(len(file_paths)))
-    random.shuffle(file_paths)
-    print("Shuffled files.")
-    dataset = tf.data.TextLineDataset(file_paths)
-    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])), num_parallel_calls=6)
-    if norm:
-        dataset = dataset.map(lambda x,y : (tf.divide(x,51),y))
-    if add_channel:
-        dataset = dataset.map(lambda x,y: (tf.expand_dims(x, axis=-1), tf.expand_dims(y, axis=-1)))
-    return dataset
-
-
-
 def check_data(path, count_unique=False):
     line_length = -1
     out = True
