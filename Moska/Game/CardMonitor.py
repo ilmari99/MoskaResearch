@@ -1,4 +1,6 @@
 from __future__ import annotations
+import itertools
+import random
 from typing import TYPE_CHECKING, List, Tuple
 
 from Moska.Player.AbstractPlayer import AbstractPlayer
@@ -68,6 +70,24 @@ class CardMonitor:
         cards_possibly_in_deck = set(self.game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
         #self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
         return cards_possibly_in_deck
+    
+    def get_sample_cards_from_deck(self,player : AbstractPlayer,ncards : int, max_samples : int = 100) -> List[Card]:
+        """Get a list of tuples of ncards, where each tuple is a unique sample of cards from the deck.
+        """
+        assert ncards <= 6, f"Cannot sample more than 6 cards"
+        assert ncards > 0, f"Cannot sample less than 1 card"
+        cards_possibly_in_deck = self.get_cards_possibly_in_deck(player)
+        # If there are less cards in the deck than ncards, return all cards
+        if len(cards_possibly_in_deck) < ncards:
+            return tuple(cards_possibly_in_deck)
+        samples = set()
+        # Get different card combinations
+        combs = itertools.combinations(cards_possibly_in_deck,ncards)
+        for comb in combs:
+            samples.add(comb)
+            if len(samples) >= max_samples:
+                break
+        return list(samples)
         
     def make_cards_fall_dict(self):
         """Create the cards_fall_dict by going through each card and checking if each card can be fell with the card
