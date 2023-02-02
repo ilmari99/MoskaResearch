@@ -108,6 +108,21 @@ class FullGameState:
                    target_pid,
                    copy = copy,
                    )
+
+    def copy(self):
+        """ Create a shallow copy of this object"""
+        return type(self)(self.deck,
+                          [copy.copy(cards) for cards in self.known_player_cards],
+                          [copy.copy(cards) for cards in self.full_player_cards],
+                          copy.copy(self.fell_cards),
+                          copy.copy(self.cards_to_fall),
+                          copy.copy(self.cards_fall_dict),
+                          copy.copy(self.players_ready),
+                          copy.copy(self.players_in_game),
+                          self.tc_index,
+                          self.target_pid,
+                          copy = False,
+                          )
         
     def is_game_equal(self, other : 'MoskaGame', return_msg : bool = False):
         out = True

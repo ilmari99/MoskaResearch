@@ -38,7 +38,7 @@ class Assignment:
         #return hash(frozenset(self._hand_inds)) + hash(frozenset(self._table_inds))
         return hash(tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))))
 
-class AbstractEvaluatorBot(AbstractPlayer):
+class AbstractHIFEvaluatorBot(AbstractPlayer):
     """ This class is an abstract class for bots that evaluate the game states.
     This class handles finding the possible moves and generating the resulting game states.
     
@@ -121,7 +121,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
             matrix[:,table_cards] = col_vals
         return found_assignments
     
-    def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
+    def _get_move_prediction(self, move : str, get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
         if move == "PlayFallFromDeck":
@@ -130,9 +130,26 @@ class AbstractEvaluatorBot(AbstractPlayer):
             plays = ["unknown"]
             states = ["unknown"]
             evals = [float(np.mean(evals))]
-        combined = list(zip(plays, states, evals))
+        elif move in ["PlayToOther", "InitialPlay", "EndTurn"]:
+            unique_plays = []
+            mean_evals = []
+            corresponding_states = []
+            for play in plays:
+                if play not in unique_plays:
+                    unique_plays.append(play)
+            for unique_play in unique_plays:
+                # Store the scores, to be able to get the best pre-computed score for a specific play
+                mean_evals.append(np.mean([eval for play, eval in zip(plays, evals) if play == unique_play]))
+                corresponding_states.append(states[plays.index(unique_play)])
+            self.plog.debug(f"Unique plays: {unique_plays}")
+            self.plog.debug(f"Mean evals: {mean_evals}")
+            self.plog.debug(f"Cards in hand: {[s.full_player_cards[self.pid] for s in corresponding_states]}")
+            plays = unique_plays
+            states = corresponding_states
+            evals = mean_evals
+        combined = list(zip(plays, evals))
         try:
-            best = max(combined, key=lambda x : x[2])
+            best = max(combined, key=lambda x : x[1])
         except:
             print("Combined: ", combined, flush=True)
             print("Evals: ", evals, flush=True)
@@ -140,8 +157,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
             raise Exception("Could not find best play")
         #print("Best play: ", best[0], " with eval: ", best[2], flush=True)
         if get_n:
-            return best[0],best[2],len(plays)
-        return best[0],best[2]
+            return best[0],best[1],len(plays)
+        return best[0],best[1]
 
     def _make_mock_move(self,move,args):
         state = self.moskaGame._make_mock_move(move,args)
@@ -265,8 +282,25 @@ class AbstractEvaluatorBot(AbstractPlayer):
         target = self.moskaGame.get_target_player()
         for i,play in enumerate(plays):
             plays[i] = list(play)
+            # Store current cards
+            curr_cards = self.hand.copy().cards
             state = self._make_mock_move("PlayToOther",[self, target, plays[i]])
-            states.append(state)
+            # See which cards were lifted
+            # REQUIRES the set difference to use the __eq__ method of Card
+            lifted_cards = [c for c in state.full_player_cards[self.pid] if c not in curr_cards]
+            self.plog.debug(f"Full information lifted cards: {lifted_cards}")
+            if len(lifted_cards) == 0:
+                states.append(state)
+                continue
+
+            #Discard the knowledge of the lifted cards, and create states,
+            # where the lift is a random sample of cards possibly in deck
+            lifted_card_indices = [i for i,c in enumerate(state.full_player_cards[self.pid]) if c in lifted_cards]
+            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+                sample_state = state.copy()
+                for i, index_to_change in enumerate(lifted_card_indices):
+                    sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
+                states.append(sample_state)
         return plays, states
     
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
@@ -303,8 +337,21 @@ class AbstractEvaluatorBot(AbstractPlayer):
         for i, play in enumerate(legal_plays):
             if len(states) >= self.max_num_states:
                 break
+            curr_cards = self.hand.copy().cards
             state = self._make_mock_move("InitialPlay",[self, target, list(play)])
-            states.append(state)
+            lifted_cards = [c for c in state.full_player_cards[self.pid] if c not in curr_cards]
+            self.plog.debug(f"Full information lifted cards: {lifted_cards}")
+            if len(lifted_cards) == 0:
+                states.append(state)
+                continue
+            #Discard the knowledge of the lifted cards, and create states,
+            # where the lift is a random sample of cards possibly in deck
+            lifted_card_indices = [i for i,c in enumerate(state.full_player_cards[self.pid]) if c in lifted_cards]
+            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+                sample_state = state.copy()
+                for i, index_to_change in enumerate(lifted_card_indices):
+                    sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
+                states.append(sample_state)
         return legal_plays, states
     
     def get_possible_next_states(self, move : str) -> Tuple[List[Any], List[FullGameState], List[float]]:
@@ -329,9 +376,23 @@ class AbstractEvaluatorBot(AbstractPlayer):
         elif move == "EndTurn":
             plays = [self.moskaGame.cards_to_fall.copy(), self.moskaGame.cards_to_fall.copy() + self.moskaGame.fell_cards.copy()]
             states = []
-            for play in plays:
+            for i,play in enumerate(plays):
+                if i == 0:
+                    curr_cards = self.hand.copy().cards + self.moskaGame.cards_to_fall.copy()
+                elif i == 1:
+                    curr_cards = self.hand.copy().cards + self.moskaGame.cards_to_fall.copy() + self.moskaGame.fell_cards.copy()
                 state_ = self._make_mock_move(move,[self, play])
-                states.append(state_)
+                lifted_cards = [c for c in state_.full_player_cards[self.pid] if c not in curr_cards]
+                self.plog.debug(f"Full information lifted cards: {lifted_cards}")
+                if len(lifted_cards) == 0:
+                    states.append(state_)
+                    continue
+                lifted_card_indices = [i for i,c in enumerate(state_.full_player_cards[self.pid]) if c in lifted_cards]
+                for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+                    sample_state = state_.copy()
+                    for i, index_to_change in enumerate(lifted_card_indices):
+                        sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
+                    states.append(sample_state)
         
         elif move == "InitialPlay":
             plays,states = self._get_initial_play_play_states()
