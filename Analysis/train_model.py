@@ -49,6 +49,10 @@ def get_loaded_model(path) -> tf.keras.models.Sequential:
     model = tf.keras.models.load_model(path,compile=True)
     return model
     
+
+def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
+    model.load_weights(checkpoint_path,)
+    return model
     
 def get_transfer_model(base_model_path):
     global INPUT_SHAPE
@@ -93,9 +97,9 @@ def get_card_model(standalone = False, compile_ = True):
     model = tf.keras.models.Sequential()
     if standalone:
         model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
-    model.add(tf.keras.layers.Conv1D(64,3,activation="linear"))
+    model.add(tf.keras.layers.Conv1D(128,3,activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
-    model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
+    model.add(tf.keras.layers.Conv1D(32,12, activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
     model.add(tf.keras.layers.Flatten())
     if standalone:
@@ -127,8 +131,27 @@ def get_misc_model(compile_=True):
         )
     return model
 
-def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
-    model.load_weights(checkpoint_path,)
+def get_conv_model():
+    global INPUT_SHAPE
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
+    model.add(tf.keras.layers.BatchNormalization(axis=-1))
+    model.add(tf.keras.layers.Conv1D(128,3,activation="linear",kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
+    model.add(tf.keras.layers.Conv1D(32,12, activation="linear"),kernel_regularizer=tf.keras.regularizers.l2(0.01))
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
+    model.add(tf.keras.layers.Flatten())
+    model.add(tf.keras.layers.Dropout(rate=0.2))
+    model.add(tf.keras.layers.Dense(400,activation="relu"))
+    model.add(tf.keras.layers.Dropout(rate=0.4))
+    model.add(tf.keras.layers.Dense(300,activation="relu"))
+    model.add(tf.keras.layers.Dense(1,activation="sigmoid"))
+    
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.00015, amsgrad=False),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+        metrics=['accuracy']
+    )
     return model
 
 INPUT_SHAPE = (430,)
@@ -139,7 +162,7 @@ if __name__ == "__main__":
                                     )
     print(all_dataset.take(1).as_numpy_iterator().next())
     #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
-    model = get_misc_model()
+    model = get_conv_model()
     VALIDATION_LENGTH = 100000
     TEST_LENGTH = 100000
     BATCH_SIZE = 4096
@@ -169,7 +192,7 @@ if __name__ == "__main__":
     
     model.fit(x=train_ds, 
               validation_data=validation_ds, 
-              epochs=180, 
+              epochs=200, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
     
