@@ -89,11 +89,43 @@ def get_nn_model():
         )
     return model
 
-def get_two_part_model():
-    """ A model, which takes two input vectors (The card vectors, and miscellaneous) separately, and gives a single output"""
-    misc_model = tf.keras.models.Sequential()
-    misc_model.add(tf.keras.layers.Input(shape=(1,)))
+def get_card_model(standalone = False, compile_ = True):
+    model = tf.keras.models.Sequential()
+    if standalone:
+        model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
+    model.add(tf.keras.layers.Conv1D(64,3,activation="linear"))
+    model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
+    model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
+    model.add(model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
+    model.add(tf.keras.layers.flatten())
+    if standalone:
+        model.add(tf.keras.layers.Dense(400,activation="relu"))
+        model.add(tf.keras.layers.Dropout(rate=0.4))
+        model.add(tf.keras.layers.Dense(300,activation="relu"))
+        model.add(tf.keras.layers.Dense(1,activation="sigmoid"))
+    if compile_:
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.00015, amsgrad=False),
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+            metrics=['accuracy']
+        )
+    return model
 
+def get_misc_model(compile_=True):
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Dense(12,activation="relu"))
+    #model.add(tf.keras.layers.Dropout(rate=0.3))
+    model.add(tf.keras.layers.Dense(12,activation="relu"))
+    #model.add(tf.keras.layers.Dropout(rate=0.3))
+    model.add(tf.keras.layers.Dense(12,activation="relu"))
+    model.add(tf.keras.layers.Dense(1,activation="sigmoid"))
+    if compile_:
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.00015, amsgrad=False),
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+            metrics=['accuracy']
+        )
+    return model
 
 def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
     model.load_weights(checkpoint_path,)
@@ -101,7 +133,7 @@ def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : s
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./Data/3ModelsLog/Vectors/", "./Data/1ModelsLog/Vectors/","./Data/NewerLogs400k/Vectors/"],
+    all_dataset = create_tf_dataset(["./Logs/Vectors/"],
                                     add_channel=False,
                                     norm=False,
                                     )
@@ -113,18 +145,19 @@ if __name__ == "__main__":
     BATCH_SIZE = 4096
     tensorboard_log = "tensorboard-log/"
     checkpoint_filepath = './model-checkpoints/'
-    
+    model_file = "model.h5"    
+
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     
     test_ds = all_dataset.skip(VALIDATION_LENGTH).take(TEST_LENGTH).batch(BATCH_SIZE)
     
     train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)#Add shuffle for NN
     
-    if os.path.exists("tensorboard-log/"):
+    if os.path.exists(tensorboard_log):
         raise Exception("Tensorboard log directory already exists")
     
     early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=20, restore_best_weights=True, start_from_epoch=10)
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir="tensorboard-log/",histogram_freq=5,profile_batch=(50,100),)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=5,profile_batch=(50,100),)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         save_weights_only=False,
@@ -142,4 +175,4 @@ if __name__ == "__main__":
     
     model.evaluate(test_ds, verbose=2)
     
-    model.save("model.h5")
+    model.save(model_file)
