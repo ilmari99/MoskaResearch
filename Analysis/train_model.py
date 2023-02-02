@@ -15,10 +15,10 @@ def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Datas
         except:
             raise ValueError("Paths should must be a list of strings")
     # Cards on table, vards in hand + players ready, players out, kopled
-    misc_parts = list(range(0,5)) + list(range(157,166))
+    misc_parts = list(range(0,5)) + list(range(161,171))
     card_parts = list((n for n in range(0,431) if n not in misc_parts))
     print(f"Number of card parts" + str(len(card_parts)))
-    print(f"Number of misc parts: {len(misc_parts)}")
+    print(f"Misc parts: {misc_parts}")
     file_paths = []
     for path in paths:
         if not os.path.isdir(path):
@@ -96,7 +96,7 @@ def get_card_model(standalone = False, compile_ = True):
     model.add(tf.keras.layers.Conv1D(64,3,activation="linear"))
     model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
     model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
-    model.add(model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
+    model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
     model.add(tf.keras.layers.flatten())
     if standalone:
         model.add(tf.keras.layers.Dense(400,activation="relu"))
@@ -133,19 +133,19 @@ def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : s
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./Logs/Vectors/"],
+    all_dataset = create_tf_dataset(["./Data/LastLogs/Vectors/"],
                                     add_channel=False,
-                                    norm=False,
+                                    get_part="misc"
                                     )
     print(all_dataset.take(1).as_numpy_iterator().next())
     #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
-    model = get_nn_model()
+    model = get_misc_model()
     VALIDATION_LENGTH = 100000
     TEST_LENGTH = 100000
     BATCH_SIZE = 4096
-    tensorboard_log = "tensorboard-log/"
-    checkpoint_filepath = './model-checkpoints/'
-    model_file = "model.h5"    
+    tensorboard_log = "tensorboard-log2/"
+    checkpoint_filepath = './model-checkpoints2/'
+    model_file = "model2.h5"    
 
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     
