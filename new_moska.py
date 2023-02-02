@@ -14,6 +14,7 @@ from Moska.Player.MoskaBot0 import MoskaBot0
 from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
+from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.ModelBot import ModelBot
 import random
@@ -257,7 +258,7 @@ def to_minimize_call():
 
 
 if __name__ == "__main__":
-    new_dir = "LastLogs"
+    new_dir = "TestLogs"
     if not os.path.isdir(new_dir):
         os.mkdir(new_dir)
     os.chdir(new_dir + "/")
@@ -279,7 +280,11 @@ if __name__ == "__main__":
         #                                          "state_prediction_format":"FullGameState-old", 
         #                                          "normalize_state_vector" : False}}),
         (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV","log_file":f"Game-{x}-HEV.log", "max_num_states":10000}}),
-        (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
+        (NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV",
+                                                "log_file":f"Game-{x}-NNHIFEV.log",
+                                                "max_num_states":10000,
+                                                "pred_format":"old"}}),
+        #(MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV",
                                                   "log_file":f"Game-{x}-NNEV.log", 
                                                   "max_num_states":10000,
@@ -321,7 +326,7 @@ if __name__ == "__main__":
 
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
-        "log_level" : logging.INFO,
+        "log_level" : logging.DEBUG,
         "timeout" : 30,
         "gather_data":True,
         "model_paths":["../Models/ModelMB11-260/model.tflite"]#,"../Models/ModelMB9-125/model.tflite","../Models/ModelMB9-100/model.tflite"]
@@ -330,7 +335,7 @@ if __name__ == "__main__":
         #print(timeit.timeit("play_games(players, gamekwargs, n=100, cpus=5, chunksize=10,shuffle_player_order=True)",globals=globals(),number=5))
         #act_players = random.sample(players, 4)
         #cProfile.run("play_games(players, gamekwargs, n=20, cpus=10, chunksize=1,shuffle_player_order=True)")
-        results = play_games(players, gamekwargs, n=100, cpus=12, chunksize=2,shuffle_player_order=True,verbose=False)
+        results = play_games(players, gamekwargs, n=100, cpus=5, chunksize=2,shuffle_player_order=True,verbose=False)
         #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         res = get_loss_percents(results,player="all", show=True)
         print(res)
