@@ -6,6 +6,45 @@ import numpy as np
 import pandas as pd
 import sys
 
+class SeparateInput(tf.keras.layers.Layer):
+    """ Layer, that separates the input into two tensors, specifically the 'misc' and 'cards' parts of the input."""
+    def __init__(self, misc_parts = None, card_parts = None, **kwargs):
+        super(SeparateInput, self).__init__(**kwargs)
+        if misc_parts is None:
+            misc_parts = list(range(0,5)) + list(range(161,171))
+            card_parts = list((n for n in range(0,431) if n not in misc_parts))
+        self.misc_parts = misc_parts
+        self.card_parts = card_parts
+        self.misc_shape = (len(misc_parts),)
+        self.card_shape = (len(card_parts),)
+    
+    def call(self, inputs):
+        misc = tf.gather(inputs, self.misc_parts, axis=1)
+        cards = tf.gather(inputs, self.card_parts, axis=1)
+        return misc, cards
+    
+class CardConv1D(tf.keras.layers.Layer):
+    """ Applies a 1D convolution to the cards part of the input, leaving the misc part untouched.
+    The cards part is first extracted from the input with the SeparateInput layer.
+    The input is expected to be (batch_size, 430,) with no channels
+    The output will be flattened to (batch_size, 430 * filters)
+    """
+    def __init__(self, filters, kernel_size, **kwargs):
+        super(CardConv1D, self).__init__(**kwargs)
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.conv = tf.keras.layers.Conv1D(filters, kernel_size, padding="same", activation="relu")
+        self.flatten = tf.keras.layers.Flatten()
+        self.separate = SeparateInput()
+        
+    def call(self, inputs):
+        misc, cards = self.separate(inputs)
+        # Add a channel dimension
+        cards = tf.expand_dims(cards, axis=-1)
+        cards = self.conv(cards)
+        output = tf.concat([misc, self.flatten(cards)], axis=1)
+        return output
+
 
 def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Dataset:
     """ Create a tf dataset from a folder of files"""
@@ -94,10 +133,10 @@ def get_card_model(standalone = False, compile_ = True):
     if standalone:
         model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
     model.add(tf.keras.layers.Conv1D(64,3,activation="linear"))
-    model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
     model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
-    model.add(tf.keras.layers.LeakyReLu(alpha=0.3))
-    model.add(tf.keras.layers.flatten())
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
+    model.add(tf.keras.layers.Flatten())
     if standalone:
         model.add(tf.keras.layers.Dense(400,activation="relu"))
         model.add(tf.keras.layers.Dropout(rate=0.4))
@@ -126,6 +165,14 @@ def get_misc_model(compile_=True):
             metrics=['accuracy']
         )
     return model
+
+def get_test_model():
+    model = tf.keras.models.Sequential()
+    model.add(CardConv1D(64,3,activation="linear"))
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
+    model.add(tf.keras.layers.Dense(32, activation="linear"))
+    model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
+    model.add(tf.keras.layers.Dense(1,activation="sigmoid"))
 
 def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
     model.load_weights(checkpoint_path,)
