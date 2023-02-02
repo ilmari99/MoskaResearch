@@ -5,53 +5,45 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import sys
-from check_data import create_tf_dataset
-
-def get_optimal_model():
-    global INPUT_SHAPE
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
-    model.add(tf.keras.layers.BatchNormalization(axis=-1))
-    model.add(tf.keras.layers.Dense(units=425, activation="relu",kernel_regularizer=None))
-    model.add(tf.keras.layers.Dropout(rate=0.226))
-    model.add(tf.keras.layers.Dense(units=425, activation="relu",kernel_regularizer=None))
-    model.add(tf.keras.layers.Dropout(rate=0.35))
-    model.add(tf.keras.layers.Dense(units=425, activation="relu",kernel_regularizer=None))
-    model.add(tf.keras.layers.Dropout(rate=0.35))
-    model.add(tf.keras.layers.Dense(units=425, activation="relu",kernel_regularizer=None))
-    model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
-    model.compile(optimizer=tf.keras.optimizers.Adam(
-            learning_rate=0.0015, amsgrad=True),
-            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
-            metrics=['accuracy']
-    )
-    return model
 
 
-def get_nn_model(channels=None):
-    global INPUT_SHAPE
-    model = tf.keras.models.Sequential([
-    #norm_layer,
-        tf.keras.layers.Input(shape=INPUT_SHAPE),
-        #tf.keras.layers.BatchNormalization(axis=-1),
-        tf.keras.layers.Dense(600, activation="elu"),
-        tf.keras.layers.Dropout(0.35),
-        tf.keras.layers.Dense(600, activation="relu"),
-        tf.keras.layers.Dropout(0.35),
-        tf.keras.layers.Dense(600, activation="relu"),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(500, activation="relu"),
-        tf.keras.layers.Dropout(0.4),
-        tf.keras.layers.Dense(400, activation="relu"),
-        tf.keras.layers.Dense(1, activation="sigmoid")
-    ])
+def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Dataset:
+    """ Create a tf dataset from a folder of files"""
+    if not isinstance(paths, (list, tuple)):
+        try:
+            paths = [paths]
+        except:
+            raise ValueError("Paths should must be a list of strings")
+    # Cards on table, vards in hand + players ready, players out, kopled
+    misc_parts = list(range(0,5)) + list(range(157,166))
+    card_parts = list((n for n in range(0,431) if n not in misc_parts))
+    print(f"Number of card parts" + str(len(card_parts)))
+    print(f"Number of misc parts: {len(misc_parts)}")
+    file_paths = []
+    for path in paths:
+        if not os.path.isdir(path):
+            raise ValueError(f"Path {path} is not a directory")
+        file_paths += [os.path.join(path, file) for file in os.listdir(path)]
+    print("Number of files: " + str(len(file_paths)))
+    random.shuffle(file_paths)
+    print("Shuffled files.")
+    dataset = tf.data.TextLineDataset(file_paths)
+    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    print(f"Getting part: {get_part}")
+    # Get only the parts we want
+    if get_part == "cards":
+        dataset = dataset.map(lambda x,y: (tf.gather(x, card_parts), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    elif get_part == "misc":
+        dataset = dataset.map(lambda x,y: (tf.gather(x, misc_parts), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    elif get_part != "full":
+        raise ValueError(f"get_part should be 'cards', 'misc' or 'full', not {get_part}")
+    
+    # Add a channel dimension
+    if add_channel:
+        dataset = dataset.map(lambda x,y: (tf.expand_dims(x, axis=-1), tf.expand_dims(y, axis=-1)))
+    return dataset
 
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=False),
-        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
-        metrics=['accuracy']
-        )
-    return model
 
 def get_loaded_model(path) -> tf.keras.models.Sequential:
     model = tf.keras.models.load_model(path,compile=True)
@@ -75,6 +67,32 @@ def get_transfer_model(base_model_path):
         loss = tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0)
     )
     return new_model
+
+def get_nn_model():
+    global INPUT_SHAPE
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
+    model.add(tf.keras.layers.BatchNormalization(axis=-1))
+    model.add(tf.keras.layers.Dense(600, activation="relu"))
+    model.add(tf.keras.layers.Dropout(0.35))
+    model.add(tf.keras.layers.Dense(550, activation="relu"))
+    model.add(tf.keras.layers.Dropout(0.35))
+    model.add(tf.keras.layers.Dense(500, activation="relu"))
+    model.add(tf.keras.layers.Dropout(0.3))
+    model.add(tf.keras.layers.Dense(450, activation="relu"))
+    model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.00015, amsgrad=False),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
+        metrics=['accuracy']
+        )
+    return model
+
+def get_two_part_model():
+    """ A model, which takes two input vectors (The card vectors, and miscellaneous) separately, and gives a single output"""
+    misc_model = tf.keras.models.Sequential()
+    misc_model.add(tf.keras.layers.Input(shape=(1,)))
 
 
 def load_from_checkpoint(model : tf.keras.models.Sequential, checkpoint_path : str) -> tf.keras.models.Sequential:
