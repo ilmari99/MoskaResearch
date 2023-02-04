@@ -140,12 +140,12 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             for unique_play in unique_plays:
                 # Store the scores, to be able to get the best pre-computed score for a specific play
                 mean_evals.append(np.mean([eval for play, eval in zip(plays, evals) if play == unique_play]))
-                corresponding_states.append(states[plays.index(unique_play)])
+                #corresponding_states.append(states[plays.index(unique_play)])
             self.plog.debug(f"Unique plays: {unique_plays}")
             self.plog.debug(f"Mean evals: {mean_evals}")
-            self.plog.debug(f"Cards in hand: {[s.full_player_cards[self.pid] for s in corresponding_states]}")
+            #self.plog.debug(f"Cards in hand: {[s.full_player_cards[self.pid] for s in corresponding_states]}")
             plays = unique_plays
-            states = corresponding_states
+            #states = corresponding_states
             evals = mean_evals
         combined = list(zip(plays, evals))
         try:
