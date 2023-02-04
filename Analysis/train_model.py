@@ -141,44 +141,52 @@ def get_branched_model():
     card_data = tf.expand_dims(card_data, axis=-1)
     misc_data = tf.gather(inputs,tf.constant(misc_parts, dtype=tf.int32), axis=1)
     
-    # Model for card input (415,1); its like an image
+    # Model for card input (415,1); Convolutions can be used for this, since there are patterns that can be found
     img = tf.keras.layers.BatchNormalization(axis=1)(card_data)
-    img = tf.keras.layers.Conv1D(32,3,activation="linear")(img)
+    img = tf.keras.layers.Conv1D(128,3,activation="linear")(img)
     img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
-    img = tf.keras.layers.Conv1D(32,6, activation="linear")(img)
+    img = tf.keras.layers.Conv1D(64,5,activation="linear")(img)
+    img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
+    img = tf.keras.layers.Conv1D(16,3,activation="linear")(img)
     img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
     img = tf.keras.layers.Flatten()(img)
     img = tf.keras.layers.Dense(600,activation="relu")(img)
-    img = tf.keras.layers.Dropout(rate=0.3)(img)
-    img = tf.keras.layers.Dense(300,activation="relu")(img)
-    img = tf.keras.layers.Dense(100,activation="relu")(img)
-    # Output a vector, hopefully describing what are the benefits and weaknesses of the known cards
-    img_out = tf.keras.layers.Dense(20,activation="linear")(img)
+    img = tf.keras.layers.Dropout(rate=0.5)(img)
+    img = tf.keras.layers.Dense(400,activation="relu")(img)
+    img = tf.keras.layers.Dropout(rate=0.5)(img)
+    img = tf.keras.layers.Dense(200,activation="relu")(img)
+    img = tf.keras.layers.Dropout(rate=0.4)(img)
+    img = tf.keras.layers.Dense(200,activation="relu")(img)
+    # Output a vector, hopefully describing what are the benefits and weaknesses of the known cards (table, others, self)
+    img_out = tf.keras.layers.Dense(50,activation="relu")(img)
     
     # Small model for misc input (15,)
-    misc = tf.keras.layers.Dense(15,activation="relu")(misc_data)
-    misc = tf.keras.layers.Dense(12,activation="relu")(misc)
+    #misc = tf.keras.layers.Dense(15,activation="relu")(misc_data)
+    #misc = tf.keras.layers.Dense(12,activation="relu")(misc)
     # The output of this, only really matters, when cards in deck is low
     # This output describes generally, how the position is good/bad
     # Ie. can the player kopl, are they the target, which players are ready
-    misc_out = tf.keras.layers.Dense(5,activation="linear")(misc)
+    #misc_out = tf.keras.layers.Dense(5,activation="linear")(misc)
+    misc_out = misc_data
     
     # Combine information from misc and card data
     combined = tf.keras.layers.Concatenate(axis=-1)([img_out,misc_out])
-    combined = tf.keras.layers.Dense(25,activation="relu")(combined)
-    combined = tf.keras.layers.Dense(25,activation="relu")(combined)
-    #final_out = tf.keras.layers.Flatten()(final_out)
-    combined = tf.keras.layers.Dense(10,activation="relu")(combined)
+    combined = tf.keras.layers.Dense(75,activation="relu")(combined)
+    combined = tf.keras.layers.Dropout(rate=0.4)(combined)
+    combined = tf.keras.layers.Dense(75,activation="relu")(combined)
+    combined = tf.keras.layers.Dropout(rate=0.4)(combined)
+    combined = tf.keras.layers.Dense(65,activation="relu")(combined)
     combined_out = tf.keras.layers.Dense(1,activation="sigmoid")(combined)
     
     model = tf.keras.models.Model(inputs=inputs, outputs=combined_out, name="branched_model")
     
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.00015, amsgrad=True),
-        loss=[tf.keras.losses.BinaryFocalCrossentropy(gamma=2,from_logits=False,label_smoothing=0)],
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
+        loss=[tf.keras.losses.BinaryFocalCrossentropy(gamma = 1.5, from_logits=False,label_smoothing=0)],
         metrics=['accuracy'],
         )
     return model
+
     
     
     
@@ -188,7 +196,7 @@ def get_conv_model():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
     model.add(tf.keras.layers.BatchNormalization(axis=1,))
-    model.add(tf.keras.layers.Conv1D(32,3,activation="linear"))
+    model.add(tf.keras.layers.Conv1D(128,3,activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
     model.add(tf.keras.layers.MaxPooling1D(pool_size=2, strides=None, padding='valid', data_format='channels_last'))
     model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
@@ -205,23 +213,22 @@ def get_conv_model():
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
         loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=2,from_logits=False,label_smoothing=0),
-        metrics=['accuracy']
+        metrics=['accuracy'],
     )
     return model
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    
-    all_dataset = create_tf_dataset(["./LastLogs/Vectors/"],
+    all_dataset = create_tf_dataset(["./LastLogs1/Vectors/", "./LastLogs2/Vectors/","./LastLogs3/Vectors/"],
                                     add_channel=False,
                                     get_part="full"
                                     )
-    print(all_dataset)
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
     #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
     model = get_branched_model()
-    VALIDATION_LENGTH = 100000
-    TEST_LENGTH = 100000
+    print(model.summary())
+    VALIDATION_LENGTH = 500000
+    TEST_LENGTH = 500000
     BATCH_SIZE = 4096
     tensorboard_log = "tensorboard-log/"
     checkpoint_filepath = './model-checkpoints/'
@@ -236,8 +243,8 @@ if __name__ == "__main__":
     if os.path.exists(tensorboard_log):
         raise Exception("Tensorboard log directory already exists")
     
-    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=20, restore_best_weights=True, start_from_epoch=10)
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=5,profile_batch=(50,100),)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=8, restore_best_weights=True, start_from_epoch=1)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=5)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         save_weights_only=False,
