@@ -53,8 +53,10 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
                  log_level=logging.INFO,
                  log_file="",
                  max_num_states : int = 1000,
+                 max_num_samples : int = 100,
                  ):
         self.get_nmoves = True
+        self.max_num_samples = max_num_samples
         self.max_num_states = max_num_states
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
     
@@ -296,7 +298,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             #Discard the knowledge of the lifted cards, and create states,
             # where the lift is a random sample of cards possibly in deck
             lifted_card_indices = [i for i,c in enumerate(state.full_player_cards[self.pid]) if c in lifted_cards]
-            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards),self.max_num_samples):
                 sample_state = state.copy()
                 for i, index_to_change in enumerate(lifted_card_indices):
                     sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
@@ -347,7 +349,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             #Discard the knowledge of the lifted cards, and create states,
             # where the lift is a random sample of cards possibly in deck
             lifted_card_indices = [i for i,c in enumerate(state.full_player_cards[self.pid]) if c in lifted_cards]
-            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+            for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards),self.max_num_samples):
                 sample_state = state.copy()
                 for i, index_to_change in enumerate(lifted_card_indices):
                     sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
@@ -388,7 +390,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
                     states.append(state_)
                     continue
                 lifted_card_indices = [i for i,c in enumerate(state_.full_player_cards[self.pid]) if c in lifted_cards]
-                for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards)):
+                for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards),self.max_num_samples):
                     sample_state = state_.copy()
                     for i, index_to_change in enumerate(lifted_card_indices):
                         sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
