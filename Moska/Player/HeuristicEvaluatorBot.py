@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import Counter, namedtuple
 import logging
+import random
 import numpy as np
 from ._ScoreCards import _ScoreCards
 from .AbstractEvaluatorBot import AbstractEvaluatorBot
@@ -31,6 +32,10 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
             "kopled":0.39232656,
             "missing_card" : 51.86727724  
         }
+        if isinstance(coefficients, str) and coefficients == "random":
+            coefficients = {}
+            for coef,val in self.coefficients.items():
+                coefficients[coef] = val + random.uniform(-val,val)
         for coef, value in coefficients.items():
             if coef not in self.coefficients:
                 raise ValueError(f"Unknown coefficient name: {coef}")
