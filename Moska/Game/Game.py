@@ -1,5 +1,6 @@
 import contextlib
 import os
+import sys
 import time
 from Moska.Game.GameState import FullGameState, GameState
 from ..Player.MoskaBot3 import MoskaBot3
@@ -9,6 +10,9 @@ from ..Player.AbstractPlayer import AbstractPlayer
 from ..Player.MoskaBot1 import MoskaBot1
 from ..Player.MoskaBot2 import MoskaBot2
 from ..Player.RandomPlayer import RandomPlayer
+from ..Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
+from ..Player.NNEvaluatorBot import NNEvaluatorBot
+from ..Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 import numpy as np
 from typing import Any, Callable, Dict, List, Tuple
 from .Deck import Card, StandardDeck
@@ -16,7 +20,7 @@ from .CardMonitor import CardMonitor
 import threading
 import logging
 import random
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from contextlib import redirect_stdout
 #import tensorflow as tf is done at set_model_vars_from_path IF a path is given.
 # This is to gain a speedup when not using tensorflow
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip, PlayToSelfFromDeck
@@ -102,6 +106,7 @@ class MoskaGame:
         # This also allows the user to run the game without tensorflow installed.
         # Furthermore, Tensorflow cannot be run with optimizations (-OO flag),
         # So this allows us to simulate games without tensorflow bots with optmizations
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
         import tensorflow as tf
         for path in self.model_paths:    
             interpreter = tf.lite.Interpreter(model_path=path)
@@ -226,7 +231,7 @@ class MoskaGame:
         """
         players = []
         if not player_types:
-            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, MoskaBot3, RandomPlayer]
+            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, MoskaBot3, RandomPlayer, HeuristicEvaluatorBot, NNEvaluatorBot, NNHIFEvaluatorBot]
         for i in range(n):
             rand_int = random.randint(0, len(player_types)-1)
             player = player_types[rand_int]()
