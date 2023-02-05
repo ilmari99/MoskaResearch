@@ -67,7 +67,9 @@ class CardMonitor:
                 if card != Card(-1,"X"):
                     cards_not_in_deck.append(card)
         #self.player.plog.debug(f"Cards NOT in deck: {len(cards_not_in_deck)}")
-        cards_possibly_in_deck = set(self.game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck)
+        cards_possibly_in_deck = list(set(self.game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck))
+        random.shuffle(cards_possibly_in_deck)
+        cards_possibly_in_deck = set(cards_possibly_in_deck)
         #self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
         return cards_possibly_in_deck
     
