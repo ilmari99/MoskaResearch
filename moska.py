@@ -55,15 +55,6 @@ def set_player_args(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any]
             pl.__setattr__(k,v)
     return
 
-def set_player_args_optimize_bot3(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any],coeffs = {}):
-    for pl in players:
-        for k,v in plkwargs.items():
-            if k == "coefficients" and not isinstance(pl,MoskaBot3):
-                continue
-            if isinstance(v,Callable):
-                v = v(pl)
-            pl.__setattr__(k,v)
-    return
 
 def args_to_gamekwargs(
     game_kwargs : Callable,
@@ -266,10 +257,6 @@ if __name__ == "__main__":
     os.chdir(new_dir + "/")
     if not os.path.isdir("Vectors"):
         os.mkdir("Vectors")
-    #for i in range(1,10):
-    #play_as_human(game_id=0)
-    #to_minimize_call()
-    #exit()
 
     shared_kwargs = {
         "log_level" : logging.WARNING,
@@ -285,18 +272,18 @@ if __name__ == "__main__":
         #                                        "max_num_states":10000,
         #                                        "pred_format":"new"
         #                                        }}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-old-small",
-                                            "log_file":f"Game-{x}-NNEV-old-small.log", 
-                                            "max_num_states":100,
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-old",
+                                            "log_file":f"Game-{x}-NNEV-old.log", 
+                                            "max_num_states":10000,
                                             "pred_format":"old",
                                             "model_id":0,
                                             }}),
         (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-old",
-                                                  "log_file":f"Game-{x}-NNEV-old.log", 
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-new",
+                                                  "log_file":f"Game-{x}-NNEV-new.log", 
                                                   "max_num_states":10000,
-                                                  "pred_format":"old",
-                                                  "model_id":0,
+                                                  "pred_format":"new",
+                                                  "model_id":1,
                                                   }}),
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
     ]
@@ -306,11 +293,11 @@ if __name__ == "__main__":
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":True,
-        "model_paths":["../Models/ModelMB11-260/model.tflite"]
+        "model_paths":["../Models/ModelMB11-260/model.tflite", "../Models/ModelF4/model.tflite"]
     }
-    for i in range(500):
-        players = random.sample(much_players, 4)
-        results = play_games(players, gamekwargs, n=1000, cpus=40, chunksize=6,shuffle_player_order=True,verbose=False)
+    for i in range(1):
+        players = much_players[2:]
+        results = play_games(players, gamekwargs, n=100, cpus=10, chunksize=3,shuffle_player_order=True,verbose=False)
         #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
         res = get_loss_percents(results,player="all", show=True)
         print(res)
