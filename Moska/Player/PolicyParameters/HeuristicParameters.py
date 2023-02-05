@@ -1,3 +1,4 @@
+import random
 from ..AbstractPlayer import AbstractPlayer
 from ...Game.Deck import Card
 
@@ -11,7 +12,7 @@ class HeuristicParameters():
     def __init__(self, player: AbstractPlayer,method_values : Dict[str,float] = {}) -> None:
         #"""
         self.player = player
-        self.method_values = {'fall_card_already_played_value': -0.38, 
+        def_method_values = {'fall_card_already_played_value': -0.38, 
          'fall_card_same_value_already_in_hand': 0.072, 
          'fall_card_card_is_preventing_kopling': -0.29, 
          'fall_card_deck_card_not_played_to_unique': 0.336, 
@@ -19,8 +20,19 @@ class HeuristicParameters():
          'initial_play_quadratic_scaler': 0.61
          }
          #"""
-        for met, val in method_values.items():
-            self.method_values[met] = val
+         #self.method_values = {}
+         # If there are no method values, use the default values
+        if not method_values:
+            method_values = def_method_values
+        # If method_values is a string, and it is "random", then use random values where the random values are (0,2) times the default value
+        elif isinstance(method_values,str) and method_values == "random":
+            method_values = {}
+            for key,value in def_method_values.items():
+                method_values[key] = value + random.uniform(-value,value)
+        # If method_values is a dictionary, then use the default values, and update them with the given values
+        elif isinstance(method_values,dict):
+            method_values = {**def_method_values,**method_values}
+        self.method_values = method_values
         return
     
     def _adjust_for_missing_cards(self, cards: List[Card], most_falls,lifted = 0) -> float:

@@ -20,15 +20,22 @@ class MoskaBot3(AbstractPlayer):
             name = "B3-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
         self.scoring = _ScoreCards(self,default_method = "counter")
-        if not parameters:
-            parameters = {
+        def_parameters = {
             'fall_card_already_played_value': 0.025, 
             'fall_card_same_value_already_in_hand': -0.0095, 
             'fall_card_card_is_preventing_kopling': 0.0068, 
             'fall_card_deck_card_not_played_to_unique': 0.0036, 
             'fall_card_threshold_at_start': 0.73, 
             'initial_play_quadratic_scaler': 0.0065
-            }
+        }
+        if not parameters:
+            parameters = def_parameters
+        elif isinstance(parameters,str) and parameters == "random":
+            parameters = {}
+            for key,value in def_parameters.items():
+                parameters[key] = value + random.uniform(-value,value)
+        elif isinstance(parameters,dict):
+            parameters = {**def_parameters,**parameters}
         self.parameters = HeuristicParameters(self,method_values=parameters)
     
     
