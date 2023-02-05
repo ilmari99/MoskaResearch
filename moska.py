@@ -16,7 +16,6 @@ from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.ModelBot import ModelBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -247,60 +246,187 @@ def to_minimize_call():
     print(f"Minimization result: {res}")
     return
 
+def get_random_players(shared_kwargs = {}, use_HIF = False):
+    shared_kwargs_default = {
+        "log_level" : logging.WARNING,
+    }
+    shared_kwargs = {**shared_kwargs_default, **shared_kwargs}
+    
+    # NOTE: The players logs might not be correct for the game index, to reduce the number of files
+    much_players = [
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1",
+                                                               "log_file":f"Game-{x % 10}-HEV1.log", 
+                                                               "max_num_states":random.randint(1,10000),
+                                                               "coefficients" : "random"
+                                                               }}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV2",
+                                                               "log_file":f"Game-{x % 10}-HEV2.log", 
+                                                               "max_num_states":random.randint(1,10000),
+                                                               "coefficients" : "random"
+                                                               }}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV3",
+                                                               "log_file":f"Game-{x % 10}-HEV3.log", 
+                                                               "max_num_states":random.randint(1,10000),
+                                                               "coefficients" : "random"
+                                                               }}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV4",
+                                                               "log_file":f"Game-{x % 10}-HEV4.log", 
+                                                               "max_num_states":random.randint(1,10000),
+                                                               "coefficients" : "random"
+                                                               }}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-1","log_file":f"Game-{x % 10}-B3-1.log","parameters":"random"}}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x % 10}-B3-2.log","parameters":"random"}}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-3","log_file":f"Game-{x % 10}-B3-3.log","parameters":"random"}}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-4","log_file":f"Game-{x % 10}-B3-4.log","parameters":"random"}}),
+        
+        (MoskaBot2,lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x % 10}-B2-1.log","parameters":"random"}}),
+        (MoskaBot2,lambda x : {**shared_kwargs,**{"name" : f"B2-2","log_file":f"Game-{x % 10}-B2-2.log","parameters":"random"}}),
+        (MoskaBot2,lambda x : {**shared_kwargs,**{"name" : f"B2-3","log_file":f"Game-{x % 10}-B2-3.log","parameters":"random"}}),
+        (MoskaBot2,lambda x : {**shared_kwargs,**{"name" : f"B2-4","log_file":f"Game-{x % 10}-B2-4.log","parameters":"random"}}),
+        
+        (RandomPlayer, lambda x : {**shared_kwargs,**{"name" : f"R1","log_file":f"Game-{x % 10}-R1.log"}}),
+        (RandomPlayer, lambda x : {**shared_kwargs,**{"name" : f"R2","log_file":f"Game-{x % 10}-R2.log"}}),
+        
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
+                                            "log_file":f"Game-{x % 10}-NNEV1.log", 
+                                            "max_num_states":random.randint(1,10000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}),
+        
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV2",
+                                            "log_file":f"Game-{x % 10}-NNEV2.log", 
+                                            "max_num_states":random.randint(1,10000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}),
+        
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV3",
+                                                    "log_file":f"Game-{x % 10}-NNEV3.log", 
+                                                    "max_num_states":random.randint(1,10000),
+                                                    "pred_format":"old",
+                                                    "model_id":"all",
+                                                    }}),
+        
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV4",
+                                            "log_file":f"Game-{x % 10}-NNEV4.log", 
+                                            "max_num_states":random.randint(1,10000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}),
+    ]
+    
+    if use_HIF:
+        much_players.append((NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV",
+                                            "log_file":f"Game-{x % 10}-NNHIFEV.log",
+                                            "max_num_states":random.randint(1,10000),
+                                            "max_num_samples":random.randint(10,1000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}))
+        
+        much_players.append((NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV2",
+                                            "log_file":f"Game-{x % 10}-NNHIFEV2.log",
+                                            "max_num_states":random.randint(1,10000),
+                                            "max_num_samples":random.randint(10,1000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}))
+        much_players.append((NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV3",
+                                            "log_file":f"Game-{x % 10}-NNHIFEV3.log",
+                                            "max_num_states":random.randint(1,10000),
+                                            "max_num_samples":random.randint(10,1000),
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}))
+    
+    players = random.sample(much_players, 4)
+    return players
 
-
-
-if __name__ == "__main__":
-    new_dir = "Logs"
-    if not os.path.isdir(new_dir):
-        os.mkdir(new_dir)
-    os.chdir(new_dir + "/")
+def create_dataset(nrounds, num_games,folder,cpus,chunksize = 4, use_HIF=False, verbose=True):
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+    else:
+        raise Exception(f"Folder '{folder}' already exists.")
+    os.chdir(folder + "/")
     if not os.path.isdir("Vectors"):
         os.mkdir("Vectors")
-
-    shared_kwargs = {
-        "log_level" : logging.WARNING,
-        "delay":0,
-    }
-
-    # The {**dict1, **dict2} operation is used to merge dictionaries, with the latter overwriting the former for shared keys
-    much_players = [
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV","log_file":f"Game-{x}-HEV.log", "max_num_states":10000}}),
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV-small","log_file":f"Game-{x}-HEV-small.log", "max_num_states":100}}),
-        #(NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV",
-        #                                        "log_file":f"Game-{x}-NNHIFEV.log",
-        #                                        "max_num_states":10000,
-        #                                        "pred_format":"new"
-        #                                        }}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-old",
-                                            "log_file":f"Game-{x}-NNEV-old.log", 
-                                            "max_num_states":10000,
-                                            "pred_format":"old",
-                                            "model_id":0,
-                                            }}),
-        (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),# "model_file":"/home/ilmari/python/moska/Model5-300/model.tflite", "requires_graphic" : False}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV-new",
-                                                  "log_file":f"Game-{x}-NNEV-new.log", 
-                                                  "max_num_states":10000,
-                                                  "pred_format":"new",
-                                                  "model_id":1,
-                                                  }}),
-        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
-    ]
-
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":True,
-        "model_paths":["../Models/ModelMB11-260/model.tflite", "../Models/ModelF4/model.tflite"]
+        "model_paths":["../Models/ModelMB11-260/model.tflite"]
     }
-    for i in range(1):
-        players = much_players[2:]
-        results = play_games(players, gamekwargs, n=100, cpus=10, chunksize=3,shuffle_player_order=True,verbose=False)
-        #results = play_games(act_players, gamekwargs, n=1000, cpus=10, chunksize=10,shuffle_player_order=True)
-        res = get_loss_percents(results,player="all", show=True)
-        print(res)
+    print(f"Creating dataset with {nrounds} rounds and {num_games} games per round.")
+    print(f"Total games: {nrounds*num_games}.")
+    print(f"Using {cpus} cpus and chunksize {chunksize}.")
+    print(f"Using HIF: {use_HIF}.")
+    print(f"Game kwargs: {gamekwargs(0)}")
+    time_taken = 0
+    for i in range(nrounds):
+        start_time = time.time()
+        players = get_random_players(use_HIF=use_HIF)
+        print(f"Round {i+1} players: {players}.")
+        results = play_games(players, gamekwargs, n=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=verbose)
+        if verbose:
+            get_loss_percents(results)
+        end_time = time.time()
+        time_taken += (end_time - start_time)
+        print(f"Round {i+1} took {end_time - start_time} seconds.")
+        print(f"Estimated time remaining: {time_taken/(i+1) * (nrounds - i-1)} minutes.")
+    print(f"Finished. Total time taken: {time_taken/60} minutes.")
+    return
+
+def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 4):
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+    else:
+        raise Exception(f"Folder '{folder}' already exists.")
+    os.chdir(folder + "/")
+    if not os.path.isdir("Vectors"):
+        os.mkdir("Vectors")
+    gamekwargs = lambda x : {
+        "log_file" : f"Game-{x}.log",
+        "log_level" : logging.DEBUG,
+        "timeout" : 30,
+        "gather_data":True,
+        "model_paths":models
+    }
+    shared_kwargs = {
+        "log_level" : logging.DEBUG,
+    }
+    
+    players = [
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
+                                    "log_file":f"Game-{x}-NNEV1.log", 
+                                    "max_num_states":1000,
+                                    "pred_format":"old",
+                                    "model_id":"all",
+                                    }}),
+        
+        (NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNHIFEV",
+                                            "log_file":f"Game-{x}-NNHIFEV.log",
+                                            "max_num_states":1000,
+                                            "max_num_samples":100,
+                                            "pred_format":"old",
+                                            "model_id":"all",
+                                            }}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3","log_file":f"Game-{x}-B3.log"}}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1","log_file":f"Game-{x}-HEV1.log", "max_num_states":1000}}),
+    ]
+    
+    results = play_games(players, gamekwargs, n=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=True)
+    get_loss_percents(results)
+    
+    
+    
+
+
+
+if __name__ == "__main__":
+    #compare_model_perf(100, 10, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 4)
+    create_dataset(2, 100, "Dataset", 10, chunksize = 4, use_HIF=False, verbose=True)
         
         
         
