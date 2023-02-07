@@ -139,26 +139,24 @@ def get_branched_model():
     print(f"In total {len(card_parts)} card parts and {len(misc_parts)} misc parts: {len(card_parts)+len(misc_parts)}")
     inputs = tf.keras.layers.Input(shape=(430,))
     card_data = tf.gather(inputs, tf.constant(card_parts, dtype=tf.int32), axis=1)
+    card_data = tf.keras.layers.BatchNormalization(axis=-1)(card_data)
     card_data = tf.expand_dims(card_data, axis=-1)
     misc_data = tf.gather(inputs,tf.constant(misc_parts, dtype=tf.int32), axis=1)
     
     # Model for card input (415,1); Convolutions can be used for this, since there are patterns that can>
-    img = tf.keras.layers.BatchNormalization(axis=1)(card_data)
-    img = tf.keras.layers.Conv1D(128,3,activation="linear")(img)
-    img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
-    img = tf.keras.layers.Conv1D(16,3,activation="linear")(img)
+    img = tf.keras.layers.Conv1D(8,3,activation="linear")(card_data)
     img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
     img = tf.keras.layers.Flatten()(img)
-    img = tf.keras.layers.Dropout(rate=0.15)(img)
-    img = tf.keras.layers.Dense(600,activation="relu")(img)
-    img = tf.keras.layers.Dropout(rate=0.5)(img)
-    img = tf.keras.layers.Dense(400,activation="relu")(img)
-    img = tf.keras.layers.Dropout(rate=0.5)(img)
+    #img = tf.keras.layers.Dropout(rate=0.2)(img)
     img = tf.keras.layers.Dense(200,activation="relu")(img)
-    img = tf.keras.layers.Dropout(rate=0.4)(img)
+    img = tf.keras.layers.Dropout(rate=0.3)(img)
+    img = tf.keras.layers.Dense(200,activation="relu")(img)
+    img = tf.keras.layers.Dropout(rate=0.3)(img)
+    img = tf.keras.layers.Dense(200,activation="relu")(img)
+    img = tf.keras.layers.Dropout(rate=0.3)(img)
     img = tf.keras.layers.Dense(200,activation="relu")(img)
     # Output a vector, hopefully describing what are the benefits and weaknesses of the known cards (tab>
-    img_out = tf.keras.layers.Dense(50,activation="relu")(img)
+    img_out = tf.keras.layers.Dense(30,activation="tanh")(img)
     
     # Small model for misc input (15,)
     #misc = tf.keras.layers.Dense(15,activation="relu")(misc_data)
@@ -171,18 +169,18 @@ def get_branched_model():
     
     # Combine information from misc and card data
     combined = tf.keras.layers.Concatenate(axis=-1)([img_out,misc_out])
-    combined = tf.keras.layers.Dense(75,activation="relu")(combined)
-    combined = tf.keras.layers.Dropout(rate=0.5)(combined)
-    combined = tf.keras.layers.Dense(75,activation="relu")(combined)
-    combined = tf.keras.layers.Dropout(rate=0.5)(combined)
-    combined = tf.keras.layers.Dense(65,activation="relu")(combined)
+    combined = tf.keras.layers.Dense(50,activation="relu")(combined)
+    combined = tf.keras.layers.Dropout(rate=0.3)(combined)
+    combined = tf.keras.layers.Dense(50,activation="relu")(combined)
+    combined = tf.keras.layers.Dropout(rate=0.3)(combined)
+    combined = tf.keras.layers.Dense(25,activation="relu")(combined)
     combined_out = tf.keras.layers.Dense(1,activation="sigmoid")(combined)
     
     model = tf.keras.models.Model(inputs=inputs, outputs=combined_out, name="branched_model")
     
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
-        loss=[tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0)],
+        loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=1,from_logits=False,label_smoothing=0),
         metrics=['accuracy'],
         )
     return model
@@ -219,7 +217,7 @@ def get_conv_model():
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./LastLogs1/Vectors/", "./LastLogs2/Vectors/","./LastLogs3/Vectors/"]
+    all_dataset = create_tf_dataset(["./LastLogs1/Vectors/", "./LastLogs2/Vectors/","./Dataset/Vectors/"],
     add_channel=False,
     get_part="full",
     )
@@ -242,7 +240,6 @@ if __name__ == "__main__":
     print("Checkpoint directory: ",checkpoint_filepath)
     print("Model file: ",model_file)
     
-    all_dataset = all_dataset.take(VALIDATION_LENGTH+TEST_LENGTH+100000)
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     test_ds = all_dataset.skip(VALIDATION_LENGTH).take(TEST_LENGTH).batch(BATCH_SIZE)
     train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
