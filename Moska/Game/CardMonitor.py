@@ -49,14 +49,17 @@ class CardMonitor:
         self.game.glog.info(f"Card monitor started")
         return
     
-    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None) -> set[Card]:
+
+    
+    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None,get_all_hidden_cards = False) -> set[Card]:
         """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
         """
-        # If there is only one card left in the deck, it is the triumph card
-        if len(self.game.deck) == 1:
-            return [self.game.triumph_card]
-        if len(self.game.deck) == 0:
-            return []
+        if not get_all_hidden_cards:
+            # If there is only one card left in the deck, it is the triumph card
+            if len(self.game.deck) == 1:
+                return [self.game.triumph_card]
+            if len(self.game.deck) == 0:
+                return []
         cards_not_in_deck = self.game.fell_cards + self.game.cards_to_fall
         if player is not None:
             cards_not_in_deck += player.hand.copy().cards
@@ -73,12 +76,11 @@ class CardMonitor:
         #self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
         return cards_possibly_in_deck
     
-    def get_sample_cards_from_deck(self,player : AbstractPlayer,ncards : int, max_samples : int = 100) -> List[Card]:
+    def get_sample_cards_from_deck(self,player : AbstractPlayer,ncards : int, max_samples : int = 100,get_all_hidden_cards = False) -> List[Card]:
         """Get a list of tuples of ncards, where each tuple is a unique sample of cards from the deck.
         """
-        assert ncards <= 6, f"Cannot sample more than 6 cards"
         assert ncards > 0, f"Cannot sample less than 1 card"
-        cards_possibly_in_deck = self.get_cards_possibly_in_deck(player)
+        cards_possibly_in_deck = self.get_cards_possibly_in_deck(player,get_all_hidden_cards=get_all_hidden_cards)
         # If there are less cards in the deck than ncards, return all cards
         if len(cards_possibly_in_deck) < ncards:
             return tuple(cards_possibly_in_deck)
