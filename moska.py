@@ -16,6 +16,7 @@ from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
+from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -398,7 +399,7 @@ def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model
     }
     
     players = [
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
+        (NNSampleEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
                                     "log_file":f"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
@@ -425,8 +426,8 @@ def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model
 
 
 if __name__ == "__main__":
-    #compare_model_perf(100, 10, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 4)
-    create_dataset(2, 100, "Dataset", 10, chunksize = 4, use_HIF=False, verbose=True)
+    compare_model_perf(2, 5, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 1)
+    #create_dataset(2, 100, "Dataset", 10, chunksize = 4, use_HIF=False, verbose=True)
         
         
         
