@@ -149,6 +149,10 @@ class MoskaGame:
             interpreter,input_details,output_details = model_info
             if m_id not in model_id:
                 continue
+            if len(X.shape) != len(input_details[0]["shape"]):
+                self.glog.info(f"Expanding X.shape from {X.shape} to {input_details[0]['shape']}")
+                X = np.expand_dims(X, axis=-1)
+                self.glog.info(f"Expanded X.shape to {X.shape}")
             interpreter.resize_tensor_input(input_details[0]["index"],X.shape)
             interpreter.allocate_tensors()
             interpreter.set_tensor(input_details[0]['index'], X)
