@@ -42,7 +42,7 @@ def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Datas
     
     # Add a channel dimension
     if add_channel:
-        dataset = dataset.map(lambda x,y: (tf.expand_dims(x, axis=-1), y))
+        dataset = dataset.map(lambda x,y: (tf.expand_dims(x, axis=-1), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
     return dataset
 
 
