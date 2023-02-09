@@ -1,16 +1,58 @@
 # Moska Card game simulator
 
-## **Abstract** <!-- omit in toc -->
-Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other.
-Games and the strategies used by players can be very complex, despite having possibly simple rules. Computer scientists often use games as a testbed for algorithms and AI.
+## **General** <!-- omit in toc -->
+This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players.
 
-Hidden information games are a subset of games where players have incomplete information about the game state. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state, and Monte Carlo simulation methods get very complex as hidden information increases.
+The aim of this project is to create an agent, which plays at a human level. The general approach is to use deep (convolutional) neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with weak agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
 
-In this project, I use agent based modelling to simulate a finnish 'Moska' card game, and gather data from these simulated games. The data is used to train a neural network predicting how good a position is. An agent based on this neural network is then used to play against the hand-crafted agents, and the results are compared.
+## **Usage** <!-- omit in toc -->
 
-The NN based agents perform better than the hand-crafted agents, from which the data was gathered.
+### **Simulate**
+To simulate games and gather data, refer to the `moska.py` file.
+Use the `create_dataset(rounds : int, ngames : int, ncpus : int, chunksize : int)` function to simulate ngames * rounds. In each round new players are selected, and ngames are simulated with those players. The players are selected randomly and if they contain hard-coded heuristics with optimized coefficients, the coefficients are randomized from a uniform distribution between (0,2*<default_param>), so the mean of a selected parameter over all simulations tends toward the optimized parameter. This randomization is done to hopefully get a more comprehensive dataset, introduce new situations and avoid a biased dataset.
 
-The complexity of Moska was approximated by running simulations, and the game tree complexity was found to be roughly *3x10^159*, with a branching factor of 3.9 and depth of 268. The total number of possible initial states is *3x10^29* and hence the total number of possible games is roughly *10^189*.
+The simulation speed depends on the hardware. On 16 Intel i5 cpus, the speed is likely around 7-10 games/second, largely depending on your I/O speed, the agents used in the simulation, and the simulation parameters.
+
+### **Training a model**
+Training a good model likely requires a large dataset. Best model so far, used roughly 1M games, and 70 M examples, resulting in 71% accuracy on the test set, and a binary cross entropy loss of 0.5197.
+
+Recently CNNs have been attempted both on the full state vector, or creating a separate CNN branch which only performs convolutions for the part of the state vector containing information about cards. The tried CNNs seem to easily overfit, despite a large (1M games, 70M examples) dataset.
+
+To train a model, it easiest to modify `Analysis/train_model.py` according to your needs, and then run `./Scripts/train_model.sh <new-folder-name>`. It runs the training in the background with the `nohup` -command. The script creates a new folder, and copies the `.py` file there, saves the training output to a `.log` file and stores the tensorboard log there too. This makes it easier to keep track of the tried models and their results.
+
+### **Implementing custom players**
+
+![player-flowchart](player-diagram.png)
+*Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
+
+The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
+
+
+**AbstractPlayer**
+
+NOTE: Do not modify any existing variables, when selecting a move, as this will in future result in an error.
+
+The `AbstractPlayer` is the base class of all agents. It contains the general logic of the player, and some helper methods. The following logic needs to be implemented by the subclasses of `AbstractPlayer`:
+- `choose_move(playable_moves : List[str]) -> str`
+- `end_turn() -> List[Card]`
+- `play_fall_card_from_hand() : Dict[Card,Card]`
+- `deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)`
+- `play_to_self() -> List[Card]`
+- `play_initial() -> List[Card]`
+- `play_to_target() -> List[Card]`
+
+The agents implementing the `AbstractPlayer` class can try to play illegal moves if the methods are implemented incorrectly, but they should eventually be designed to only make valid moves, to improve performance. Also, if the player is fully deterministic, and it can make invalid moves, the game will timeout, because an Agent is only making invalid moves and the game will never end, since the agent will get into a loop of attempting to play the same move.
+
+Agents only implementing the AbstractPlayer, can be made significantly faster than the `AbstractEvaluatorBot`, because they do not need to generate all possible plays.
+
+**AbstractEvaluatorBot**
+
+The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
+
+Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, or finding them may be complex. For example finding all distinct matchings from a bipartite graph is NP-hard. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
+
+The neural networks are specifically used with this class.
+
 
 
 ## Table of Contents <!-- omit in toc -->
@@ -36,11 +78,7 @@ The complexity of Moska was approximated by running simulations, and the game tr
 
 
 ## **1 Introduction**
-### **1.1 Games and hidden information**
-Game is a physical or mental competition conducted according to rules with the participants in direct opposition to each other, according to the Merriam-Webster dictionary.
-Games and the strategies used by players can be very complex in games, despite having possibly simple rules. Computer scientists often use games as a testbed for algorithms and AI. Neural-networks have succesfully been used in many algorithms as an evaluation function for the game state, such as in chess and go: [Learning to Evaluate Chess Positions with Deep Neural Networks and Limited Lookahead](https://www.ai.rug.nl/~mwiering/GROUP/ARTICLES/ICPRAM_CHESS_DNN_2018.pdf), [Move Evaluation in Go Using deep Convolutional Neural Networks](https://arxiv.org/abs/1412.6564)
-
-Hidden information games are a subset of games where players have incomplete information about the game state. Hidden information games are generally more difficult for AI, since the AI has to learn to play the game, without knowing the full game state. Hidden information makes using Monte Carlo simulation methods significantly more complex, though methods to reduce complexity exist: [Monte Carlo Tree Search for Games with Hidden Information and Uncertainty](https://etheses.whiterose.ac.uk/8117/1/Feb%2016%20-%20FINAL.pdf).
+### **Moska**
 
 
 
@@ -66,9 +104,6 @@ Moska shares similarities with the popular russian game *"Durak"* and another fi
 I focus on a Moska game of 4 player game, to have a constant input shape for the neural network, and to balance the preparation period and the end-game. The rules and general strategy of the game are explained later.
 
 The simulation engine implements the version, that is most popular in LUT university among Computational Engineering students, with a a few changes detailed later.
-
-
-
 
 ## **Appendix**
 ### **1 Introduction to Moska**
@@ -170,40 +205,6 @@ The speed of the simulation depends on the parallelization, algorithms used, and
 ![game-flowchart](Game-diagram.png)
 *Flowchart of the games logic after starting a simulation.*
 
-#### **Agent interfaces**
-
-![player-flowchart](player-diagram.png)
-*Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
-
-The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
-
-**AbstractPlayer**
-
-The `AbstractPlayer` is the base class of all agents. It contains the general logic of the player, and some helper methods. The following logic needs to be implemented by the subclasses of `AbstractPlayer`:
-- `choose_move(playable_moves : List[str]) -> str`
-- `end_turn() -> List[Card]`
-- `play_fall_card_from_hand() : Dict[Card,Card]`
-- `deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)`
-- `play_to_self() -> List[Card]`
-- `play_initial() -> List[Card]`
-- `play_to_target() -> List[Card]`
-
-The agents implementing the `AbstractPlayer` class can try to play illegal moves if the methods are implemented incorrectly, but they should eventually be designed to only make valid moves, to improve performance. Also, if the player is fully deterministic, and it can make invalid moves, the game will timeout, because an Agent is only making invalid moves and the game will never end, since the agent will get into a loop of attempting to play the same move.
-
-Agents only implementing the AbstractPlayer, can be made significantly faster than the `AbstractEvaluatorBot`, because they do not need to generate all possible plays.
-
-**AbstractEvaluatorBot**
-
-The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
-
-Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, since for example finding all distinct matchings from a bipartite graph is NP-hard. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
-
-### **Players based on heuristics**
-These players calculate scores based on heuristics, and choose the move with the highest score. The heuristics are fairly simple. They contain some weightings, and the weighings have been optimized with scipy, by simulating thousands of games with different weightings, and choosing the best weightings to minimize the chance to lose.
-
-### **Players based on Neural Network evaluations**
-These players use a neural network model, to assess the goodness of a state. The model then finds all the possible moves, and checks what the state would be after playing each move. It then chooses the move with the highest evaluation. If the move has randomness in the output, it samples a subset of the possible next states and uses their average as an evaluation for playing the move.
-TODO: Currently the agent has perfect information on some moves lifted cards.
 
 ## Data collection
 The data is created by playing games, and saving the state of the game from the perspective of the player. The data contains full card-counting information: Which cards have been discarded, and which players have lifted which cards.
@@ -227,17 +228,13 @@ The data is then balanced, by taking a random sample from the measured not-loser
 
 Each games state vectors and labels are shuffled and saved as a randomly named .out file, and the folder of files is read as a tensorflow TextLineDataset.
 
-## Neural network
-The neural network is a simple feed forward neural network, with generally a BatchNormalization layer, 4 hidden layers with size of input number of nodes, and 3 Dropout layers. The output layer has a sigmoid activation function, and the loss function is binary crossentropy. The optimizer is Adam.
-
-For some models, the data is normalized in the preprocessing step, by dividing the data by 52. This does not currently make sense, since there are also values, that are not in the range of 0-52.
-
-
-
-
 ## TODO LIST
-- Create TESTS!!
-- Improve play to self, play to target, deck lift fall method, choose move (Calculate a score for each play and choose the play with the highest score)
-- Create ways to get all the possible moves from a state. The possible futures from each move (if the future state is random) are then randomly sampled, and the average evaluation of the sample of futures is considered the evaluation for the given move.
-- Fix information leak for the NN model about the picked cards from deck
-- More efficient algorithm for calculating the possible moves from a state (currently brute force for some moves)
+- Add TESTS!!
+- Add better graphics
+- Add GUI
+- Add docs
+- Add tree search
+- Improve scripts
+- Find a good Model architecture (Will settle for 72 %)
+- Finish writing the thesis
+- 
