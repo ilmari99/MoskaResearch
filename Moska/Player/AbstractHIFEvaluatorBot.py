@@ -78,9 +78,13 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
         
         The assignments (partial matchings) are searched for recursively, in a depth-first manner:
         - Find all single card assignments (row-col pairs where the intersection == 1)
-        - Add the assignment to found_assignments
-        - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
-        - Repeat
+        - For each single card assignment:
+            - If a symmetric assignment has already been found, go to the next assignment, else:
+            - Add the assignment to found_assignment
+            - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
+            - Recursively call this function with the new matrix and the current assignment as the start
+            - Restore the matrix to its original state
+        - Return the found_assignments
         """
         # Create a set of found assignments, if none is given (first call)
         if not found_assignments:
@@ -94,20 +98,17 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
         new_assignments = self._get_single_assignments(matrix)
         
         # If there are no more assignments, or the max number of states is reached, return the found assignments
-        duplicate_count = 0
         for row, col in new_assignments:
             if len(found_assignments) >= self.max_num_states:
                 return found_assignments
             og_len = len(found_assignments)
-            # Named tuple with a custom __eq__ and __hash__ method
+            # Custom __eq__ and __hash__ method, checking if the same cards are played to the same cards, regardless of order.
             assignment = Assignment(tuple(start + [row,col]))
             found_assignments.add(assignment)
             if len(found_assignments) == og_len:
                 continue
             # Get the visited cards
             # The cards in hand are even (0,2...), the cards on the table are odd (1,3...)
-            #hand_cards = [c for i,c in enumerate(start + [row,col]) if i % 2 == 0]
-            #table_cards = [c for i,c in enumerate(start + [row,col]) if i % 2 == 1]
             hand_cards = assignment._hand_inds
             table_cards = assignment._table_inds
             # Store the values, to restore them later
@@ -262,7 +263,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
                 # Remove the card from the hand
                 self.hand.pop_cards(cond=lambda c : c == card)
                 states.append(state)
-        self.plog.debug(f"{len([p for p in plays if len(p) == 2])} plays to 'PlayFallFromHand' and {len([p for p in plays if len(p) == 1])} plays to 'PlayToSelfFromDeck'.")
+        self.plog.debug(f"{len([p for p in plays if len(p) == 2])} plays to 'PlayFallFromDeck' and {len([p for p in plays if len(p) == 1])} plays to 'PlayToSelfFromDeck'.")
         return plays, states
     
     def _get_play_to_other_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
@@ -288,7 +289,6 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             curr_cards = self.hand.copy().cards
             state = self._make_mock_move("PlayToOther",[self, target, plays[i]])
             # See which cards were lifted
-            # REQUIRES the set difference to use the __eq__ method of Card
             lifted_cards = [c for c in state.full_player_cards[self.pid] if c not in curr_cards]
             self.plog.debug(f"Full information lifted cards: {lifted_cards}")
             if len(lifted_cards) == 0:
