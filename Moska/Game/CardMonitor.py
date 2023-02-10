@@ -128,7 +128,18 @@ class CardMonitor:
             played = list(args[-1].keys())
             #fell = list(args[-1].values())
             self.update_known(player.name,played,add=False)
-            # No need to remove from game yet, since the cards might be lifted
+        # If there are only 2 players left (and no deck), we know the other players cards, and essentially have PIF
+        # TODO: Fix, for when there are three or more players, since this still might be applicable
+        if len(self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0)) == 2 and player.EXIT_STATUS == 0:
+            self.game.glog.info(f"Only two players left:\n{self.game}")
+            player.plog.debug(f"Only two players left, updating known cards")
+            other_player = self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0 and x.name != player.name)[0]
+            must_be_cards = list(self.get_sample_cards_from_deck(player,52,get_all_hidden_cards=True))
+            player.plog.debug(f"Must be cards: {must_be_cards}")
+            other_player.plog.debug(f"Must be cards: {must_be_cards}")
+            self.player_cards[other_player.name] = [c for c in self.player_cards[other_player.name] if c.suit != "X"] + must_be_cards
+            other_player.plog.debug(f"Updated selfs known cards to {self.player_cards[other_player.name]}")
+            player.plog.debug(f"Updated others known cards to {self.player_cards[other_player.name]}")
         # After updating known cards, check if the player lifted unknown cards from deck
         self.update_unknown(player.name)
         # No updates to hand when playing from deck or skipping
