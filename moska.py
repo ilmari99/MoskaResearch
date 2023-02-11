@@ -379,10 +379,10 @@ def create_dataset(nrounds, num_games,folder,cpus,chunksize = 4, use_HIF=False, 
     print(f"Finished. Total time taken: {time_taken/60} minutes.")
     return
 
-def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 4):
+def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 4, append=False):
     if not os.path.isdir(folder):
         os.mkdir(folder)
-    else:
+    elif not append:
         raise Exception(f"Folder '{folder}' already exists.")
     os.chdir(folder + "/")
     if not os.path.isdir("Vectors"):
@@ -399,7 +399,7 @@ def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model
     }
     
     players = [
-        (NNSampleEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
                                     "log_file":f"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
@@ -426,8 +426,5 @@ def compare_model_perf(num_games, cpus, models = ["../Models/ModelMB11-260/model
 
 
 if __name__ == "__main__":
-    compare_model_perf(2, 5, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 1)
+    compare_model_perf(20, 5, models = ["../Models/ModelMB11-260/model.tflite"], folder = "Compare", chunksize = 1,append=True)
     #create_dataset(2, 100, "Dataset", 10, chunksize = 4, use_HIF=False, verbose=True)
-        
-        
-        
