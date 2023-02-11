@@ -329,7 +329,7 @@ class MoskaGame:
         """ Makes a move, like '_make_move', but returns the game state after the move and restores self and attributes to its original state.
         """
         state = FullGameState.from_game(self)
-        self.glog.debug("Saved state data. Setting logger to level WARNING for Mock move")
+        #self.glog.debug("Saved state data. Setting logger to level WARNING for Mock move")
         player = args[0]
         game_log_level = self.glog.getEffectiveLevel()
         player_log_level = player.plog.getEffectiveLevel()
@@ -513,6 +513,8 @@ class MoskaGame:
             #del self
             #self.IS_RUNNING = False
             return None
+        #cards_in_card_monitor = list(self.card_monitor.cards_fall_dict.keys())
+        #cards_left = self.get_players_condition(lambda x : x.rank == len(self.players))[0].hand.cards + self.fell_cards + self.cards_to_fall
         self.glog.info("Final ranking: ")
         ranks = [(p.name, p.rank) for p in self.players]
         state_results = []
