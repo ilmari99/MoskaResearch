@@ -265,9 +265,12 @@ class EndTurn(Turn):
         assert utils.check_signature([AbstractPlayer,list],[player,pick_cards]), "Incorrect input signature"
         self.player = player
         self.pick_cards = pick_cards
+        self.target = self.moskaGame.get_target_player()
         assert self.check_has_played_cards(), "There are no played cards, and hence the turn cannot be ended yet."
         if not pick_cards:
-            assert self.check_can_pick_none() or self.check_finished(), "There are cards on the table, and they must fall or be lifted."
+            # If the player doesnt pick any cards, then there must not be any cards on the table
+            #or (self.check_finished() and not self.check_turn())
+            assert self.check_can_pick_none(), "There are cards on the table, and they must fall or be lifted."
         else:
             assert self.check_pick_all_cards() or self.check_pick_cards_to_fall(), f"Either pick all cards that have not been fallen, or pick all cards from table"
             assert self.check_turn(), "It is not this players turn to lift the cards"
@@ -275,8 +278,16 @@ class EndTurn(Turn):
     
     def clear_table(self):
         # Only remove cards from game, if they were not picked. Then they were lifted by the player
+        # If the player picks exactly the same cards as are in cards_to_fall, then only remove the fell cards
         if self.check_pick_cards_to_fall():
             self.moskaGame.card_monitor.remove_from_game(self.moskaGame.fell_cards)
+            self.player.plog.info(f"Removing {self.moskaGame.fell_cards} from game")
+        # TODO: find out if this is allowed by the rules
+        # If the player finishes, and hence calls 'EndTurn' with [],
+        # ALL cards on the table are removed if the player is also the target player
+        #elif self.check_finished() and self.player is self.target:
+        #    self.moskaGame.card_monitor.remove_from_game(self.moskaGame.cards_to_fall + self.moskaGame.fell_cards)
+        #    self.player.plog.info(f"Removing {self.moskaGame.cards_to_fall + self.moskaGame.fell_cards} from game")
         self.moskaGame.cards_to_fall.clear()
         self.moskaGame.fell_cards.clear()
         
@@ -288,7 +299,7 @@ class EndTurn(Turn):
         return self.player.rank is not None
     
     def check_turn(self):
-        return self.moskaGame.get_target_player() is self.player
+        return self.target is self.player
     
     def check_pick_cards_to_fall(self):
         """ Check if every pick_card equals cards_to_fall"""
@@ -319,7 +330,7 @@ class EndTurn(Turn):
         self.moskaGame.glog.info(f"{self.player.name} ending turn.")
         self.player.plog.info(f"Lifted cards {self.pick_cards}")
         self.moskaGame.glog.info(f"{self.player.name} lifted {self.pick_cards}")
-        if len(self.pick_cards) > 0 or self.player.rank is not None:
+        if len(self.pick_cards) > 0 or self.check_finished():
             self.moskaGame.turnCycle.get_next_condition(cond = lambda x : x.rank is None)
         self.clear_table()
         
