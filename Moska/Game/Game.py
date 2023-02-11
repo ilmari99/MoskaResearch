@@ -188,6 +188,9 @@ class MoskaGame:
         """ Prevent access to MoskaGame attributes from outside the main or player threads, when the game is locked.
         Also used for ensuring that inter-related attributes are set correctly.
         """
+        if name == "EXIT_FLAG":
+            super.__setattr__(self, name, value)
+            return
         if name != "lock_holder" and self.threads and threading.get_native_id() != self.lock_holder:
             raise threading.ThreadError(f"Setting MoskaGame attribute with out lock!")
         super.__setattr__(self, name, value)
@@ -397,10 +400,10 @@ class MoskaGame:
                     self.EXIT_FLAG = True
                 return False
         if any((pl.EXIT_STATUS != 1 for pl in self.players)):
-            with self.get_lock() as ml:
-                print(f"Game with log {self.log_file} timedout.")
-                self.glog.error(f"Game timedout. Exiting.")
-                self.EXIT_FLAG = True
+            #self.lock_holder = threading.get_native_id()
+            print(f"Game with log {self.log_file} timedout.")
+            self.glog.error(f"Game timedout after {self.timeout} seconds. Exiting.")
+            self.EXIT_FLAG = True
             return False
         self.glog.info("Threads finished")
         return True
