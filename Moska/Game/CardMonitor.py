@@ -142,16 +142,21 @@ class CardMonitor:
             other_player = self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0 and x.name != player.name)[0]
 
             # The other players cards are the hidden cards + what we already know about the other player
-            #self.player_cards[other_player.name] = [c for c in self.player_cards[other_player.name] if c.suit != "X"] + hidden_cards
-            self.update_known(other_player.name,hidden_cards,add=True)
-            self.update_unknown(other_player.name)
+            self.player_cards[other_player.name] = [c for c in self.player_cards[other_player.name] if c.suit != "X"] + hidden_cards
+            # Update the other players cards as known; Add them to the players known cards (still keeping the unknown cards)
+            #self.update_known(other_player.name,hidden_cards,add=True)
+            #self.update_unknown(other_player.name)
 
-            other_player.plog.info(f"Updated known cards: {self.player_cards[other_player.name]}")
-            other_player.plog.info(f"Actual hand: {other_player.hand.cards}")
             if len(other_player.hand.cards) != len(self.player_cards[other_player.name]):
+                self.game.glog.error(f"Other players actual hand and counted cards do not match on length")
+                self.game.glog.error(f"Other players actual hand: {other_player.hand.cards}")
+                self.game.glog.error(f"Other players counted cards: {self.player_cards[other_player.name]}")
                 raise Exception(f"Other players actual hand and counted cards do not match on length")
             if not all([c in self.player_cards[other_player.name] for c in other_player.hand.cards]):
                 raise Exception(f"Other players actual hand and counted cards do not match on cards")
+
+            other_player.plog.info(f"Updated known cards: {self.player_cards[other_player.name]}")
+            other_player.plog.info(f"Actual hand: {other_player.hand.cards}")
         # After updating known cards, check if the player lifted unknown cards from deck
         self.update_unknown(player.name)
         # No updates to hand when playing from deck or skipping
@@ -177,8 +182,6 @@ class CardMonitor:
                 if card in falls:
                     self.cards_fall_dict[card_d].remove(card)
                     #self.game.glog.debug(f"Removed {card} from {card_d} list of cards")
-        for card,falls in self.cards_fall_dict.items():
-            pass#self.game.glog.info(f"{card} : {len(falls)}")
         return
         
     
@@ -192,11 +195,11 @@ class CardMonitor:
         known_cards = self.player_cards[player_name]
         # Get the cards the player actually has
         actual_cards = self.game.get_players_condition(cond = lambda x : x.name == player_name)[0].hand.cards
+
         missing = len(actual_cards) - len(known_cards)
         add = True
         if missing < 0:
             add = False
-            #raise ValueError(f"Knowing more cards in a players hand than there are cards is impossible!!")
         if missing == 0:
             return
         # Either add unknown cards, or remove unknown cards from the players hand
