@@ -231,12 +231,24 @@ class AbstractPlayer(ABC):
         """Set the players rank. Rank is None, as long as the player is still in the game.
         This is called after each turn.
         """
-        if self.rank is None:   # if the player hasn't already finished
-            # If the player doesn't have a hand and there are no cards left, or there are no players left
-            if (not self.hand and len(self.moskaGame.deck) == 0) or len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is None)) <= 1:
-                self.rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
-                # If exit was clean, 1
-                self.EXIT_STATUS = 1
+        poss_rank = len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is not None)) + 1
+        # If there is only one player left, set rank
+        if len(self.moskaGame.get_players_condition(cond = lambda x : x.rank is None)) <= 1:
+            self.rank = poss_rank
+            self.EXIT_STATUS = 1
+        # If the player is not the target, they are finished if:
+        # - They have no cards in hand
+        # - There are no cards left in the deck
+        if self is not self.moskaGame.get_target_player() and (not self.hand and len(self.moskaGame.deck) == 0):
+            self.rank = poss_rank
+            self.EXIT_STATUS = 1
+        # If the player is the target, they are finished if:
+        # - They have no cards in hand
+        # - There are no cards left in the deck
+        # - There are no un-fallen cards on the table
+        if self is self.moskaGame.get_target_player() and (not self.hand and len(self.moskaGame.deck) == 0 and not self.moskaGame.cards_to_fall):
+            self.rank = poss_rank
+            self.EXIT_STATUS = 1
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
@@ -401,9 +413,14 @@ class AbstractPlayer(ABC):
                     self.ready = False
                 # Set the players rank
                 self._set_rank()
-                # Check if self is target and finished
+                # Check if self has finished, and hasn't played "EndTurn"
+                # 'EndTurn' was last played, if the target changed during _play_move
                 if self.rank is not None and self is self.moskaGame.get_target_player():
-                    self.moskaGame._make_move("EndTurn",[self,[]])
+                    success, msg = self.moskaGame._make_move("EndTurn",[self,[]])
+                    if not success:
+                        self.plog.error(msg)
+                        self.EXIT_STATUS = 2
+                        break
         if self.EXIT_STATUS == 1:
             self.plog.info(f"Finished as {self.rank}")
         elif self.EXIT_STATUS == 2:
