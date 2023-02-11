@@ -456,6 +456,7 @@ class MoskaGame:
         triumph_card = self.deck.pop_cards(1)[0]
         self.triumph = triumph_card.suit
         p_with_2 = self.get_players_condition(cond = lambda x : any((x.suit == self.triumph and x.value==2 for x in x.hand.cards)))
+        self._orig_triumph_card = triumph_card
         if p_with_2:
             assert len(p_with_2) == 1, "Multiple people have valtti 2 in hand."
             p_with_2 = p_with_2[0]
