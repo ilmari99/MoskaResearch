@@ -49,38 +49,42 @@ class CardMonitor:
         self.game.glog.info(f"Card monitor started")
         return
     
-
+    def get_hidden_cards(self,player : AbstractPlayer) -> List[Card]:
+        """Get a list of cards whose location is not known to the player.
+        """
+        known_cards = player.hand.copy().cards
+        known_cards += self.game.cards_to_fall.copy()
+        known_cards += self.game.fell_cards.copy()
+        for pl, cards in self.player_cards.items():
+            if pl == player.name:
+                continue
+            known_cards += [card for card in cards if card != Card(-1,"X")]
+        # Each player knows which cards are still in the game, and which cards are known to them
+        # The hidden cards are the intersection of the cards that are still in the game and the cards that are known to the player
+        player.plog.info(f"Known cards: {known_cards}")
+        hidden_cards = [card for card in self.cards_fall_dict.keys() if card not in known_cards]
+        return hidden_cards
     
-    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None,get_all_hidden_cards = False) -> set[Card]:
+    
+    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None) -> set[Card]:
         """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
         """
-        if not get_all_hidden_cards:
-            # If there is only one card left in the deck, it is the triumph card
-            if len(self.game.deck) == 1:
-                return [self.game.triumph_card]
-            if len(self.game.deck) == 0:
+        # If there is only one card left in the deck, it is the triumph card
+        if len(self.game.deck) == 1:
+            return [self.game.triumph_card]
+        if len(self.game.deck) == 0:
                 return []
-        cards_not_in_deck = self.game.fell_cards + self.game.cards_to_fall
-        if player is not None:
-            cards_not_in_deck += player.hand.copy().cards
-        for pl, cards in self.player_cards.items():
-            if player is not None and pl == player.name:
-                continue
-            for card in cards:
-                if card != Card(-1,"X"):
-                    cards_not_in_deck.append(card)
-        #self.player.plog.debug(f"Cards NOT in deck: {len(cards_not_in_deck)}")
-        cards_possibly_in_deck = list(set(self.game.card_monitor.cards_fall_dict.keys()).difference(cards_not_in_deck))
-        random.shuffle(cards_possibly_in_deck)
-        cards_possibly_in_deck = set(cards_possibly_in_deck)
-        #self.player.plog.debug(f"Cards possibly in deck: {len(cards_possibly_in_deck)}")
-        return cards_possibly_in_deck
+        hidden_cards = self.get_hidden_cards(player)
+        player.plog.info(f"Hidden cards: {hidden_cards}")
+        #random.shuffle(hidden_cards)
+        assert len(hidden_cards) == len(set(hidden_cards)), f"Duplicates in hidden cards"
+        return hidden_cards
     
-    def get_sample_cards_from_deck(self,player : AbstractPlayer,ncards : int, max_samples : int = 100,get_all_hidden_cards = False) -> List[Card]:
+    def get_sample_cards_from_deck(self,player : AbstractPlayer,ncards : int, max_samples : int = 10) -> List[Card]:
         """Get a list of tuples of ncards, where each tuple is a unique sample of cards from the deck.
         """
         assert ncards > 0, f"Cannot sample less than 1 card"
-        cards_possibly_in_deck = self.get_cards_possibly_in_deck(player,get_all_hidden_cards=get_all_hidden_cards)
+        cards_possibly_in_deck = self.get_cards_possibly_in_deck(player)
         # If there are less cards in the deck than ncards, return all cards
         if len(cards_possibly_in_deck) < ncards:
             return tuple(cards_possibly_in_deck)
@@ -129,17 +133,25 @@ class CardMonitor:
             #fell = list(args[-1].values())
             self.update_known(player.name,played,add=False)
         # If there are only 2 players left (and no deck), we know the other players cards, and essentially have PIF
-        # TODO: Fix, for when there are three or more players, since this still might be applicable
+        # TODO: Fix, for when there are three or more players, since this might still be applicable
         if len(self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0)) == 2 and player.EXIT_STATUS == 0:
-            self.game.glog.info(f"Only two players left:\n{self.game}")
-            player.plog.debug(f"Only two players left, updating known cards")
+            self.game.glog.info(f"Only two players left, updating known cards")
+            # Get the cards that are hidden to the player
+            # If there are only two players left, we know the other players cards
+            hidden_cards = self.get_hidden_cards(player)
             other_player = self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0 and x.name != player.name)[0]
-            must_be_cards = list(self.get_sample_cards_from_deck(player,52,get_all_hidden_cards=True))
-            player.plog.debug(f"Must be cards: {must_be_cards}")
-            other_player.plog.debug(f"Must be cards: {must_be_cards}")
-            self.player_cards[other_player.name] = [c for c in self.player_cards[other_player.name] if c.suit != "X"] + must_be_cards
-            other_player.plog.debug(f"Updated selfs known cards to {self.player_cards[other_player.name]}")
-            player.plog.debug(f"Updated others known cards to {self.player_cards[other_player.name]}")
+
+            # The other players cards are the hidden cards + what we already know about the other player
+            #self.player_cards[other_player.name] = [c for c in self.player_cards[other_player.name] if c.suit != "X"] + hidden_cards
+            self.update_known(other_player.name,hidden_cards,add=True)
+            self.update_unknown(other_player.name)
+
+            other_player.plog.info(f"Updated known cards: {self.player_cards[other_player.name]}")
+            other_player.plog.info(f"Actual hand: {other_player.hand.cards}")
+            if len(other_player.hand.cards) != len(self.player_cards[other_player.name]):
+                raise Exception(f"Other players actual hand and counted cards do not match on length")
+            if not all([c in self.player_cards[other_player.name] for c in other_player.hand.cards]):
+                raise Exception(f"Other players actual hand and counted cards do not match on cards")
         # After updating known cards, check if the player lifted unknown cards from deck
         self.update_unknown(player.name)
         # No updates to hand when playing from deck or skipping
