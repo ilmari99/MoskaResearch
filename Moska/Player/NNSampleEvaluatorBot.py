@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import namedtuple
 import logging
+import random
 import threading
 import numpy as np
 from .AbstractEvaluatorBot import AbstractEvaluatorBot
@@ -50,7 +51,8 @@ class NNSampleEvaluatorBot(AbstractEvaluatorBot):
                 preds.append(self.__evaluate_states([state])[0])
                 continue
             # Get 10 samples of cards from the deck which could be the missing cards
-            possible_fills = self.moskaGame.card_monitor.get_sample_cards_from_deck(self, total_missing_cards,self.nsamples,get_all_hidden_cards=True)
+            possible_fills = self.moskaGame.card_monitor.get_hidden_cards(self)
+            possible_fills = [random.sample(possible_fills, total_missing_cards) for _ in range(self.nsamples)]
             sampled_states = []
             for possible_cards in possible_fills:
                 start_index = 0
