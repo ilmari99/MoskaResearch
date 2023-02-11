@@ -34,12 +34,18 @@ class CardMonitor:
         """
         if self.started:
             return
-        # 
         for pl in self.game.players:
             self.player_cards[pl.name] = []
-            self.update_known(pl.name,cards=[Card(-1,"X") for _ in range(6)],add=True)
+            if self.game._orig_triumph_card in pl.hand.cards:
+                cards = [Card(-1,"X") for _ in range(5)] + [self.game._orig_triumph_card]
+                self.game.glog.info(f"Triumph card at player: {pl.name}, cards: {cards}")
+            else:
+                cards = [Card(-1,"X") for _ in range(6)]
+            self.update_known(pl.name,cards=cards,add=True)
+            # Old backup, if there are incorrect players
             if len(self.player_cards[pl.name]) != 6:
                 self.player_cards.pop(pl.name)
+            
         self.game.glog.info(f"Created card monitor. Player Cards:")
         for pl, cards in self.player_cards.items():
             self.game.glog.info(f"{pl} : {cards}")
