@@ -144,14 +144,14 @@ def get_branched_model():
     misc_data = tf.gather(inputs,tf.constant(misc_parts, dtype=tf.int32), axis=1)
     
     # Model for card input (415,1); Convolutions can be used for this, since there are patterns that can>
-    img = tf.keras.layers.Conv1D(8,3,activation="linear")(card_data)
+    img = tf.keras.layers.LocallyConnected1D(6,5,activation="linear",kernel_regularizer="l2")(card_data)
     img = tf.keras.layers.LeakyReLU(alpha=0.3)(img)
     img = tf.keras.layers.Flatten()(img)
-    #img = tf.keras.layers.Dropout(rate=0.2)(img)
-    img = tf.keras.layers.Dense(200,activation="relu")(img)
     img = tf.keras.layers.Dropout(rate=0.3)(img)
+    img = tf.keras.layers.Dense(250,activation="relu")(img)
+    img = tf.keras.layers.Dropout(rate=0.5)(img)
     img = tf.keras.layers.Dense(200,activation="relu")(img)
-    img = tf.keras.layers.Dropout(rate=0.3)(img)
+    img = tf.keras.layers.Dropout(rate=0.5)(img)
     img = tf.keras.layers.Dense(200,activation="relu")(img)
     img = tf.keras.layers.Dropout(rate=0.3)(img)
     img = tf.keras.layers.Dense(200,activation="relu")(img)
@@ -171,7 +171,7 @@ def get_branched_model():
     combined = tf.keras.layers.Concatenate(axis=-1)([img_out,misc_out])
     combined = tf.keras.layers.Dense(50,activation="relu")(combined)
     combined = tf.keras.layers.Dropout(rate=0.3)(combined)
-    combined = tf.keras.layers.Dense(50,activation="relu")(combined)
+    combined = tf.keras.layers.Dense(25,activation="relu")(combined)
     combined = tf.keras.layers.Dropout(rate=0.3)(combined)
     combined = tf.keras.layers.Dense(25,activation="relu")(combined)
     combined_out = tf.keras.layers.Dense(1,activation="sigmoid")(combined)
@@ -180,7 +180,7 @@ def get_branched_model():
     
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
-        loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=1,from_logits=False,label_smoothing=0),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
         metrics=['accuracy'],
         )
     return model
@@ -194,7 +194,7 @@ def get_conv_model():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
     model.add(tf.keras.layers.BatchNormalization(axis=1,))
-    model.add(tf.keras.layers.Conv1D(128,3,activation="linear"))
+    model.add(tf.keras.layers.Conv1D(6,3,activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
     model.add(tf.keras.layers.MaxPooling1D(pool_size=2, strides=None, padding='valid', data_format='channels_last'))
     model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
@@ -217,7 +217,7 @@ def get_conv_model():
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./LastLogs1/Vectors/", "./LastLogs2/Vectors/","./Dataset/Vectors/"],
+    all_dataset = create_tf_dataset(["./Dataset-Lumi2/Vectors/", "./Dataset-Lumi/Vectors/","./Dataset/Vectors/"],
     add_channel=False,
     get_part="full",
     )
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     
     model.fit(x=train_ds, 
               validation_data=validation_ds, 
-              epochs=50, 
+              epochs=100, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
     
