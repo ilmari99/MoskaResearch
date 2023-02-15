@@ -123,6 +123,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
+        # Get the possible next states for a move
+        # The states should not be empty, because the next states are only computed if the move is valid
         plays, states, evals = self.get_possible_next_states(move)
         if move == "PlayFallFromDeck":
             # Store the scores, to be able to get the best pre-computed score for a specific play
