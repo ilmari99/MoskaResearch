@@ -129,7 +129,7 @@ class MoskaGame:
             model_id = [model_id]
         if isinstance(model_id,str):
             try:
-                model_id = self.model_paths.index(model_id)
+                model_id = [self.model_paths.index(model_id)]
             except:
                 raise Exception(f"Could not find model path {model_id} in {self.model_paths}")
         output_data = []
