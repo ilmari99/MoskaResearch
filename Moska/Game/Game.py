@@ -159,7 +159,7 @@ class MoskaGame:
             interpreter.invoke()
             out = interpreter.get_tensor(output_details[0]['index'])
             output_data.append(out)
-        return np.mean(output_data, axis=0)
+        return np.mean(output_data,axis=0)
     
     def _set_turns(self):
         self.turns = {
