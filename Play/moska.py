@@ -25,6 +25,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy import stats as sc_stats
 
+
 def set_game_args(game : MoskaGame, gamekwargs : Dict[str,Any]) -> None:
     """Sets a game instances variables from a dictionary of key-value pairs.
     If value is Callable, the returned value is assigned.
