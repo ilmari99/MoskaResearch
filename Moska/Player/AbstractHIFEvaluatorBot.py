@@ -194,7 +194,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
         self.plog.debug("Found {} possible plays".format(assignments))
         
         # Get a random sample of the plays. Evaluating each could take a long time
-        # TODO: Prioritize by length
+        # TODO: Prioritize by length?
         assignments = random.sample(assignments, min(len(assignments), self.max_num_states))
         
         plays = []
