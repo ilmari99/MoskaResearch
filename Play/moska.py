@@ -20,6 +20,7 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
+from Moska.Player.WideNNEVHEV import WideNNEVHEV
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -94,18 +95,18 @@ def play_as_human(game_id = 0):
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1","requires_graphic":True,
                                                   "log_file":f"Game-{x}-NNEV1.log", 
                                                   "max_num_states":8000,
-                                                  "pred_format":"new", 
-                                                  "normalize" : False}}),
+                                                  "pred_format":"new",
+                                                  }}),
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV2","requires_graphic":True,
                                                   "log_file":f"Game-{x}-NNEV2.log", 
                                                   "max_num_states":8000,
-                                                  "pred_format":"new", 
-                                                  "normalize" : False}}),
+                                                  "pred_format":"new",
+                                                  }}),
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV3","requires_graphic":True,
                                                   "log_file":f"Game-{x}-NNEV3.log", 
                                                   "max_num_states":8000,
-                                                  "pred_format":"new", 
-                                                  "normalize" : False}}),
+                                                  "pred_format":"new",
+                                                  }}),
     ]
     gamekwargs = lambda x : {
         "log_file" : f"Humangame-{x}.log",

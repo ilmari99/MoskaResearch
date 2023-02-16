@@ -20,6 +20,7 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
+from Moska.Player.WideNNEVHEV import WideNNEVHEV
 import random
 import numpy as np
 from scipy.optimize import minimize

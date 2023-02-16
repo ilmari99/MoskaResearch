@@ -20,6 +20,7 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
+from Moska.Player.WideNNEVHEV import WideNNEVHEV
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -39,6 +40,33 @@ def make_log_dir(folder : str, append : bool = False) -> None:
     os.chdir(folder + "/")
     if not os.path.isdir("Vectors"):
         os.mkdir("Vectors")
+
+def args_to_gamekwargs(
+    game_kwargs : Callable,
+    players : List[Tuple[AbstractPlayer,Callable]],
+    gameid : int,
+    shuffle : False,
+                        ) -> Dict[str,Any]:
+    """Turn a dynamic arguments (for ex callable changing game log), to a static gamekwargs dictionary.
+
+    Args:
+        game_kwargs (Callable): _description_
+        players (List[Tuple[AbstractPlayer,Callable]]): _description_
+        gameid (int): _description_
+        shuffle (False): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    game_args = game_kwargs(gameid)
+    players = [pl(**args(gameid)) for pl, args in players]
+    if not players:
+        assert "nplayers" in game_args or "players" in game_args
+    else:
+        game_args["players"] = players
+    if shuffle and "players" in game_args:
+        random.shuffle(game_args["players"])
+    return game_args
 
 
 def get_random_players(nplayers, shared_kwargs = {}, use_HIF = False):
