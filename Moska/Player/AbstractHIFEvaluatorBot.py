@@ -40,10 +40,12 @@ class Assignment:
 
 class AbstractHIFEvaluatorBot(AbstractPlayer):
     """ This class is an abstract class for bots that evaluate the game states.
-    This class handles finding the possible moves and generating the resulting game states.
-    
-    The 'evaluate_states' method must be implemented by the child class.
-    
+    This is a modified version of AbstractEvaluatorBot, which fixes the problem of perfect information.
+
+    This class generates all the reachable next states,
+    but if there is hidden information in the next state (other than the other players hands),
+    this class will sample the next possible states, evaluate them, and uses the average value of an evaluation.
+
     """
     max_num_states : int = 1000
     def __init__(self, moskaGame: MoskaGame = None,
@@ -127,21 +129,28 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
     def _get_move_prediction(self, move : str, get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
+        # If the move is PlayFallFromDeck, there can be uncertainty about the future states (if len(deck) > 1)
+        # so we need to calculate the mean evaluation of the possible states
         if move == "PlayFallFromDeck":
-            # Store the scores, to be able to get the best pre-computed score for a specific play
+            # Store the scores, to be able to get the pre-computed score for a specific play
             self.play_fall_from_deck_scores = {tuple(play) : eval for play, eval in zip(plays, evals)}
             plays = ["unknown"]
             states = ["unknown"]
             evals = [float(np.mean(evals))]
+
+        # In these moves there is also uncertainty if there is deck left, so we need to sample them
+        # Each unique play corresponds to multiple possible states.
+        # Calculate the mean evaluation of the possible states for each unique play
         elif move in ["PlayToOther", "InitialPlay", "EndTurn"]:
             unique_plays = []
             mean_evals = []
             corresponding_states = []
+            # et the unique plays
             for play in plays:
                 if play not in unique_plays:
                     unique_plays.append(play)
+            # For each unique play, evaluate all possible future states and use the mean of the evaluations
             for unique_play in unique_plays:
-                # Store the scores, to be able to get the best pre-computed score for a specific play
                 mean_evals.append(np.mean([eval for play, eval in zip(plays, evals) if play == unique_play]))
                 #corresponding_states.append(states[plays.index(unique_play)])
             self.plog.debug(f"Unique plays: {unique_plays}")
@@ -158,7 +167,7 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             print("Evals: ", evals, flush=True)
             print("Plays: ", plays, flush=True)
             raise Exception("Could not find best play")
-        #print("Best play: ", best[0], " with eval: ", best[2], flush=True)
+        
         if get_n:
             return best[0],best[1],len(plays)
         return best[0],best[1]
