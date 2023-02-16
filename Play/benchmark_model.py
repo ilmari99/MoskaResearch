@@ -36,14 +36,14 @@ def player_benchmark1(
         append : bool =False
                      ) -> None:
 
-    models = ["./Models/ModelMB11-260/model.tflite", "./Models/ModelNN1/model.tflite"] + models
+    models = ["./Models/ModelMB11-260/model.tflite"] + models
     models = [os.path.abspath(m) for m in models]
     models = list(set(models))
 
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.DEBUG,
-        "timeout" : 30,
+        "timeout" : 60,
         "gather_data":True,
         "model_paths":models
     }
@@ -58,7 +58,7 @@ def player_benchmark1(
                                     "log_file":f"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
-                                    "model_id":0,
+                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
                                     }}),
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3","log_file":f"Game-{x}-B3.log"}}),
         (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1","log_file":f"Game-{x}-HEV1.log", "max_num_states":1000}}),
@@ -108,16 +108,18 @@ def player_benchmark_random(
 
 
 if __name__ == "__main__":
-
-    model_path = os.path.abspath("./Models/ModelNN1/model.tflite")
-    player = (NNEvaluatorBot, lambda x : {"name" : f"ModelNN1",
+    models = [
+        os.path.abspath("./ModelNN1/model.tflite"),
+        os.path.abspath("./Models/ModelMB11-260/model.tflite")
+    ]
+    player = (NNEvaluatorBot, lambda x : {"name" : f"Model-All",
                                     "log_file":f"Game-{x}-ModelNN1.log",
                                     "max_num_states":1000,
                                     "pred_format":"new",
-                                    "model_id":model_path,
+                                    "model_id":"all",
     })
-    models = [model_path]
 
 
-    player_benchmark1(player, models, 100, 5, folder="Compare", append=False)
-    player_benchmark_random(player, models, 100, 5, folder="Compare", append=True)
+    player_benchmark1(player, models, 1000, 20, folder="Compare", append=False)
+    player_benchmark_random(player, models, 1000, 20, folder="Compare", append=True)
+
