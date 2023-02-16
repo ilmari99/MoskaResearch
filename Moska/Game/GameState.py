@@ -87,8 +87,8 @@ class FullGameState:
             # the players again, and that is not currently possible.
         for pl, cards in zip(game.players,self.full_player_cards):
             pl.hand.cards = cards
-        return
-    
+        return      
+
     @classmethod
     def from_game(cls,game : 'MoskaGame', copy : bool = True):
         full_player_cards = [pl.hand.cards for pl in game.players]
