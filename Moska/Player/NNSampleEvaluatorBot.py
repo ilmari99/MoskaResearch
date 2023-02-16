@@ -4,14 +4,15 @@ import logging
 import random
 import threading
 import numpy as np
-from .AbstractEvaluatorBot import AbstractEvaluatorBot
+
+from Moska.Player.AbstractHIFEvaluatorBot import AbstractHIFEvaluatorBot
 from typing import Dict, List,TYPE_CHECKING, Tuple
 from ..Game.GameState import FullGameState, GameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
     from ..Game.Game import MoskaGame
 
-class NNSampleEvaluatorBot(AbstractEvaluatorBot):
+class NNSampleEvaluatorBot(AbstractHIFEvaluatorBot):
     
     def __init__(self,
                  moskaGame: MoskaGame = None,
@@ -20,18 +21,20 @@ class NNSampleEvaluatorBot(AbstractEvaluatorBot):
                  requires_graphic: bool = False, 
                  log_level=logging.INFO,
                  log_file="",
-                 max_num_states : int = 1000,
+                 max_num_states : int = 500,
+                 max_num_samples : int = 100,
+                 nsamples : int = 10,
                  pred_format : str ="new",
                  model_id : (str or int) = "all",
-                 nsamples : int = 10
                  ):
         self.nsamples = nsamples
         self.pred_format = pred_format
         self.max_num_states = max_num_states
+        self.max_num_samples = max_num_samples
         self.model_id = model_id
         if not name:
             name = "NNEV"
-        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states)
+        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states,max_num_samples)
 
     def evaluate_approx_states(self, states: List[FullGameState]) -> List[float]:
         preds = []
@@ -43,15 +46,15 @@ class NNSampleEvaluatorBot(AbstractEvaluatorBot):
             num_cards_on_other_players = [len(cards) for cards in state.full_player_cards]
             # How many cards we DONT know from each player
             missing_cards_on_other_players = [on_player - we_know for on_player, we_know in zip(num_cards_on_other_players, known_cards_on_other_players)]
-            self.plog.info(f"Missing cards on players: {missing_cards_on_other_players}")
-            self.plog.info(f"Own pid: {self.pid}")
+            self.plog.debug(f"Missing cards on players: {missing_cards_on_other_players}")
+            self.plog.debug(f"Own pid: {self.pid}")
             # Remove self from the list
             total_missing_cards = sum(missing_cards_on_other_players) - missing_cards_on_other_players[self.pid]
             if total_missing_cards == 0:
                 preds.append(self.__evaluate_states([state])[0])
                 continue
-            # Get 10 samples of cards from the deck which could be the missing cards
             possible_fills = self.moskaGame.card_monitor.get_hidden_cards(self)
+            # Get nsamples samples of cards from the deck which could be the cards in each players hand
             possible_fills = [random.sample(possible_fills, total_missing_cards) for _ in range(self.nsamples)]
             sampled_states = []
             for possible_cards in possible_fills:
@@ -63,7 +66,7 @@ class NNSampleEvaluatorBot(AbstractEvaluatorBot):
                     end_index = start_index + missing_cards_on_other_players[pid]
                     if end_index == total_missing_cards:
                         end_index = None
-                    self.plog.info(f"Adding cards {possible_cards[start_index:end_index]} to player {pid}")
+                    self.plog.debug(f"Adding cards {possible_cards[start_index:end_index]} to player {pid}")
                     new_state.known_player_cards[pid] += possible_cards[start_index:end_index]
                     start_index += missing_cards_on_other_players[pid]
                 sampled_states.append(new_state)
