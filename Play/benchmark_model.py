@@ -142,13 +142,13 @@ if __name__ == "__main__":
         os.path.abspath("./Models/ModelNN1/model.tflite"),
     ]
     # Specify the player type
-    player_type = NNSampleEvaluatorBot
+    player_type = WideNNEVHEV
     # Specify the player arguments, '{x}' will be replaced by the game number
     player_args = {"name" : "player",
                     "log_file":"Game-{x}-player.log",
-                    "max_num_states":100,
+                    "log_level":logging.DEBUG,
+                    "max_num_states":1000,
                     "max_num_samples":100,
-                    "nsamples":10,
                     "pred_format":"new",
                     "model_id":models[0],
     }
