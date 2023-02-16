@@ -35,50 +35,62 @@ def player_benchmark1(
         chunksize : int = 4,
         append : bool =False
                      ) -> None:
+    """ Benchmark a player against a set of predefined models.
+    """
 
+    # The performance is compared against one MB11-260 model.
     models = ["./Models/ModelMB11-260/model.tflite"] + models
     models = [os.path.abspath(m) for m in models]
     models = list(set(models))
 
+    # Game arguments
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.DEBUG,
         "timeout" : 60,
-        "gather_data":True,
+        "gather_data":False,
         "model_paths":models
     }
 
+    # Players shared arguments, except the player or otherwise specified
     shared_kwargs = {
         "log_level" : logging.INFO,
     }
     
     players = [
         player,
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1",
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260",
                                     "log_file":f"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
                                     "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
                                     }}),
-        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3","log_file":f"Game-{x}-B3.log"}}),
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1","log_file":f"Game-{x}-HEV1.log", "max_num_states":1000}}),
+        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3",
+                                                  "log_file":f"Game-{x}-B3.log"}}),
+        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1",
+                                                               "log_file":f"Game-{x}-HEV1.log",
+                                                               "max_num_states":1000}}),
     ]
+    # Make the log directory and change to it
     make_log_dir(folder, append=append)
     results = play_games(players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
     get_loss_percents(results)
+    print("Benchmark1 done. A great result is < 20% loss")
     os.chdir("..")
 
 
-def player_benchmark_random(
+def player_benchmark2(
         player : Tuple[AbstractPlayer, Callable[[int], Dict[str, Any]]],
         models : List[str],
         num_games : int,
         cpus : int,
-        folder : str = "BenchmarkRandom",
+        folder : str = "Benchmark2",
         chunksize : int = 4,
-        append : bool =False
+        append : bool = False
                      ) -> None:
     
+    # The performance is compared against 3 x MB11-260 model.
+    models = ["./Models/ModelMB11-260/model.tflite"] + models
     models = [os.path.abspath(m) for m in models]
     models = list(set(models))
 
@@ -95,31 +107,52 @@ def player_benchmark_random(
     
     players = [
         player,
-        (RandomPlayer,lambda x : {**shared_kwargs,**{"name" : f"Random1","log_file":f"Game-{x}-Random1.log"}}),
-        (RandomPlayer,lambda x : {**shared_kwargs,**{"name" : f"Random2","log_file":f"Game-{x}-Random2.log"}}),
-        (RandomPlayer,lambda x : {**shared_kwargs,**{"name" : f"Random3","log_file":f"Game-{x}-Random3.log"}}),
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-1",
+                                    "log_file":f"Game-{x}-MB11-260-1.log", 
+                                    "max_num_states":1000,
+                                    "pred_format":"old",
+                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    }}),
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-2",
+                                    "log_file":f"Game-{x}-MB11-260-2.log", 
+                                    "max_num_states":1000,
+                                    "pred_format":"old",
+                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    }}),
+        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-3",
+                                    "log_file":f"Game-{x}-MB11-260-3.log", 
+                                    "max_num_states":1000,
+                                    "pred_format":"old",
+                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    }}),
     ]
 
     make_log_dir(folder, append=append)
     results = play_games(players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
     get_loss_percents(results)
+    print("Benchmark2 done. A great result is < 24% loss")
     os.chdir("..")
 
 
 
 if __name__ == "__main__":
+    # Specify the model paths
     models = [
-        os.path.abspath("./ModelNN1/model.tflite"),
-        os.path.abspath("./Models/ModelMB11-260/model.tflite")
+        os.path.abspath("./Models/ModelNN1/model.tflite"),
     ]
-    player = (NNEvaluatorBot, lambda x : {"name" : f"Model-All",
-                                    "log_file":f"Game-{x}-ModelNN1.log",
-                                    "max_num_states":1000,
-                                    "pred_format":"new",
-                                    "model_id":"all",
-    })
+    # Specify the player type
+    player_type = NNSampleEvaluatorBot
+    # Specify the player arguments, '{x}' will be replaced by the game number
+    player_args = {"name" : "player",
+                    "log_file":"Game-{x}-player.log",
+                    "max_num_states":100,
+                    "max_num_samples":100,
+                    "nsamples":10,
+                    "pred_format":"new",
+                    "model_id":models[0],
+    }
 
-
-    player_benchmark1(player, models, 1000, 20, folder="Compare", append=False)
-    player_benchmark_random(player, models, 1000, 20, folder="Compare", append=True)
+    player = (player_type, lambda x : {arg:val if not isinstance(val,str) else val.replace("{x}",str(x)) for arg,val in player_args.items()})
+    player_benchmark1(player, models, 10, 5, chunksize=1, folder="Compare", append=False)
+    player_benchmark2(player, models, 10, 5, chunksize=1, folder="Compare", append=True)
 
