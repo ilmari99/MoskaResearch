@@ -46,15 +46,19 @@ def to_minimize_func(params):
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":False,
-        "model_paths":["../Models/ModelMB11-260/model.tflite"],
+        "model_paths":["../Models/ModelMB11-260/model.tflite","../Models/ModelNN1/model.tflite"],
     }
-    player_to_minimize = "HEV"
+    player_to_minimize = "WIDE"
     print(f"Simulating with params: {params}")
     players = [
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV",
-                                                               "log_file":f"Game-{x}-HEV.log",
-                                                               "max_num_states":1000,
-                                                               "coefficients" : params}}),
+        (WideNNEVHEV, lambda x : {**shared_kwargs,**{"name" : f"WIDE",
+                                                    "log_file":f"Game-{x}-WIDE.log",
+                                                    "coefficients":params,
+                                                    "max_num_states":1000,
+                                                    "max_num_samples":100,
+                                                     "pred_format":"new",
+                                                     "model_id":1,
+                                                    }}),
 
         (MoskaBot2, lambda x : {**shared_kwargs,**{"name" : f"B2-1","log_file":f"Game-{x}-B-3.log"}}),
 
@@ -62,18 +66,19 @@ def to_minimize_func(params):
                                                   "log_file":f"Game-{x}-NNEV.log", 
                                                   "max_num_states":1000,
                                                   "pred_format":"old",
+                                                  "model_id":0,
                                                   }}),
 
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
     ]
-    results = play_games(players, gamekwargs, ngames=500, cpus=10, chunksize=2,shuffle_player_order=True, verbose=False)
+    results = play_games(players, gamekwargs, ngames=20, cpus=5, chunksize=2,shuffle_player_order=True, verbose=False)
     out = get_loss_percents(results,player=player_to_minimize, show=False)
     print(f"Player '{player_to_minimize}' lost: {out} %")
     return out
 
 def to_minimize_call(log_dir = "Minimize"):
     make_log_dir(log_dir)
-    x0 = [1, 1, -1, 1, 51]
+    x0 = [2.3, 0.77, -2, 0.39, 52]
     res = minimize(to_minimize_func,x0=x0,method="Powell",options={"maxiter":600,"disp":True})
     print(f"Minimization result: {res}")
     return
