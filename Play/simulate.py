@@ -73,6 +73,7 @@ def args_to_gamekwargs(
         _type_: _description_
     """
     game_args = game_kwargs(gameid)
+    
     players = [pl(**args(gameid)) for pl, args in players]
     if not players:
         assert "nplayers" in game_args or "players" in game_args
