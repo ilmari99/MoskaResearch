@@ -51,7 +51,7 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states, max_num_samples)
 
     def sigmoid(self, preds):
-        return 1 / (1 + np.exp(-1*np.array(preds)))
+        return 1 / (1 + np.exp(-0.01*np.array(preds)))
         
     def evaluate_states(self, states: List[FullGameState]) -> List[float]:
         """ Evaluate a list of states using a neural network and a heuristic function.
