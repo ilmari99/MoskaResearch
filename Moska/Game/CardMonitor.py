@@ -72,7 +72,7 @@ class CardMonitor:
         return hidden_cards
     
     
-    def get_cards_possibly_in_deck(self,player : AbstractPlayer = None) -> set[Card]:
+    def get_cards_possibly_in_deck(self,player : AbstractPlayer) -> set[Card]:
         """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
         """
         # If there is only one card left in the deck, it is the triumph card
@@ -81,7 +81,6 @@ class CardMonitor:
         if len(self.game.deck) == 0:
                 return []
         hidden_cards = self.get_hidden_cards(player)
-        player.plog.info(f"Hidden cards: {hidden_cards}")
         #random.shuffle(hidden_cards)
         assert len(hidden_cards) == len(set(hidden_cards)), f"Duplicates in hidden cards"
         return hidden_cards
@@ -201,7 +200,11 @@ class CardMonitor:
         known_cards = self.player_cards[player_name]
         # Get the cards the player actually has
         actual_cards = self.game.get_players_condition(cond = lambda x : x.name == player_name)[0].hand.cards
-
+        # If a player has the triumph card, and we do not know it yet
+        # This requires, that the deck is empty. Otherwise it is just a mock move
+        if any(card == self.game.triumph_card for card in actual_cards) and self.game.triumph_card not in known_cards and len(self.game.deck) == 0:
+            self.update_known(player_name,[self.game.triumph_card],add=True)
+            known_cards = self.player_cards[player_name]
         missing = len(actual_cards) - len(known_cards)
         add = True
         if missing < 0:
