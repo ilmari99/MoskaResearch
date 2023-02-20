@@ -407,8 +407,9 @@ class AbstractPlayer(ABC):
                         success, msg = self._play_move()
                 except Exception as e:
                     self.plog.error(traceback.format_exc())
+                    self.plog.error(msg)
                     self.EXIT_STATUS = 2
-                    sys.exit(e)
+                    break
                 # The target player is not ready, until they play "EndTurn"
                 if (self is curr_target and self.moskaGame.cards_to_fall):
                     self.ready = False
