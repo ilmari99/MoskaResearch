@@ -99,8 +99,7 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
         cards_possibly_in_deck = self._get_cards_possibly_in_deck_state(state)
         total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
         if len(cards_possibly_in_deck) == 0:
-            #return 0
-            return self.coefficients["missing_card"]
+            return 0
         # Calculate the expected score of a card that is lifted from the deck
         e_lifted = total_possible_falls / len(cards_possibly_in_deck)
         return e_lifted
@@ -148,7 +147,8 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
 
         # If the player has no cards, the score is infinite -> player doesn't lose
         if len(my_cards) + liftn == 0:
-            return float("inf")
+            #return float("inf")
+            return 1000000
         
         # Calculate the average score of the cards in hand
         avg_hand_score = (my_cards_score + from_lifted_score) / (len(my_cards) + liftn)
