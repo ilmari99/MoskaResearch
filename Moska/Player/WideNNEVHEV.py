@@ -113,7 +113,7 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
         missing = 6 - len(cards)
         liftn = 0
         if missing > 0 and len(deck) > 0:
-            liftn = min(missing, len(deck))
+            liftn = min(missing, len(deck),0)
         return liftn
     
     def hev_evaluate_single_state(self, state: FullGameState) -> float:
