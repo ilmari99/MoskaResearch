@@ -126,6 +126,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
         # Get the possible next states for a move
         # The states should not be empty, because the next states are only computed if the move is valid
         plays, states, evals = self.get_possible_next_states(move)
+        if len(plays) == 0:
+            raise ValueError("No possible next states for move: ", move)
         if move == "PlayFallFromDeck":
             # Store the scores, to be able to get the best pre-computed score for a specific play
             self.play_fall_from_deck_scores = {tuple(play) : eval for play, eval in zip(plays, evals)}
