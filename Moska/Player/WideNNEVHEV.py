@@ -32,11 +32,11 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
         self.model_id = model_id
         self.scorer : _ScoreCards = _ScoreCards(self,default_method="counter")
         self.coefficients = {
-            "my_cards" : 2.075,
-            "len_set_my_cards" : 2.063,
-            "len_my_cards" : -1.18,
-            "kopled":3.04,
-            "missing_card" : 53.45  
+            "my_cards" : 6.154,
+            "len_set_my_cards" : 2.21,
+            "len_my_cards" : 1.57,
+            "kopled":-3,
+            "missing_card" : 52.6  
         }
         if isinstance(coefficients, str) and coefficients == "random":
             coefficients = {}
