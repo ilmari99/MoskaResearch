@@ -72,6 +72,7 @@ class AbstractPlayer(ABC):
         """
         plog = logging.getLogger(self.name + str(random.randint(0,1000000)))    # TODO: This is why the logs might sometimes display multiple games in one file
         plog.setLevel(self.log_level)
+        logging.captureWarnings(True)
         fh = logging.FileHandler(self.log_file,mode="w",encoding="utf-8")
         formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
         fh.setFormatter(formatter)
