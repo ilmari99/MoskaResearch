@@ -89,7 +89,7 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         missing = 6 - len(cards)
         liftn = 0
         if missing > 0 and len(deck) > 0:
-            liftn = min(missing, len(deck))
+            liftn = min(missing, len(deck),0)
         return liftn
     
     def _evaluate_single_state(self, state: FullGameState) -> float:
@@ -123,7 +123,8 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
 
         # If the player has no cards, the score is infinite -> player doesn't lose
         if len(my_cards) + liftn == 0:
-            return float("inf")
+            #return float("inf")
+            return 10000000
         
         # Calculate the average score of the cards in hand
         avg_hand_score = (my_cards_score + from_lifted_score) / (len(my_cards) + liftn)
