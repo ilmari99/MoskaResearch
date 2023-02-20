@@ -99,7 +99,8 @@ class WideNNEVHEV(AbstractHIFEvaluatorBot):
         cards_possibly_in_deck = self._get_cards_possibly_in_deck_state(state)
         total_possible_falls = sum((c.score for c in cards_possibly_in_deck))
         if len(cards_possibly_in_deck) == 0:
-            return 0
+            #return 0
+            return self.coefficients["missing_card"]
         # Calculate the expected score of a card that is lifted from the deck
         e_lifted = total_possible_falls / len(cards_possibly_in_deck)
         return e_lifted
