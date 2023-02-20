@@ -129,6 +129,8 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
     def _get_move_prediction(self, move : str, get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
+        if len(plays) == 0:
+            raise ValueError("No possible next states for move: " + move)
         # If the move is PlayFallFromDeck, there can be uncertainty about the future states (if len(deck) > 1)
         # so we need to calculate the mean evaluation of the possible states
         if move == "PlayFallFromDeck":
