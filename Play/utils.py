@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import logging
 import os
@@ -71,7 +72,6 @@ def args_to_gamekwargs(
 
 def get_random_players(nplayers, shared_kwargs = {}, use_HIF = False):
     """Returns a list of random players with random settings."""
-
     shared_kwargs_default = {
         "log_level" : logging.WARNING,
     }
@@ -116,28 +116,28 @@ def get_random_players(nplayers, shared_kwargs = {}, use_HIF = False):
                                             "log_file":f"Game-{x % 10}-NNEV1.log", 
                                             "max_num_states":random.randint(1,10000),
                                             "pred_format":"old",
-                                            "model_id":"all",
+                                            "model_id":0,
                                             }}),
         
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV2",
                                             "log_file":f"Game-{x % 10}-NNEV2.log", 
                                             "max_num_states":random.randint(1,10000),
                                             "pred_format":"old",
-                                            "model_id":"all",
+                                            "model_id":0,
                                             }}),
         
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV3",
                                                     "log_file":f"Game-{x % 10}-NNEV3.log", 
                                                     "max_num_states":random.randint(1,10000),
-                                                    "pred_format":"old",
-                                                    "model_id":"all",
+                                                    "pred_format":"new",
+                                                    "model_id":1,
                                                     }}),
         
         (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV4",
                                             "log_file":f"Game-{x % 10}-NNEV4.log", 
                                             "max_num_states":random.randint(1,10000),
-                                            "pred_format":"old",
-                                            "model_id":"all",
+                                            "pred_format":"new",
+                                            "model_id":1,
                                             }}),
     ]
     
