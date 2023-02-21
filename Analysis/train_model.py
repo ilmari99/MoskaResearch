@@ -217,16 +217,16 @@ def get_conv_model():
 
 INPUT_SHAPE = (430,)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./Dataset-Lumi2/Vectors/", "./Dataset-Lumi/Vectors/","./Dataset/Vectors/"],
+    all_dataset = create_tf_dataset(["./Dataset2/Vectors/","./Minimize/Vectors/","./Dataset-Lumi2/Vectors/", "./Dataset-Lumi3/Vectors/"],
     add_channel=False,
     get_part="full",
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
     #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
-    model = get_branched_model()
+    model = get_loaded_model("./ModelNN1/model.h5")
     print(model.summary())
-    VALIDATION_LENGTH = 500000
-    TEST_LENGTH = 500000
+    VALIDATION_LENGTH = 5000000
+    TEST_LENGTH = 5000000
     BATCH_SIZE = 4096
     tensorboard_log = "tensorboard-log/"
     checkpoint_filepath = './model-checkpoints/'
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     if os.path.exists(tensorboard_log):
         warnings.warn("Tensorboard log directory already exists!")
     
-    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=8, restore_best_weights=True, start_from_epoch=1)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=10, restore_best_weights=True, start_from_epoch=5)
     tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=5)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     
     model.fit(x=train_ds, 
               validation_data=validation_ds, 
-              epochs=100, 
+              epochs=50, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
     
