@@ -7,24 +7,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
 import sys
 from Moska.Game.Game import MoskaGame
-from Moska.Player.MoskaBot3 import MoskaBot3
 from Moska.Player.AbstractPlayer import AbstractPlayer
-from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
-from Moska.Player.MoskaBot2 import MoskaBot2
-from Moska.Player.MoskaBot0 import MoskaBot0
-from Moska.Player.MoskaBot1 import MoskaBot1
-from Moska.Player.RandomPlayer import RandomPlayer
-from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
-from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
-from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideNNEVHEV import WideNNEVHEV
-import random
-import numpy as np
-from scipy.optimize import minimize
-from scipy import stats as sc_stats
+from Utils import make_log_dir, args_to_gamekwargs
+from PlayerWrapper import PlayerWrapper
+
+"""This file contains simulation utility functions for playing (multiple) games of Moska."""
 
 def set_game_args(game : MoskaGame, gamekwargs : Dict[str,Any]) -> None:
     """Sets a game instances variables from a dictionary of key-value pairs.
@@ -56,41 +45,13 @@ def set_player_args(players : Iterable[AbstractPlayer], plkwargs : Dict[str,Any]
             pl.__setattr__(k,v)
     return
 
-def args_to_gamekwargs(
-    game_kwargs : Callable,
-    players : List[Tuple[AbstractPlayer,Callable]],
-    gameid : int,
-    shuffle : False,
-                        ) -> Dict[str,Any]:
-    """Turn dynamic arguments (for ex callable changing game log), to a static gamekwargs dictionary.
-
-    Args:
-        game_kwargs (Callable): _description_
-        players (List[Tuple[AbstractPlayer,Callable]]): _description_
-        gameid (int): _description_
-        shuffle (False): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    game_args = game_kwargs(gameid)
-    
-    players = [pl(**args(gameid)) for pl, args in players]
-    if not players:
-        assert "nplayers" in game_args or "players" in game_args
-    else:
-        game_args["players"] = players
-    if shuffle and "players" in game_args:
-        random.shuffle(game_args["players"])
-    return game_args
-
 
 def run_game(kwargs):
     """ Run a single game with the specified arguments. Return the finishing ranks, or None if the game failed. 
     """
     return MoskaGame(**kwargs).start()
 
-def play_games(players : List[Tuple[AbstractPlayer,Callable]],
+def play_games(players : List[PlayerWrapper],
                game_kwargs : Callable,
                ngames : int = 1,
                cpus :int = -1,
@@ -146,7 +107,9 @@ def play_games(players : List[Tuple[AbstractPlayer,Callable]],
     return results
 
 def get_loss_percents(results, player="all", show = True):
-    # Return the results as a dictionary of player names and their loss percentage
+    """ Return and/or print the results as a dictionary of player names and their loss percentage.
+    Doesnt print the player if they have no losses.
+    """
     losses = {}
     games = 0
     results_filtered = filter(lambda x : x is not None,results)
