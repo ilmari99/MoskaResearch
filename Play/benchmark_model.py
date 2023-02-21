@@ -24,34 +24,35 @@ from Moska.Player.WideNNEVHEV import WideNNEVHEV
 import random
 import numpy as np
 from scipy.optimize import minimize
-from simulate import play_games, get_loss_percents
-from utils import make_log_dir
+from Simulate import play_games, get_loss_percents
+from Utils import make_log_dir
+from PlayerWrapper import PlayerWrapper
 
 def player_benchmark1(
-        player : Tuple[AbstractPlayer, Callable[[int], Dict[str, Any]]],
-        models : List[str],
-        num_games : int,
+        player : PlayerWrapper,
         cpus : int,
-        folder : str = "Benchmark1",
         chunksize : int = 4,
-        append : bool =False
-                     ) -> None:
+        folder : str = "Benchmark1",
+        custom_game_kwargs : Dict[str,Any] = {},
+                     ) -> float:
     """ Benchmark a player against a set of predefined models.
     """
-
-    # The performance is compared against one MB11-260 model.
-    models = ["./Models/ModelMB11-260/model.tflite"] + models
+    models = ["./Models/ModelMB11-260/model.tflite"]
+    if "model_paths" in custom_game_kwargs:
+        models += custom_game_kwargs["model_paths"]
+        custom_game_kwargs.pop("model_paths")
     models = [os.path.abspath(m) for m in models]
     models = list(set(models))
+    print("Models: ", models)
 
     # Game arguments
-    gamekwargs = lambda x : {
-        "log_file" : f"Game-{x}.log",
+    gamekwargs = {**{
+        "log_file" : "Game-{x}.log",
         "log_level" : logging.DEBUG,
         "timeout" : 60,
         "gather_data":False,
-        "model_paths":models
-    }
+        "model_paths":models,
+    }, **custom_game_kwargs}
 
     # Players shared arguments, except the player or otherwise specified
     shared_kwargs = {
@@ -60,87 +61,93 @@ def player_benchmark1(
     
     players = [
         player,
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260",
-                                    "log_file":f"Game-{x}-NNEV1.log", 
+        PlayerWrapper(NNEvaluatorBot, {**shared_kwargs,**{"name" : f"ModelMB11-260",
+                                    "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
-                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }}),
-        (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3",
-                                                  "log_file":f"Game-{x}-B3.log"}}),
-        (HeuristicEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"HEV1",
-                                                               "log_file":f"Game-{x}-HEV1.log",
+        PlayerWrapper(MoskaBot3,{**shared_kwargs,**{"name" : "B3",
+                                                  "log_file":"Game-{x}-B3.log"}}),
+        PlayerWrapper(HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV1",
+                                                               "log_file":"Game-{x}-HEV1.log",
                                                                "max_num_states":1000}}),
     ]
     # Make the log directory and change to it
-    make_log_dir(folder, append=append)
-    results = play_games(players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
-    get_loss_percents(results)
+    make_log_dir(folder)
+    results = play_games(players, gamekwargs, ngames=1000, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
+    loss_perc = get_loss_percents(results)
     print("Benchmark1 done. A great result is < 20% loss")
     os.chdir("..")
+    return loss_perc.get(player.settings["name"], 0)
 
 
 def player_benchmark2(
-        player : Tuple[AbstractPlayer, Callable[[int], Dict[str, Any]]],
-        models : List[str],
-        num_games : int,
+        player : PlayerWrapper,
         cpus : int,
-        folder : str = "Benchmark2",
         chunksize : int = 4,
-        append : bool = False
-                     ) -> None:
-    
-    # The performance is compared against 3 x MB11-260 model.
-    models = ["./Models/ModelMB11-260/model.tflite"] + models
+        folder : str = "Benchmark2",
+        custom_game_kwargs : Dict[str,Any] = {},
+                     ) -> float:
+    """ Benchmark a player against a set of predefined models.
+    """
+    models = ["./Models/ModelMB11-260/model.tflite"]
+    if "model_paths" in custom_game_kwargs:
+        models += custom_game_kwargs["model_paths"]
+        custom_game_kwargs.pop("model_paths")
     models = [os.path.abspath(m) for m in models]
     models = list(set(models))
 
-    gamekwargs = lambda x : {
-        "log_file" : f"Game-{x}.log",
+    # Game arguments
+    gamekwargs = {**{
+        "log_file" : "Game-{x}.log",
         "log_level" : logging.DEBUG,
-        "timeout" : 30,
-        "gather_data":True,
-        "model_paths":models
-    }
+        "timeout" : 60,
+        "gather_data":False,
+        "model_paths":models,
+    }, **custom_game_kwargs}
+
+    # Players shared arguments, except the player or otherwise specified
     shared_kwargs = {
         "log_level" : logging.INFO,
     }
     
     players = [
         player,
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-1",
-                                    "log_file":f"Game-{x}-MB11-260-1.log", 
+        PlayerWrapper(NNEvaluatorBot, {**shared_kwargs,**{"name" : f"ModelMB11-260-1",
+                                    "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
-                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-2",
-                                    "log_file":f"Game-{x}-MB11-260-2.log", 
+        PlayerWrapper(NNEvaluatorBot,{**shared_kwargs,**{"name" : f"ModelMB11-260-2",
+                                    "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
-                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }}),
-        (NNEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"ModelMB11-260-3",
-                                    "log_file":f"Game-{x}-MB11-260-3.log", 
+        PlayerWrapper(NNEvaluatorBot, {**shared_kwargs,**{"name" : f"ModelMB11-260-3",
+                                    "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
                                     "pred_format":"old",
-                                    "model_id":os.path.abspath("../Models/ModelMB11-260/model.tflite"),
+                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }}),
     ]
-
-    make_log_dir(folder, append=append)
-    results = play_games(players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
-    get_loss_percents(results)
-    print("Benchmark2 done. A great result is < 24% loss")
+    # Make the log directory and change to it
+    make_log_dir(folder)
+    results = play_games(players, gamekwargs, ngames=1000, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
+    loss_perc = get_loss_percents(results)
+    print("Benchmark1 done. A great result is < 20% loss")
     os.chdir("..")
+    return loss_perc.get(player.settings["name"], 0)
 
 
 
 if __name__ == "__main__":
     # Specify the model paths
-    models = [
-        os.path.abspath("./ModelNN1/model.tflite"),
-    ]
+    game_kwargs = {
+        "model_paths" : [os.path.abspath("./Models/ModelNN1/model.tflite")],
+    }
     # Specify the player type
     player_type = WideNNEVHEV
     # Specify the player arguments, '{x}' will be replaced by the game number
@@ -151,11 +158,11 @@ if __name__ == "__main__":
                     "max_num_states":1000,
                     "max_num_samples":100,
                     "pred_format":"new",
-                    "model_id":models[0],
+                    "model_id":game_kwargs["model_paths"][0],
                     "coefficients":coeffs,
     }
     # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
-    player = (player_type, lambda x : {arg:val if not isinstance(val,str) else val.replace("{x}",str(x)) for arg,val in player_args.items()})
-    player_benchmark1(player, models, 1000, 50, chunksize=4, folder="Compare", append=False)
-    player_benchmark2(player, models, 1000, 50, chunksize=4, folder="Compare", append=True)
+    player = PlayerWrapper(player_type, player_args)
+    player_benchmark1(player,-1,4,custom_game_kwargs=game_kwargs,folder="Test1")
+    player_benchmark2(player,-1,4,custom_game_kwargs=game_kwargs)
 
