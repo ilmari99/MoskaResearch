@@ -45,8 +45,8 @@ def to_minimize_func(params):
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.WARNING,
         "timeout" : 30,
-        "gather_data":False,
-        "model_paths":["../Models/ModelMB11-260/model.tflite","../Models/ModelNN1/model.tflite"],
+        "gather_data":True,
+        "model_paths":["../Models/ModelMB11-260/model.tflite","../ModelNN1/model.tflite"],
     }
     player_to_minimize = "WIDE"
     print(f"Simulating with params: {params}")
@@ -71,15 +71,15 @@ def to_minimize_func(params):
 
         (MoskaBot3,lambda x : {**shared_kwargs,**{"name" : f"B3-2","log_file":f"Game-{x}-B-4.log"}}),
     ]
-    results = play_games(players, gamekwargs, ngames=20, cpus=5, chunksize=2,shuffle_player_order=True, verbose=False)
+    results = play_games(players, gamekwargs, ngames=1000, cpus=50, chunksize=4,shuffle_player_order=True, verbose=False)
     out = get_loss_percents(results,player=player_to_minimize, show=False)
     print(f"Player '{player_to_minimize}' lost: {out} %")
     return out
 
 def to_minimize_call(log_dir = "Minimize"):
-    make_log_dir(log_dir)
+    make_log_dir(log_dir,append=True)
     x0 = [2.3, 0.77, -2, 0.39, 52]
-    res = minimize(to_minimize_func,x0=x0,method="Powell",options={"maxiter":600,"disp":True})
+    res = minimize(to_minimize_func,x0=x0,method="Powell",options={"maxiter":250,"disp":True})
     print(f"Minimization result: {res}")
     return
 
