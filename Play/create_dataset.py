@@ -38,26 +38,28 @@ def create_dataset(nrounds : int,
                    ):
     """Creates a dataset by playing games between random players.
     """
-
-    make_log_dir(folder)
+    model_paths = [os.path.abspath("./Models/ModelMB11-260/model.tflite"),
+                      os.path.abspath("./ModelNN1/model.tflite")]
     gamekwargs = lambda x : {
         "log_file" : f"Game-{x}.log",
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":True,
-        "model_paths":["../Models/ModelMB11-260/model.tflite"]
+        "model_paths":model_paths,
     }
     print(f"Creating dataset with {nrounds} rounds and {num_games} games per round.")
     print(f"Total games: {nrounds*num_games}.")
     print(f"Using {cpus} cpus and chunksize {chunksize}.")
     print(f"Using HIF: {use_HIF}.")
     print(f"Game kwargs: {gamekwargs(0)}")
+    make_log_dir(folder)
     time_taken = 0
     for i in range(nrounds):
         start_time = time.time()
-        players = get_random_players(4, use_HIF=use_HIF) if players == "random" else players
-        print(f"Round {i+1} players: {players}.")
-        results = play_games(players, gamekwargs, n=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=verbose)
+        random.seed(time_taken)
+        acting_players = get_random_players(4, use_HIF=use_HIF) if players == "random" else players
+        print(f"Round {i+1} players: {acting_players}.")
+        results = play_games(acting_players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=verbose)
         if verbose:
             get_loss_percents(results)
         end_time = time.time()
@@ -68,4 +70,5 @@ def create_dataset(nrounds : int,
     return
 
 if __name__ == "__main__":
-    create_dataset(nrounds=100,num_games=100,folder="Dataset",cpus=8,use_HIF=False,players="random")
+    folder = "/pfs/lustref1/flash/project_462000112/Dataset2"
+    create_dataset(nrounds=1000,num_games=1000,folder=folder,cpus=50,use_HIF=False,players="random",verbose=False)
