@@ -139,11 +139,12 @@ def player_benchmark2(
 if __name__ == "__main__":
     # Specify the model paths
     models = [
-        os.path.abspath("./Models/ModelNN1/model.tflite"),
+        os.path.abspath("./ModelNN1/model.tflite"),
     ]
     # Specify the player type
     player_type = WideNNEVHEV
     # Specify the player arguments, '{x}' will be replaced by the game number
+    coeffs = {"my_cards":6.154,"len_set_my_cards":2.208,"len_my_cards":1.5723,"kopled":-2.99,"missing_card":52.62}
     player_args = {"name" : "player",
                     "log_file":"Game-{x}-player.log",
                     "log_level":logging.DEBUG,
@@ -151,9 +152,10 @@ if __name__ == "__main__":
                     "max_num_samples":100,
                     "pred_format":"new",
                     "model_id":models[0],
+                    "coefficients":coeffs,
     }
-
+    # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
     player = (player_type, lambda x : {arg:val if not isinstance(val,str) else val.replace("{x}",str(x)) for arg,val in player_args.items()})
-    player_benchmark1(player, models, 10, 5, chunksize=1, folder="Compare", append=False)
-    player_benchmark2(player, models, 10, 5, chunksize=1, folder="Compare", append=True)
+    player_benchmark1(player, models, 1000, 50, chunksize=4, folder="Compare", append=False)
+    player_benchmark2(player, models, 1000, 50, chunksize=4, folder="Compare", append=True)
 
