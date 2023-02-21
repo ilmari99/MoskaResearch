@@ -25,48 +25,58 @@ import random
 import numpy as np
 from scipy.optimize import minimize
 from scipy import stats as sc_stats
-from utils import args_to_gamekwargs, make_log_dir
+from Utils import args_to_gamekwargs, make_log_dir,get_random_players
+from PlayerWrapper import PlayerWrapper
+
+def get_human_players() -> List[PlayerWrapper]:
+    """Returns a list of PlayerWrappers, including 1 human player.
+    """
+    shared_kwargs = {"log_level" : logging.DEBUG,
+                     "delay":1,
+                     "requires_graphic":True}
+    players = []
+    players.append(PlayerWrapper(HumanPlayer, {**shared_kwargs, **{"name":"Human","log_file":"human-{x}.log"}}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV1",
+                                            "log_file":"Game-{x}-NNEV1.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":"new",
+                                            }}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV2",
+                                            "log_file":"Game-{x}-NNEV2.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":"new",
+                                            }}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV3",
+                                            "log_file":"Game-{x}-NNEV3.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":"new",
+                                            }}))
+    return players
 
 
 
 
 def play_as_human(game_id = 0):
-    shared_kwargs = {
-        "log_level" : logging.DEBUG,
-        "delay":1,
-    }
-    players = [
-        (HumanPlayer,lambda x : {"name":"Human","log_file":f"human-{x}.log","requires_graphic":True}),
-        (NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV1","requires_graphic":True,
-                                                  "log_file":f"Game-{x}-NNEV1.log", 
-                                                  "max_num_states":8000,
-                                                  "max_num_samples":1000,
-                                                  "pred_format":"new",
-                                                  }}),
-        (NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV2","requires_graphic":True,
-                                                  "log_file":f"Game-{x}-NNEV2.log", 
-                                                  "max_num_states":8000,
-                                                  "max_num_samples":1000,
-                                                  "pred_format":"new",
-                                                  }}),
-        (NNHIFEvaluatorBot, lambda x : {**shared_kwargs,**{"name" : f"NNEV3","requires_graphic":True,
-                                                  "log_file":f"Game-{x}-NNEV3.log", 
-                                                  "max_num_states":8000,
-                                                  "max_num_samples":1000,
-                                                  "pred_format":"new",
-                                                  }}),
-    ]
-    gamekwargs = lambda x : {
-        "log_file" : f"Humangame-{x}.log",
+    #players = get_human_players()
+    cwd = os.getcwd()
+    players = get_random_players(4)
+    gamekwargs = {
+        "log_file" : "Humangame-{x}.log",
         "players" : players,
         "log_level" : logging.DEBUG,
         "timeout" : 1000,
-        "model_paths":["../Models/ModelMB11-260/model.tflite"]
+        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]]
     }
     game = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
+    make_log_dir("HumanLogs",append=True)
     game = MoskaGame(**game)
-    return game.start()
+    out = game.start()
+    os.chdir(cwd)
+    return out
 
 if __name__ == "__main__":
-    make_log_dir("HumanLogs")
-    play_as_human()
+    for i in range(10):
+        play_as_human(game_id=i)
