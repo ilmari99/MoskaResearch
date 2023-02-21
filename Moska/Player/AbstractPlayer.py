@@ -405,7 +405,7 @@ class AbstractPlayer(ABC):
                         self.ready = False
                         print(msg, flush=True)
                         success, msg = self._play_move()
-                except Exception as e:
+                except Exception as msg:
                     self.plog.error(traceback.format_exc())
                     self.plog.error(msg)
                     self.EXIT_STATUS = 2
