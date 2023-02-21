@@ -3,7 +3,7 @@
 ## **General** <!-- omit in toc -->
 This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players.
 
-The aim of this project is to create an agent, which plays at a human level. The general approach is to use deep (convolutional) neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with weak agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
+The aim of this project is to create an agent, which plays at a human level. The general approach is to use deep (convolutional) neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with hand-made agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
 
 ## **Usage** <!-- omit in toc -->
 
