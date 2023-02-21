@@ -61,7 +61,11 @@ class HumanPlayer(AbstractPlayer):
         indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n").split(" ")
         if self._check_no_input(indices):
             return []
-        indices = [int(d) for d in indices]
+        try:
+            indices = [int(d) for d in indices]
+        except Exception as e:
+            print(e)
+            return []
         return [self.hand.cards[i] for i in indices]
     
     def play_to_target(self) -> List[Card]:
@@ -69,7 +73,11 @@ class HumanPlayer(AbstractPlayer):
         indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n ").split(" ")
         if self._check_no_input(indices):
             return []
-        indices = [int(d) for d in indices]
+        try:
+            indices = [int(d) for d in indices]
+        except Exception as e:
+            print(e)
+            return []
         return [self.hand.cards[i] for i in indices]
     
     def play_fall_card_from_hand(self) -> dict:
@@ -99,5 +107,11 @@ class HumanPlayer(AbstractPlayer):
         indices = input("Which cards do you want to play to self (indices of cards in hand separated by space):\n ").split(" ")
         if self._check_no_input(indices):
             return []
-        indices = [int(d) for d in indices]
+        if "," in indices:
+            indices = indices.split(",")
+        try:
+            indices = [int(d) for d in indices]
+        except Exception as e:
+            print(e)
+            return []
         return [self.hand.cards[i] for i in indices]
