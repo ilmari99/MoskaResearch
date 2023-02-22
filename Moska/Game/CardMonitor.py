@@ -98,11 +98,11 @@ class CardMonitor:
         samples = []
         # Get different card combinations
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
-
         for comb in combs:
             samples.append(comb)
             if len(samples) >= max_samples:
                 break
+        random.shuffle(samples)
         return samples
         
     def make_cards_fall_dict(self):
