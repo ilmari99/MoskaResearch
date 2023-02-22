@@ -72,7 +72,7 @@ class CardMonitor:
         return hidden_cards
     
     
-    def get_cards_possibly_in_deck(self,player : AbstractPlayer) -> set[Card]:
+    def get_cards_possibly_in_deck(self,player : AbstractPlayer) -> list[Card]:
         """Get a list of cards that are possibly in the deck. This is done by checking which cards are not known to the player.
         """
         # If there is only one card left in the deck, it is the triumph card
@@ -93,14 +93,17 @@ class CardMonitor:
         # If there are less cards in the deck than ncards, return all cards
         if len(cards_possibly_in_deck) < ncards:
             return tuple(cards_possibly_in_deck)
-        samples = set()
+        if ncards < len(self.game.deck):
+            cards_possibly_in_deck.remove(self.game.triumph_card)
+        samples = []
         # Get different card combinations
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
+
         for comb in combs:
-            samples.add(comb)
+            samples.append(comb)
             if len(samples) >= max_samples:
                 break
-        return list(samples)
+        return samples
         
     def make_cards_fall_dict(self):
         """Create the cards_fall_dict by going through each card and checking if each card can be fell with the card
