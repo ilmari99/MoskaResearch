@@ -366,8 +366,17 @@ class MoskaGame:
     def __repr__(self) -> str:
         """ What to print when calling print(self) """
         s = f"Triumph card: {self.triumph_card}\n"
-        for pl in self.players:
-            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''} : {self.card_monitor.player_cards[pl.name]}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        if True and all((pl.requires_graphic for pl in self.players)) and self.model_paths:
+            player_evals = []
+            for pl in self.players:
+                if not pl.state_vectors or not hasattr(pl,"model_id"):
+                    evaluation = -1
+                else:
+                    evaluation = self.model_predict(np.array([pl.state_vectors[-1]],dtype=np.float32),model_id=pl.model_id)
+                player_evals.append(round(float(evaluation),2))
+        for pid,pl in enumerate(self.players):
+            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''}({player_evals[pid]}) : {self.card_monitor.player_cards[pl.name]}\n"
         s += f"Cards to fall : {self.cards_to_fall}\n"
         s += f"Fell cards : {self.fell_cards}\n"
         return s
