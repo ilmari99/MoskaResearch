@@ -164,7 +164,7 @@ class AbstractPlayer(ABC):
         """
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
-        assert play_cards, f"INITIAL PLAY CAN NOT BE EMPTY"
+        #assert play_cards, f"INITIAL PLAY CAN NOT BE EMPTY"
         self.plog.info(f"Playing {play_cards} to {target.name}")
         #self._initialPlay(target,play_cards)
         return [target, play_cards]
@@ -391,6 +391,9 @@ class AbstractPlayer(ABC):
                     print(f"{self.name} playing...",flush=True)
                     print(self.moskaGame,flush=True)
                     print(msgd, flush=True)
+                    self.moskaGame.glog.debug(f"{self.name} playing...")
+                    self.moskaGame.glog.debug(self.moskaGame)
+                    self.moskaGame.glog.debug(msgd)
                 # If there is only 1 active player in the game, the player is last
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
                     self._set_rank()
