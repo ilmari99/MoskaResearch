@@ -41,18 +41,21 @@ def get_human_players() -> List[PlayerWrapper]:
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
                                             "pred_format":"new",
+                                            "model_id":os.path.abspath("./Models/ModelNN1/model.tflite"),
                                             }}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV2",
                                             "log_file":"Game-{x}-NNEV2.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
                                             "pred_format":"new",
+                                            "model_id":os.path.abspath("./Models/ModelNN1/model.tflite"),
                                             }}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV3",
                                             "log_file":"Game-{x}-NNEV3.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
                                             "pred_format":"new",
+                                            "model_id":os.path.abspath("./Models/ModelNN1/model.tflite"),
                                             }}))
     return players
 
@@ -89,7 +92,7 @@ def play_as_human(game_id = 0):
         "players" : players,
         "log_level" : logging.DEBUG,
         "timeout" : 1000,
-        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]]
+        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelNN1/model.tflite"]]
     }
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
     # Changes to the log directory for the duration of the game
