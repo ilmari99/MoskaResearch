@@ -369,11 +369,17 @@ class MoskaGame:
         s += f"Deck left: {len(self.deck.cards)}\n"
         if True and all((pl.requires_graphic for pl in self.players)) and self.model_paths:
             player_evals = []
+            state = FullGameState.from_game(self,copy=False)
             for pl in self.players:
-                if not pl.state_vectors or not hasattr(pl,"model_id"):
-                    evaluation = -1
+                # If player doesn't have model_id or pred_format, use default values
+                if not hasattr(pl,"model_id") or not hasattr(pl,"pred_format"):
+                    pl_to_copy = self.get_players_condition(lambda x : x.name != pl.name and hasattr(x,"model_id") and hasattr(x,"pred_format"))[0]
+                    model_id = pl_to_copy.model_id
+                    pred_format = pl_to_copy.pred_format
                 else:
-                    evaluation = self.model_predict(np.array([pl.state_vectors[-1]],dtype=np.float32),model_id=pl.model_id)
+                    model_id = pl.model_id
+                    pred_format = pl.pred_format
+                evaluation = self.model_predict(np.array(state.as_perspective_vector(pl,fmt=pred_format),dtype=np.float32),model_id=model_id)
                 player_evals.append(round(float(evaluation),2))
         for pid,pl in enumerate(self.players):
             s += f"{pl.name}{'*' if pl is self.get_target_player() else ''}({player_evals[pid]}) : {self.card_monitor.player_cards[pl.name]}\n"
