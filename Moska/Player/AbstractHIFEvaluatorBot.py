@@ -445,8 +445,6 @@ class AbstractHIFEvaluatorBot(AbstractPlayer):
             self.plog.info(f"NMOVES: {len(self.moskaGame.deck)} , {total_n_moves}")
         self.plog.info(f"Move scores: {move_scores}")
         self.move_play_scores = move_scores
-        if self.requires_graphic:
-            print(f"Move scores: {self.move_play_scores.items()}\n")
         best_move = max(move_scores.items(),key=lambda x: x[1][1])
         self.plog.info(f"Playing best move: {best_move}")
         return best_move[0]
