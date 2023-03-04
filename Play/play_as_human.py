@@ -67,16 +67,13 @@ def get_next_game_id(path : str, filename : str) -> int:
         raise ValueError("Filename must contain '{x}'")
     # if the folder does not exist, return 0
     if not os.path.exists(path):
-        print("Folder does not exist")
         return 0
     # Pick any file that exists
     unique_filename = os.listdir(path)[0]
-    print("File exists",unique_filename)
     i = -1
     while os.path.exists(os.path.join(path, unique_filename)):
         i += 1
         unique_filename = replace_setting_values({"filename" : filename},game_id = i)["filename"]
-    print("File does not exist",unique_filename)
     print("Next game id",i)
     return i
 
@@ -91,7 +88,7 @@ def play_as_human(game_id = 0):
         "log_file" : "HumanGame-{x}.log",
         "players" : players,
         "log_level" : logging.DEBUG,
-        "timeout" : 1000,
+        "timeout" : 2000,
         "model_paths":[os.path.abspath(path) for path in ["./Models/ModelNN1/model.tflite"]]
     }
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
