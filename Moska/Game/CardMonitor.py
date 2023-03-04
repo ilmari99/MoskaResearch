@@ -92,17 +92,20 @@ class CardMonitor:
         cards_possibly_in_deck = self.get_cards_possibly_in_deck(player)
         # If there are less cards in the deck than ncards, return all cards
         if len(cards_possibly_in_deck) < ncards:
+            player.plog.debug(f"Less cards possibly in deck than are lifted, returning all cards")
             return tuple(cards_possibly_in_deck)
         if ncards < len(self.game.deck):
             cards_possibly_in_deck.remove(self.game.triumph_card)
         samples = []
+        random.shuffle(cards_possibly_in_deck)
         # Get different card combinations
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
         for comb in combs:
             samples.append(comb)
             if len(samples) >= max_samples:
                 break
-        random.shuffle(samples)
+        player.plog.debug(f"Sampled {len(samples)} cards from deck")
+        player.plog.debug(f"Sampled cards: {samples}")
         return samples
         
     def make_cards_fall_dict(self):
