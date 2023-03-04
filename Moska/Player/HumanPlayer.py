@@ -107,7 +107,7 @@ class HumanPlayer(AbstractPlayer):
             return (deck_card, self.moskaGame.cards_to_fall[fall_index])
         except Exception as ve:
             print(ve)
-            return (deck_card, None)
+            return self.deck_lift_fall_method(deck_card)
     
     
     def play_to_self(self) -> List[Card]:
