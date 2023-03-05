@@ -9,6 +9,7 @@ if TYPE_CHECKING:   # False at runtime, since we only need MoskaGame for typeche
     from ..Game.Game import MoskaGame
 from ..Game.Hand import MoskaHand
 from ..Game import utils
+from .utils import _make_cost_matrix, _map_each_to_list, _map_to_list
 import threading
 import time
 import logging
@@ -129,7 +130,7 @@ class AbstractPlayer(ABC):
         Returns:
             set: intersection of played values and values in the hand
         """
-        return self._playable_values_to_table().intersection([c.value for c in self.hand])
+        return self._playable_values_to_table().intersection([c.value for c in self.hand.cards])
     
     def _fits_to_table(self) -> int:
         """Return the number of cards playable to the active/target player.
@@ -257,6 +258,7 @@ class AbstractPlayer(ABC):
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
+    # Disgusting!
     @utils.check_new_card
     def _play_move(self) -> Tuple[bool,str]:
         """Calls moskaGame to propose a move.
@@ -294,6 +296,7 @@ class AbstractPlayer(ABC):
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
         self.ready = True
+        self.plog.debug(f"Player set to ready: {self.ready}")
         # If there are cards on the table; the game is already initiated
         initiated = int(len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards)) != 0
         # Special case: if the player has played all their cards in the previous turn, they must now end the turn and finish
@@ -411,6 +414,7 @@ class AbstractPlayer(ABC):
                     while not success:
                         self.plog.warning(msg)
                         self.ready = False
+                        self.plog.debug(f"Player set to not ready, because of: {msg}")
                         print(msg, flush=True)
                         success, msg = self._play_move()
                 except Exception as msg:
@@ -421,6 +425,7 @@ class AbstractPlayer(ABC):
                 # The target player is not ready, until they play "EndTurn"
                 if turns_taken_for_this_player < self.min_turns or (self is curr_target and self.moskaGame.cards_to_fall):
                     self.ready = False
+                    self.plog.debug(f"Player set to NOT ready, because {f'{turns_taken_for_this_player} < {self.min_turns}' if turns_taken_for_this_player < self.min_turns else 'cards_to_fall'}")
                 # Set the players rank
                 self._set_rank()
                 # Check if self has finished, and hasn't played "EndTurn"
@@ -431,8 +436,10 @@ class AbstractPlayer(ABC):
                         self.plog.error(msg)
                         self.EXIT_STATUS = 2
                         break
+                    self.ready = True
         if self.EXIT_STATUS == 1:
             self.plog.info(f"Finished as {self.rank}")
+            self.ready = True
         elif self.EXIT_STATUS == 2:
             self.plog.info("Finished with error")
         return
@@ -535,15 +542,8 @@ class AbstractPlayer(ABC):
         return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.triumph)
     
     def _map_to_list(self,card : Card) -> List[Card]:
-        """ Return a list of cards, that the input card can fall from moskaGame.cards_to_fall"
-
-        Args:
-            card (Card): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        return [c for c in self.moskaGame.cards_to_fall if self._check_can_fall_card(card,c)]
+        """ Return a list of cards, that the input card can fall from moskaGame.cards_to_fall"""
+        return _map_to_list(card,self.moskaGame.cards_to_fall,self.moskaGame.triumph)
     
     def _map_each_to_list(self,from_ = None, to = None) -> Dict[Card,List[Card]]:
         """Map each card in hand, to cards on the table, that can be fallen.
@@ -557,12 +557,9 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        can_fall = {}
-        for card in from_:
-            can_fall[card] = [c for c in to if self._check_can_fall_card(card,c)]
-        return can_fall
+        return _map_each_to_list(from_,to,self.moskaGame.triumph)
     
-    def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000):
+    def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000) -> np.ndarray:
         if scoring is None:
             try:
                 scoring = self._calc_assign_score
@@ -572,18 +569,4 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        #self.plog.debug(f"Making cost matrix from {from_} to {to}")
-        can_fall = self._map_each_to_list(from_,to)
-        #self.plog.debug(f"can_fall: {can_fall}")
-        # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
-        C = np.full((len(from_),len(to)),max_val)
-        #self.plog.info(f"can_fall: {can_fall}")
-        for card, falls in can_fall.items():
-            # If there are no cards on the table, that card can fall, continue
-            if not falls:
-                continue
-            card_index = from_.index(card)
-            fall_indices = [to.index(c) for c in falls]
-            scores = [scoring(card,c) for c in falls]
-            C[card_index][fall_indices] = scores
-        return C
+        return _make_cost_matrix(from_,to, self.moskaGame.triumph,scoring,max_val)
