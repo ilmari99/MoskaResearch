@@ -116,11 +116,12 @@ def to_minimize_call(players : List[PlayerWrapper],
 
 if __name__ == "__main__":
     shared_kwargs = {
-        "log_level" : logging.WARNING,
+        "log_level" : logging.DEBUG,
     }
     # NOTE: The model_paths should be either absolute, or or prefix with "../" to be relative to the current directory
     custom_gamekwargs = {
-        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]]
+        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]],
+        "gather_data":False
     }
     # These are the parameters to change for the player. This is also the initial quess
     param_kwargs = OrderedDict({"my_cards" : 2.3,
@@ -149,4 +150,4 @@ if __name__ == "__main__":
         PlayerWrapper(MoskaBot3,{**shared_kwargs,**{"name" : f"B3-2"}},infer_log_file=True),
     ]
 
-    to_minimize_call(players, param_kwargs,player_to_minimize="WIDE",log_dir="Minimize",ngames=8,verbose=False,cpus=4,custom_gamekwargs=custom_gamekwargs)
+    to_minimize_call(players, param_kwargs,player_to_minimize="WIDE",log_dir="Minimize",ngames=1000,verbose=False,cpus=50,custom_gamekwargs=custom_gamekwargs)
