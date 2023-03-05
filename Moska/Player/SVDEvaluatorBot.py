@@ -27,7 +27,13 @@ class SVDEvaluatorBot(AbstractEvaluatorBot):
             coefficients = list(coefficients.values())
         self.mat = np.load(mat_file,)
         self.mat_rank = self.mat.shape[0]
-        self.coefficients = [1 for i in range(self.mat_rank)]
+        self.coefficients = [1 for _ in range(self.mat_rank)]
+        # NOT GOOD. Roughly 50% loss percent.
+        # Bigger matrix could work better, but SVD is likely not a good choice.
+        # Could be useful for dimensionality reduction, in combination with a NN.
+        if self.mat_rank == 10:
+            default_coefficients = [('0', 21.093483458858955), ('1', 5.172486998831714), ('2', 1.7098063557922385), ('3', 1.3857727602734506), ('4', 3.9157722708119582), ('5', -4.8083871248301335), ('6', -0.9766777121354349), ('7', 1.1210910893597015), ('8', 0.43868362273940176), ('9', -1.3164675154188075)]
+            self.coefficients = [c[1] for c in default_coefficients]
         if isinstance(coefficients, str) and coefficients == "random":
             for coef,val in enumerate(self.coefficients):
                 self.coefficients[coef] = val + random.uniform(-val,val)
