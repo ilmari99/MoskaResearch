@@ -47,7 +47,7 @@ class AbstractPlayer(ABC):
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
                  log_file = "",
-                 min_turns : int = 4,
+                 min_turns : int = 0,
                  ):
         self.min_turns = min_turns
         self.state_vectors = []
