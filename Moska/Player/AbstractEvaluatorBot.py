@@ -11,41 +11,24 @@ import warnings
 import numpy as np
 from .AbstractPlayer import AbstractPlayer
 from typing import Any, Dict, List,TYPE_CHECKING, Tuple
+
+from .utils import Assignment, _get_single_assignments, _get_assignments
+
 from ..Game.GameState import FullGameState, GameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
     from ..Game.Game import MoskaGame
 
-
-# The assignments are the same, if the same cards are played to the same cards, regardless of order.
-# This can be checked by sorting the indices, and comparing the sorted lists.
-#@dataclass
-class Assignment:
-    def __init__(self, inds : Tuple[int]):
-        self.inds = inds
-        self._hand_inds = self.inds[::2]
-        self._table_inds = self.inds[1::2]
-    
-    def __eq__(self, other):
-        """ Two assignments are equal if the same cards are played to the same cards, regardless of order."""
-        return set(self._hand_inds) == set(other._hand_inds) and set(self._table_inds) == set(other._table_inds)
-    
-    def __repr__(self):
-        return f"Assignment({self.inds})"
-    
-    def __hash__(self):
-        """ Two assignments are equal if the same cards are played to the same cards, regardless of order."""
-        #return hash(frozenset(self._hand_inds)) + hash(frozenset(self._table_inds))
-        return hash(tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))))
-
 class AbstractEvaluatorBot(AbstractPlayer):
     """ This class is an abstract class for bots that evaluate the game states.
     This class handles finding the possible moves and generating the resulting game states.
     
+    NOTE: This class has extra information, when the next immediate future state is not known!!
+    This is to reduce complexity (otherwise the next immediate next states must be sampled and averaged).
+
     The 'evaluate_states' method must be implemented by the child class.
     
     """
-    max_num_states : int = 1000
     def __init__(self, moskaGame: MoskaGame = None,
                  name: str = "",
                  delay=0,
@@ -54,6 +37,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
                  log_file="",
                  max_num_states : int = 1000,
                  ):
+        # This is purely used for game complexity analysis from log files.
         self.get_nmoves = True
         self.max_num_states = max_num_states
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
@@ -62,15 +46,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
     def evaluate_states(self, states : List[FullGameState]) -> List[float]:
         pass
     
-    def _get_single_assignments(self, matrix) -> List[List[int,int]]:
-        """ Return all single card assignments from the matrix as a list of lists (row, col).
-        """
-        nz = np.nonzero(matrix)
-        inds = zip(nz[0], nz[1])
-        inds = [list(i) for i in inds]
-        return inds
-    
-    def _get_assignments(self, start=[], found_assignments = None, matrix = None) -> set[Assignment]:
+    def _get_assignments(self) -> set[Assignment]:
         """ Return a set of found Assignments, containing all possible assignments of cards from the hand to the cards to fall.
         Symmetrical assignments are considered the same: where the same cards are played to the same cards, regardless of order.
         
@@ -80,46 +56,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
         - Repeat
         """
-        # Create a set of found assignments, if none is given (first call)
-        if not found_assignments:
-            found_assignments = set()
-
-        # If no matrix is given, create the matrix
-        if matrix is None:
-            matrix = self._make_cost_matrix(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall,max_val=0,scoring=lambda hc,tc : 1)
-            
-        # Find all single card assignments (row-col pairs where the intersection == 1)
-        new_assignments = self._get_single_assignments(matrix)
-        
-        # If there are no more assignments, or the max number of states is reached, return the found assignments
-        duplicate_count = 0
-        for row, col in new_assignments:
-            if len(found_assignments) >= self.max_num_states:
-                return found_assignments
-            og_len = len(found_assignments)
-            # Named tuple with a custom __eq__ and __hash__ method
-            assignment = Assignment(tuple(start + [row,col]))
-            found_assignments.add(assignment)
-            if len(found_assignments) == og_len:
-                continue
-            # Get the visited cards
-            # The cards in hand are even (0,2...), the cards on the table are odd (1,3...)
-            #hand_cards = [c for i,c in enumerate(start + [row,col]) if i % 2 == 0]
-            #table_cards = [c for i,c in enumerate(start + [row,col]) if i % 2 == 1]
-            hand_cards = assignment._hand_inds
-            table_cards = assignment._table_inds
-            # Store the values, to restore them later
-            row_vals = matrix[hand_cards,:]
-            col_vals = matrix[:,table_cards]
-            # Mark the cards as visited (0)
-            matrix[hand_cards,:] = 0
-            matrix[:,table_cards] = 0
-            # Find the next assignments, which adds the new assignments to the found_assignments
-            self._get_assignments(start +[row,col], found_assignments, matrix)
-            # Restore matrix
-            matrix[hand_cards,:] = row_vals
-            matrix[:,table_cards] = col_vals
-        return found_assignments
+        return _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, triumph=self.moskaGame.triumph, max_num=self.max_num_states)
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
@@ -156,11 +93,14 @@ class AbstractEvaluatorBot(AbstractPlayer):
         plays = [[]]
         # The state should be the same, so this is likely unnecessary
         states = self._make_mock_move("Skip",[self])
+        if isinstance(states,list):
+            if len(states) != 1:
+                raise ValueError("Expected only one state for Skip play")
+            states = states[0]
         return plays, [states]
     
     def _get_play_fall_from_hand_play_states(self) -> Tuple[List[dict[Card,Card]], List[FullGameState]]:
         """ Get N possible plays and the resulting states for falling a card on the table from hand
-        
         """
         # Get a list of tuples, where each odd index (1,3,..) is a card from hand, and each even index (0,2,..) is a card on the table
         # Ex: (hand_card1, table_card1, hand_card2, table_card2)
@@ -174,8 +114,6 @@ class AbstractEvaluatorBot(AbstractPlayer):
         
         plays = []
         for play in assignments:
-            #hand_cards = [self.hand.cards[ind] for i,ind in enumerate(play.inds) if i % 2 == 0]
-            #table_cards = [self.moskaGame.cards_to_fall[ind] for i,ind in enumerate(play.inds) if i % 2 == 1]
             hand_cards = [self.hand.cards[i] for i in play._hand_inds]
             table_cards = [self.moskaGame.cards_to_fall[i] for i in play._table_inds]
             plays.append({hc : tc for hc,tc in zip(hand_cards,table_cards)})
@@ -184,11 +122,16 @@ class AbstractEvaluatorBot(AbstractPlayer):
         for play in plays:
             # Get the state after playing 'play' from hand
             state = self._make_mock_move("PlayFallFromHand",[self, play])
+            if isinstance(state,list):
+                if len(state) != 1:
+                    raise ValueError("Expected only one state for PlayFallFromHand")
+                state = state[0]
             states.append(state)
         return plays, states
     
     def _get_play_to_self_play_states(self) -> Tuple(List[List[Card]], List[FullGameState]):
-        """ Get N possible plays and the resulting states for playing a card to self.
+        """
+        Get N possible plays and the resulting states for playing a card to self.
         This is done by finding all combinations of cards in hand that can be played to self.
         """
         playable_from_hand = self._playable_values_from_hand()
@@ -196,10 +139,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
         playable_cards = chand.pop_cards(cond=lambda c : c.value in playable_from_hand)
         self.plog.debug(f"Found playable cards to 'PlayToSelf': {playable_cards}")
         plays = []
-        #plays = itertools.chain.from_iterable((itertools.combinations(playable_cards,i) for i in range(1,len(playable_cards) + 1)))
         for i in range(1,len(playable_cards)+1):
             plays += list(itertools.combinations(playable_cards,i,))
-        #self.plog.debug(f"Found plays to 'PlayToSelf': {plays}")
         self.plog.debug(f"Found {len(plays)} plays to 'PlayToSelf'. Sampling {min(len(plays),self.max_num_states)}.")
         plays = random.sample(plays,min(len(plays),self.max_num_states))
         states = []
@@ -207,13 +148,19 @@ class AbstractEvaluatorBot(AbstractPlayer):
             # Convert play to a list, required by Turns
             plays[i] = list(play)
             state = self._make_mock_move("PlayToSelf",[self, self, plays[i]])
+            if isinstance(state,list):
+                if len(state) != 1:
+                    raise ValueError("Expected only one state for PlayToSelf")
+                state = state[0]
             states.append(state)
         return plays, states
         
     def _get_play_from_deck_play_states(self) -> Tuple[List[Card], List[FullGameState]]:
         """ Returns a list of plays and states, that are possible from the current deck.
         If the length of a play is 2, the first card is the card to play from the deck, and the second is the card to fall.
-        If the length of a play is 1, the card is the card to play to self
+        If the length of a play is 1, the card is the card to play to self.
+
+        NOTE: This is a special case wrt to hidden information. Even this agent doesn't know the card from deck
         """
         cards_possibly_in_deck = self.moskaGame.card_monitor.get_cards_possibly_in_deck(self)
         plays = []
@@ -222,8 +169,9 @@ class AbstractEvaluatorBot(AbstractPlayer):
         for card in cards_possibly_in_deck:
             # If the card can fall cards, make a cost matrix and get the assignments
             if self._map_to_list(card):
-                cm = self._make_cost_matrix([card], self.moskaGame.cards_to_fall, scoring=lambda c1,c2 : 1, max_val=0)
-                assignments = self._get_assignments(matrix=cm)
+                assignments = _get_assignments(from_ = [card], to = self.moskaGame.cards_to_fall,triumph=self.moskaGame.triumph)
+                #cm = self._make_cost_matrix([card], self.moskaGame.cards_to_fall, scoring=lambda c1,c2 : 1, max_val=0)
+                #assignments = self._get_assignments(matrix=cm)
                 # Evaluate the assignments. If the deck_card can fall a card, we can check the state as 'PlayFallFromHand' -play
                 for assign in assignments:
                     play = [card, self.moskaGame.cards_to_fall[assign._table_inds[0]]]
@@ -233,6 +181,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
                     # The card must be added to hand to be able to check the state
                     self.moskaGame.card_monitor.update_unknown(self.name)
                     state = self._make_mock_move("PlayFallFromHand",[self, {play[0]:play[1]}])
+                    if isinstance(state,list):
+                        if len(state) != 1:
+                            raise ValueError("Expected only one state for PlayFallFromHand")
+                        state = state[0]
                     # Remove the card from the hand
                     self.hand.pop_cards(cond=lambda c : c == card)
                     # Remove the card and update card_monitor
@@ -244,6 +196,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
                 # Add the card to the hand and check the state after playing the card TO SELF
                 self.hand.add(play)
                 state = self._make_mock_move("PlayToSelfFromDeck",[self, self, play])
+                if isinstance(state,list):
+                    if len(state) != 1:
+                        raise ValueError("Expected only one state for PlayToSelfFromDeck")
+                    state = state[0]
                 # Remove the card from the hand
                 self.hand.pop_cards(cond=lambda c : c == card)
                 states.append(state)
@@ -270,7 +226,11 @@ class AbstractEvaluatorBot(AbstractPlayer):
         for i,play in enumerate(plays):
             plays[i] = list(play)
             state = self._make_mock_move("PlayToOther",[self, target, plays[i]])
-            states.append(state)
+            if isinstance(state,list):
+                for s in state:
+                    states.append(s)
+            else:
+                states.append(state)
         return plays, states
     
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
@@ -282,17 +242,19 @@ class AbstractEvaluatorBot(AbstractPlayer):
         #plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,fits + 1)))
         play_iterables = []
         counter = Counter([c.value for c in cards])
-        # Create itrables for different types of possible plays
+        # We can play each single card, and all cards that have at least 2 of the same value
         for i in range(1,fits + 1):
             tmp_cards = cards.copy()
+            # Filter out cards that have less than 2 of the same value
             if i > 1:
                 tmp_cards = [c for c in tmp_cards if counter[c.value] >= 2]
+            # Add the i length combinations to the play_iterables
             play_iterables.append(itertools.combinations(tmp_cards,i))
         # TODO: convert to a filter expression, or a generator
         plays = itertools.chain.from_iterable(play_iterables)
         legal_plays = []
         count = 0
-        # Check if the plays are legal. A good portion of the generated plays are legal, but some will not be, and need filtering.
+        # TODO: See if checking legality is necessary, or is the algorithm correct.
         for play in plays:
             count += 1
             c = Counter([c.value for c in play])
@@ -300,7 +262,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
                 legal_plays.append(list(play))
         self.plog.debug(f"Tried {count} plays")
         self.plog.debug(f"Found legal plays to 'InitialPlay': {legal_plays}")
-        self.plog.info(f"Found {len(legal_plays)} legal plays to 'InitialPlay'.")# Sampling {min(len(plays),self.max_num_states)}.")
+        self.plog.info(f"Found {len(legal_plays)} legal plays to 'InitialPlay'.")
         target = self.moskaGame.get_target_player()
         random.shuffle(legal_plays)
         states = []
@@ -308,7 +270,11 @@ class AbstractEvaluatorBot(AbstractPlayer):
             if len(states) >= self.max_num_states:
                 break
             state = self._make_mock_move("InitialPlay",[self, target, list(play)])
-            states.append(state)
+            if isinstance(state,list):
+                for s in state:
+                    states.append(s)
+            else:
+                states.append(state)
         return legal_plays, states
     
     def get_possible_next_states(self, move : str) -> Tuple[List[Any], List[FullGameState], List[float]]:
@@ -335,7 +301,11 @@ class AbstractEvaluatorBot(AbstractPlayer):
             states = []
             for play in plays:
                 state_ = self._make_mock_move(move,[self, play])
-                states.append(state_)
+                if isinstance(state_,list):
+                    for s in state_:
+                        states.append(s)
+                else:
+                    states.append(state_)
         
         elif move == "InitialPlay":
             plays,states = self._get_initial_play_play_states()
