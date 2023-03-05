@@ -21,7 +21,8 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideNNEVHEV import WideNNEVHEV
+from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
+from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -129,10 +130,10 @@ if __name__ == "__main__":
                             "missing_card" : 52
                             })
     players = [
-        PlayerWrapper(WideNNEVHEV, {**shared_kwargs,**{"name" : f"WIDE",
+        PlayerWrapper(WideEvaluatorBot, {**shared_kwargs,**{"name" : f"WIDE",
                                                     "coefficients":{},
                                                     "max_num_states":1000,
-                                                    "max_num_samples":100,
+                                                    #"max_num_samples":100,
                                                      "pred_format":"new",
                                                      "model_id":1,
                                                     }},infer_log_file=True),

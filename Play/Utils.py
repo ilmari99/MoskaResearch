@@ -18,7 +18,8 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideNNEVHEV import WideNNEVHEV
+from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
+from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 if TYPE_CHECKING:
     from PlayerWrapper import PlayerWrapper
 import random

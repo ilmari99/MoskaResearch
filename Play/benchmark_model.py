@@ -20,7 +20,8 @@ from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideNNEVHEV import WideNNEVHEV
+from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
+from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -149,7 +150,7 @@ if __name__ == "__main__":
         "model_paths" : [os.path.abspath("./Models/ModelNN1/model.tflite")],
     }
     # Specify the player type
-    player_type = WideNNEVHEV
+    player_type = WideHIFEvaluatorBot
     # Specify the player arguments, '{x}' will be replaced by the game number
     coeffs = {"my_cards":6.154,"len_set_my_cards":2.208,"len_my_cards":1.5723,"kopled":-2.99,"missing_card":52.62}
     player_args = {"name" : "player",
