@@ -46,7 +46,10 @@ class AbstractPlayer(ABC):
                  delay=0,
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
-                 log_file = ""):
+                 log_file = "",
+                 min_turns : int = 4,
+                 ):
+        self.min_turns = min_turns
         self.state_vectors = []
         self.moskaGame = moskaGame
         self.log_level = log_level
@@ -414,7 +417,7 @@ class AbstractPlayer(ABC):
                     self.EXIT_STATUS = 2
                     break
                 # The target player is not ready, until they play "EndTurn"
-                if (self is curr_target and self.moskaGame.cards_to_fall):
+                if turns_taken_for_this_player < self.min_turns or (self is curr_target and self.moskaGame.cards_to_fall):
                     self.ready = False
                 # Set the players rank
                 self._set_rank()
