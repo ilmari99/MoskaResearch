@@ -23,6 +23,7 @@ from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
 from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
 from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
+from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -124,19 +125,21 @@ if __name__ == "__main__":
         "gather_data":False
     }
     # These are the parameters to change for the player. This is also the initial quess
-    param_kwargs = OrderedDict({"my_cards" : 2.3,
-                            "len_set_my_cards" : 0.77,
-                            "len_my_cards" : -2,
-                            "kopled":0.39,
-                            "missing_card" : 52
-                            })
+    #param_kwargs = OrderedDict({"my_cards" : 2.3,
+    #                        "len_set_my_cards" : 0.77,
+    #                        "len_my_cards" : -2,
+    #                        "kopled":0.39,
+    #                        "missing_card" : 52
+    #                        })
+    param_kwargs = OrderedDict({str(i):1 for i in range(10)})
     players = [
-        PlayerWrapper(WideEvaluatorBot, {**shared_kwargs,**{"name" : f"WIDE",
+        PlayerWrapper(SVDEvaluatorBot, {**shared_kwargs,**{"name" : f"SVD",
+                                                    "mat_file":os.path.abspath("./V.npy"),
                                                     "coefficients":{},
                                                     "max_num_states":1000,
                                                     #"max_num_samples":100,
-                                                     "pred_format":"new",
-                                                     "model_id":1,
+                                                    # "pred_format":"new",
+                                                    # "model_id":1,
                                                     }},infer_log_file=True),
 
         PlayerWrapper(MoskaBot2, {**shared_kwargs,**{"name" : f"B2-1"}},infer_log_file=True),
@@ -150,4 +153,4 @@ if __name__ == "__main__":
         PlayerWrapper(MoskaBot3,{**shared_kwargs,**{"name" : f"B3-2"}},infer_log_file=True),
     ]
 
-    to_minimize_call(players, param_kwargs,player_to_minimize="WIDE",log_dir="Minimize",ngames=1000,verbose=False,cpus=50,custom_gamekwargs=custom_gamekwargs)
+    to_minimize_call(players, param_kwargs,player_to_minimize="SVD",log_dir="Minimize",ngames=10,verbose=True,cpus=4,custom_gamekwargs=custom_gamekwargs)

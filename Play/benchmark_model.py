@@ -22,6 +22,7 @@ from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
 from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
 from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
+from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -39,6 +40,7 @@ def player_benchmark1(
     """ Benchmark a player against a set of predefined models.
     """
     models = ["./Models/ModelMB11-260/model.tflite"]
+    custom_game_kwargs = custom_game_kwargs.copy()
     if "model_paths" in custom_game_kwargs:
         models += custom_game_kwargs["model_paths"]
         custom_game_kwargs.pop("model_paths")
@@ -57,7 +59,7 @@ def player_benchmark1(
 
     # Players shared arguments, except the player or otherwise specified
     shared_kwargs = {
-        "log_level" : logging.INFO,
+        "log_level" : logging.DEBUG,
     }
     
     players = [
@@ -76,7 +78,7 @@ def player_benchmark1(
     ]
     # Make the log directory and change to it
     make_log_dir(folder)
-    results = play_games(players, gamekwargs, ngames=1000, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
+    results = play_games(players, gamekwargs, ngames=10, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
     loss_perc = get_loss_percents(results)
     print("Benchmark1 done. A great result is < 20% loss")
     os.chdir("..")
@@ -92,6 +94,7 @@ def player_benchmark2(
                      ) -> float:
     """ Benchmark a player against a set of predefined models.
     """
+    custom_game_kwargs = custom_game_kwargs.copy()
     models = ["./Models/ModelMB11-260/model.tflite"]
     if "model_paths" in custom_game_kwargs:
         models += custom_game_kwargs["model_paths"]
@@ -148,22 +151,24 @@ if __name__ == "__main__":
     # Specify the model paths
     game_kwargs = {
         "model_paths" : [os.path.abspath("./Models/ModelNN1/model.tflite")],
+        "gather_data" : True
     }
     # Specify the player type
-    player_type = WideHIFEvaluatorBot
+    player_type = SVDEvaluatorBot
     # Specify the player arguments, '{x}' will be replaced by the game number
-    coeffs = {"my_cards":6.154,"len_set_my_cards":2.208,"len_my_cards":1.5723,"kopled":-2.99,"missing_card":52.62}
+    #coeffs = {"my_cards":6.154,"len_set_my_cards":2.208,"len_my_cards":1.5723,"kopled":-2.99,"missing_card":52.62}
     player_args = {"name" : "player",
+                   "mat_file" : os.path.abspath("./V.npy"),
                     "log_file":"Game-{x}-player.log",
                     "log_level":logging.DEBUG,
                     "max_num_states":1000,
-                    "max_num_samples":100,
-                    "pred_format":"new",
-                    "model_id":game_kwargs["model_paths"][0],
-                    "coefficients":coeffs,
+                    #"max_num_samples":100,
+                    #"pred_format":"new",
+                    #"model_id":game_kwargs["model_paths"][0],
+                    "coefficients":"random",
     }
     # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
     player = PlayerWrapper(player_type, player_args)
-    player_benchmark1(player,-1,4,custom_game_kwargs=game_kwargs,folder="Test1")
-    player_benchmark2(player,-1,4,custom_game_kwargs=game_kwargs)
+    player_benchmark1(player,4,1,custom_game_kwargs=game_kwargs)
+    #player_benchmark2(player,-1,4,custom_game_kwargs=game_kwargs)
 

@@ -22,6 +22,7 @@ from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
 from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
 from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
 from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
+from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
@@ -37,12 +38,13 @@ def get_human_players() -> List[PlayerWrapper]:
                      "requires_graphic":True}
     players = []
     players.append(PlayerWrapper(HumanPlayer, {**shared_kwargs, **{"name":"Human","log_file":"human-{x}.log"}}))
-    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV1",
-                                            "log_file":"Game-{x}-NNEV1.log", 
+    players.append(PlayerWrapper(SVDEvaluatorBot, {**shared_kwargs,**{"name" : "SVD",
+                                            "mat_file":os.path.abspath("./V.npy"),
+                                            "log_file":"Game-{x}-SVD.log", 
                                             "max_num_states":8000,
-                                            "max_num_samples":1000,
-                                            "pred_format":"new",
-                                            "model_id":os.path.abspath("./Models/ModelNN1/model.tflite"),
+                                            #"max_num_samples":1000,
+                                            #"pred_format":"new",
+                                            #"model_id":os.path.abspath("./Models/ModelNN1/model.tflite"),
                                             }}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV2",
                                             "log_file":"Game-{x}-NNEV2.log", 
