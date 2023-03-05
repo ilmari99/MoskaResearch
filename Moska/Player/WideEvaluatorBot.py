@@ -36,7 +36,9 @@ class WideEvaluatorBot(AbstractEvaluatorBot):
             "len_set_my_cards" : 2.21,
             "len_my_cards" : 1.57,
             "kopled":-3,
-            "missing_card" : 52.6  
+            "missing_card" : 52.6,
+            "nn_pred" : 1,
+            "heuristic_pred" : 1,
         }
         if isinstance(coefficients, str) and coefficients == "random":
             coefficients = {}
@@ -69,7 +71,7 @@ class WideEvaluatorBot(AbstractEvaluatorBot):
                 raise ValueError(f"nn_preds.shape != sigmoid_heuristic_preds.shape: {nn_preds.shape} != {sigmoid_heuristic_preds.shape}")
             if nn_preds.shape != sigmoid_heuristic_preds.shape:
                 raise ValueError(f"nn_preds.shape != sigmoid_heuristic_preds.shape: {nn_preds.shape} != {sigmoid_heuristic_preds.shape}")
-        preds = np.add(nn_preds, sigmoid_heuristic_preds)
+        preds = np.add(self.coefficients["nn_pred"]*nn_preds, self.coefficients["heuristic_pred"]*sigmoid_heuristic_preds)
         return preds
 
 
