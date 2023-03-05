@@ -62,8 +62,11 @@ if __name__ == "__main__":
     first_element = array[0]
     print(first_element)
     U, s, V = np.linalg.svd(array, full_matrices=False,)
+    print(f"Sum of singular values: {sum(s)}")
     # Create a rank 10 approximation
     rank = 10
+    print(f"Sum of singular values for rank {rank}: {sum(s[:rank])}")
+    print(f"Proportion of singular values for rank {rank}: {sum(s[:rank])/sum(s)}")
     V = V[:rank, :]
     np.save("V.npy", V)
     
