@@ -23,23 +23,6 @@ class AbstractPlayer(ABC):
     When subclassing, the abstract methods must be implemented to decide actions.
     
     """
-    # -1 = Not-running, 0 = Running, 1 = Clean exit, 2 = Error
-    EXIT_STATUS : int = -1
-    hand : MoskaHand = None
-    pid : int = None
-    moskaGame : MoskaGame = None
-    rank : int = None
-    thread : threading.Thread = None
-    name : str = ""
-    ready : bool = False
-    delay : float = 0
-    requires_graphic : bool = False
-    plog : logging.Logger = None
-    log_level = logging.INFO
-    log_file : str = ""
-    thread_id : int = None
-    moves : Dict[str,Callable] = {}
-    state_vectors = []
     def __init__(self,
                  moskaGame : MoskaGame = None, 
                  name : str = "", 
@@ -47,10 +30,28 @@ class AbstractPlayer(ABC):
                  requires_graphic : bool = False,
                  log_level = logging.INFO,
                  log_file = "",
-                 min_turns : int = 0,
+                 min_turns : int = 1,
                  ):
+            # -1 = Not-running, 0 = Running, 1 = Clean exit, 2 = Error
+        self.EXIT_STATUS : int = -1
+        self.hand : MoskaHand = None
+        self.pid : int = None
+        self.moskaGame : MoskaGame = None
+        self.rank : int = None
+        self.thread : threading.Thread = None
+        self.name : str = ""
+        self.ready : bool = False
+        self.delay : float = 0
+        self.requires_graphic : bool = False
+        self.plog : logging.Logger = None
+        self.log_level = logging.INFO
+        self.log_file : str = ""
+        self.thread_id : int = None
+        self.moves : Dict[str,Callable] = {}
+        self.state_vectors = []
         self.min_turns = min_turns
         self.state_vectors = []
+
         self.moskaGame = moskaGame
         self.log_level = log_level
         self.name = name
@@ -365,6 +366,7 @@ class AbstractPlayer(ABC):
         #random.seed(self.moskaGame.random_seed)
         curr_target = self.moskaGame.get_target_player()
         turns_taken_for_this_player = 0
+        self.rank = None
         while self.rank is None:
             # Incase we want to slow down the player
             time.sleep(self.delay)
