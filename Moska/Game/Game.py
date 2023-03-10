@@ -526,6 +526,8 @@ class MoskaGame:
         Returns:
             True when finished
         """
+        if len(set([pl.name for pl in self.players])) != len(self.players):
+            raise ValueError("Players must have unique names.")
         self._set_triumph()
         self._create_locks()
         self.glog.info(f"Starting the game with seed {self.random_seed}...")
