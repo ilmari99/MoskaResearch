@@ -6,23 +6,32 @@ This repository is about a hidden information, non-sequential multiplayer game c
 The aim of this project is to create an agent, which plays at a human level. The general approach is to use deep (convolutional) neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with hand-made agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
 
 ## **Usage** <!-- omit in toc -->
+Tested on Python version 3.6, 3.8, 3.9 and 3.10. **Version 3.11 does not work!**
 
-### **Simulate**
-To simulate games and gather data, refer to the `moska.py` file.
-Use the `create_dataset(rounds : int, ngames : int, ncpus : int, chunksize : int)` function to simulate ngames * rounds. In each round new players are selected, and ngames are simulated with those players. The players are selected randomly and if they contain hard-coded heuristics with optimized coefficients, the coefficients are randomized from a uniform distribution between (0,2*<default_param>), so the mean of a selected parameter over all simulations tends toward the optimized parameter. This randomization is done to hopefully get a more comprehensive dataset, introduce new situations and avoid a biased dataset.
+To get set up, clone this repository, for example with the command: `git clone https://github.com/ilmari99/moska.git`.
 
-The simulation speed depends on the hardware. On 16 Intel i5 cpus, the speed is likely around 7-10 games/second, largely depending on your I/O speed, the agents used in the simulation, and the simulation parameters.
+Move to the created directory (`cd moska`), and run `pip install -r play-requirements.txt` to install the required packages for most agents. To install all required packages, install the `requirements.txt`.
+
+### **Play games**
+To play games against three neural network players, run `python3 ./Play/play_as_human.py` (depends on your OS). To customize which players to play against, see the file `./Play/play_as_human.py` and change the players to your liking. This might require you to look at the `__init__` method of your chosen player, to see which arguments are required. There is little documentation currently, and error handling might not be very informative.
 
 ### **Training a model**
-Training a good model likely requires a large dataset. Best model so far, used roughly 1M games, and 70 M examples, resulting in 71% accuracy on the test set, and a binary cross entropy loss of 0.5197.
+Simulated data can be found from Kaggle: https://www.kaggle.com/datasets/ilmarivahteristo/card-game-state-evaluation.
+
+To create your own simulated data, see the `./Play/create_dataset.py`.
+
+Training a good model likely requires a large dataset. Best model so far, used roughly 1M games, and 70 M examples, resulting in 72% accuracy on the test set, and a binary cross entropy loss of 0.5081.
 
 Recently CNNs have been attempted both on the full state vector, or creating a separate CNN branch which only performs convolutions for the part of the state vector containing information about cards. The tried CNNs seem to easily overfit, despite a large (1M games, 70M examples) dataset.
 
-To train a model, it easiest to modify `Analysis/train_model.py` according to your needs, and then run `./Scripts/train_model.sh <new-folder-name>`. It runs the training in the background with the `nohup` -command. The script creates a new folder, and copies the `.py` file there, saves the training output to a `.log` file and stores the tensorboard log there too. This makes it easier to keep track of the tried models and their results.
+To train a model, it easiest to modify `./Analysis/train_model.py` according to your needs, and then run `./Scripts/train_model.sh <new-folder-name>` (on Linux). For example, to customize the model architecture and the used folders. The script runs the training in the background with the `nohup` -command. The script creates a new folder, and copies the `train_model.py` file there, saves the training output to a `.log` file and stores the tensorboard log there too. This makes it easier to keep track of the tried models and their results.
+
+### **Run a benchmark**
+To run a pre-defined benchmark, see the file `./Play/benchmark_model.py` and change the desired player type and corresponding arguments. Then run `python3 ./Play/benchmark_model.py`. There are currently three benchmarks available.
 
 ### **Implementing custom players**
 
-![player-flowchart](player-diagram.png)
+![player-flowchart](./img/player-diagram.png)
 *Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
 
 The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
@@ -30,28 +39,35 @@ The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska
 
 **AbstractPlayer**
 
-NOTE: Do not modify any existing variables, when selecting a move, as this will in future result in an error.
+NOTE: Do not modify any existing variables, when selecting a move, as this makes the behaviour undefined and will result in an error.
 
 The `AbstractPlayer` is the base class of all agents. It contains the general logic of the player, and some helper methods. The following logic needs to be implemented by the subclasses of `AbstractPlayer`:
-- `choose_move(playable_moves : List[str]) -> str`
-- `end_turn() -> List[Card]`
-- `play_fall_card_from_hand() : Dict[Card,Card]`
-- `deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)`
-- `play_to_self() -> List[Card]`
-- `play_initial() -> List[Card]`
-- `play_to_target() -> List[Card]`
+- `choose_move(playable_moves : List[str]) -> str` : Choose which class of plays to make (e.g. `InitialPlay`, `PlayToSelf`, `PlayToTarget` etc.). To help, the input to the function contains the moves (str), for which there is a valid move to make.
+- `end_turn() -> List[Card]` : Which cards to pick up, when you decide to end your turn.
+- `play_fall_card_from_hand() : Dict[Card,Card]` : Which card to play from hand to which card on the table.
+- `deck_lift_fall_method(card_from_deck : Card) -> (Card,Card)` : When playing from deck, IF the card can fall a card on the table, which card it should fall. The input is the card from deck.
+- `play_to_self() -> List[Card]` : Which cards to play to self.
+- `play_initial() -> List[Card]` : Which cards to play on an initiating turn.
+- `play_to_target() -> List[Card]` : Which cards to play to target.
 
 The agents implementing the `AbstractPlayer` class can try to play illegal moves if the methods are implemented incorrectly, but they should eventually be designed to only make valid moves, to improve performance. Also, if the player is fully deterministic, and it can make invalid moves, the game will timeout, because an Agent is only making invalid moves and the game will never end, since the agent will get into a loop of attempting to play the same move.
 
 Agents only implementing the AbstractPlayer, can be made significantly faster than the `AbstractEvaluatorBot`, because they do not need to generate all possible plays.
 
-**AbstractEvaluatorBot**
+**AbstractEvaluatorBot and AbstractHIFEvaluatorBot**
 
-The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. It has all the necessary logic to play, however an `evaluate_states(List[FullGameState])` method must be implemented. This method takes a list of game states, and returns a list of scores for each game state. The game state with the highest score is then played.
+The `AbstractEvaluatorBot` class is a subclass of `AbstractPlayer`. It creates all the possible next states (`FullGameState` instances), from the current state. The `AbstractEvaluatorBot` does not play by the rules, since it knows the immediate next state (i.e. which cards it picked from the deck), except for playing from deck. It is used in simulations, to make them faster while maintaining this *evaluation logic*.
 
-Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, the number of states can be very large, or finding them may be complex. For example finding all distinct matchings from a bipartite graph is NP-hard. [The Complexity of Playing Durak](https://www.ijcai.org/Proceedings/16/Papers/023.pdf).
+The `AbstractHIFEvaluatorBot` is a subclass of `AbstractEvaluatorBot`. It is not certain about the immediate next state of the game, when there is uncertainty, but only has the same information as a human (with perfect memory). If there is uncertainty, it samples a number of possible next states, and uses the evaluation mean of the sampled states as the score for a particular move.
+
+Agents implemented with the `AbstractEvaluatorBot` class are slower, but easier to make and understand. They are slower, because they generate all the possible next states, and then evaluate them. For large hands, or tables, the number of different plays gets very large.
 
 The neural networks are specifically used with this class.
+
+
+
+
+
 
 
 
