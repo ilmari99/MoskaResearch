@@ -259,7 +259,7 @@ class AbstractPlayer(ABC):
         return self.rank
     
     # Disgusting!
-    @utils.check_new_card
+    #@utils.check_new_card
     def _play_move(self) -> Tuple[bool,str]:
         """Calls moskaGame to propose a move.
         This is called on each turn from _continuous play

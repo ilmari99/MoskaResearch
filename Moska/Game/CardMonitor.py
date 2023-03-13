@@ -99,7 +99,16 @@ class CardMonitor:
         samples = []
         random.shuffle(cards_possibly_in_deck)
         # Get different card combinations
+        def random_combination(iterable, r):
+            """Random selection from itertools.combinations(iterable, r)
+            This is from Python docs
+            """
+            pool = tuple(iterable)
+            n = len(pool)
+            indices = sorted(random.sample(range(n), r))
+            return tuple(pool[i] for i in indices)
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
+        combs = random_combination(combs,ncards)
         for comb in combs:
             samples.append(comb)
             if len(samples) >= max_samples:

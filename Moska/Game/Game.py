@@ -326,12 +326,17 @@ class MoskaGame:
             self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{te}")
             return False, str(te)
         self.card_monitor.update_from_move(move,args)
+        if move != "Skip":
+            for pid, pl in enumerate(self.players):
+                if pl.thread_id == self.lock_holder or pl.rank is not None:
+                    continue
+                pl.ready = False
         return True, ""
     
     def _make_mock_move(self,move,args,state_fmt="FullGameState") -> FullGameState:
         """ Makes a move, like '_make_move', but returns the game state after the move and restores self and attributes to its original state.
         """
-        state = FullGameState.from_game(self)
+        state = FullGameState.from_game(self,copy=True)
         #self.glog.debug("Saved state data. Setting logger to level WARNING for Mock move")
         player = args[0]
         game_log_level = self.glog.getEffectiveLevel()
@@ -521,6 +526,8 @@ class MoskaGame:
         Returns:
             True when finished
         """
+        if len(set([pl.name for pl in self.players])) != len(self.players):
+            raise ValueError("Players must have unique names.")
         self._set_triumph()
         self._create_locks()
         self.glog.info(f"Starting the game with seed {self.random_seed}...")
