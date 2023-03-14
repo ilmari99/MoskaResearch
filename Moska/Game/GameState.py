@@ -28,6 +28,7 @@ class FullGameState:
                  players_in_game : List[bool],
                  tc_index : int,
                  target_pid : int,
+                 trump : str
                  ):
         self.deck = deck # The deck of cards
         self.full_player_cards = full_player_cards # Complete information about the players current cards
@@ -39,6 +40,7 @@ class FullGameState:
         self.players_in_game = players_in_game # A list of booleans representing if each player is in the game
         self.tc_index = tc_index # The index in turn cycle. Ensures the target player is saved
         self.target_pid = target_pid
+        self.trump = trump
         
         
     def __init__with_copy(self,
@@ -52,6 +54,7 @@ class FullGameState:
                 players_in_game : List[bool],
                 tc_index : int,
                 target_pid : int,
+                trump : str
                 ):
         self.deck = copy.deepcopy(deck) # The deck of cards
         self.full_player_cards = copy.deepcopy(full_player_cards) # Complete information about the players current cards
@@ -63,6 +66,7 @@ class FullGameState:
         self.players_in_game = copy.copy(players_in_game) # A list of booleans representing if each player is in the game
         self.tc_index = tc_index # The index in turn cycle. Ensures the target player is saved
         self.target_pid = target_pid
+        self.trump = trump
         
         
     def restore_game_state(self,game : 'MoskaGame', check : bool = False):
@@ -106,6 +110,7 @@ class FullGameState:
                    players_in_game,
                    game.turnCycle.ptr,
                    target_pid,
+                   game.triumph,
                    copy = copy,
                    )
 
@@ -121,6 +126,7 @@ class FullGameState:
                           copy.copy(self.players_in_game),
                           self.tc_index,
                           self.target_pid,
+                          self.trump,
                           copy = False,
                           )
         
@@ -218,6 +224,48 @@ class FullGameState:
         for cards in self.full_player_cards:
             out += self.encode_cards(cards)
         return out
+    
+    def _as_perspective_bitmap_vector(self,player : 'AbstractPlayer'):
+        out = []
+        out += [len(self.deck.cards)]
+        out += [len(hand) for hand in self.known_player_cards]
+        out += [1 if ready else 0 for ready in self.players_ready]
+        out += [1 if in_game else 0 for in_game in self.players_in_game]
+        out += [1 if any([card.kopled for card in self.cards_to_fall]) else 0]
+        out += [1 if i == self.target_pid else 0 for i in range(4)]
+        out += [1 if c.suit == self.trump else 0 for c in REFERENCE_DECK[0:4]]
+        out += [1 if i == player.pid else 0 for i in range(4)]
+        # Initialize a vector of zeros. Copy it, and set the index of the (in refr. deck) card to 1.
+        z_init = [0 for _ in range(52)]
+
+        z = z_init.copy()
+        for card in self.cards_fall_dict:
+            z[REFERENCE_DECK.index(card)] = 1
+        out += z
+
+        z = z_init.copy()
+        for card in self.cards_to_fall:
+            z[REFERENCE_DECK.index(card)] = 1
+        out += z
+
+        z = z_init.copy()
+        for card in self.fell_cards:
+            z[REFERENCE_DECK.index(card)] = 1
+        out += z
+
+        for pl, cards in enumerate(self.known_player_cards):
+            z = z_init.copy()
+            for card in cards:
+                if card == Card(-1,"X"):
+                    continue
+                z[REFERENCE_DECK.index(card)] = 1
+            out += z
+
+        z = z_init.copy()
+        for card in self.full_player_cards[player.pid]:
+            z[REFERENCE_DECK.index(card)] = 1
+        out += z
+        return out
         
     def as_perspective_vector(self, player : 'AbstractPlayer', fmt : str = "new"):
         """Returns a numeric vector representation of the state.
@@ -233,10 +281,12 @@ class FullGameState:
         - Whether there is a kopled card on the table.
         - Cards in each players hand, known to everyone. Recorded by card monitor
         """
-        if fmt == "old":
+        if fmt == "old-algbr":
             local_encode_cards = lambda cards : self.encode_cards(cards,fill=0)
-        elif fmt == "new":
+        elif fmt == "new-algbr":
             local_encode_cards = self.encode_cards
+        elif fmt == "bitmap":
+            return self._as_perspective_bitmap_vector(player)
         else:
             raise NameError("Unknown format: {}".format(fmt))
         out = []
