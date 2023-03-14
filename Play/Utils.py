@@ -109,6 +109,8 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
     }
     shared_kwargs = {**shared_kwargs_default, **shared_kwargs}
     
+    nn_models = [os.path.abspath(p) for p in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]]
+
     # NOTE: The players logs might not be correct for the game index, to reduce the number of files
     much_players = [
         (HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV1",
@@ -145,26 +147,26 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1",
                                             "max_num_states":random.randint(1,10000),
-                                            "pred_format":"old",
-                                            "model_id":0,
+                                            "pred_format":"old-algbr",
+                                            "model_id":nn_models[0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2",
                                             "max_num_states":random.randint(1,10000),
-                                            "pred_format":"old",
-                                            "model_id":0,
+                                            "pred_format":"old-algbr",
+                                            "model_id":nn_models[0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3",
                                                     "max_num_states":random.randint(1,10000),
-                                                    "pred_format":"new",
-                                                    "model_id":1,
+                                                    "pred_format":"new-algbr",
+                                                    "model_id":nn_models[1],
                                                     }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4",
                                             "max_num_states":random.randint(1,10000),
-                                            "pred_format":"new",
-                                            "model_id":1,
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
                                             }}),
     ]
     
@@ -172,21 +174,21 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
         much_players.append((NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : f"NNHIFEV",
                                             "max_num_states":random.randint(1,10000),
                                             "max_num_samples":random.randint(10,1000),
-                                            "pred_format":"new",
-                                            "model_id":1,
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
                                             }}))
         
         much_players.append((NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : f"NNHIFEV2",
                                             "max_num_states":random.randint(1,10000),
                                             "max_num_samples":random.randint(10,1000),
-                                            "pred_format":"new",
-                                            "model_id":1,
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
                                             }}))
         much_players.append((NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : f"NNHIFEV3",
                                             "max_num_states":random.randint(1,10000),
                                             "max_num_samples":random.randint(10,1000),
-                                            "pred_format":"new",
-                                            "model_id":1,
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
                                             }}))
     
     acting_players = random.sample(much_players, nplayers)
