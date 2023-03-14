@@ -64,7 +64,7 @@ class Benchmark:
 
         # Make the log directory and change to it
         make_log_dir(self.folder)
-        results = play_games(players, gamekwargs, ngames=10, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
+        results = play_games(players, gamekwargs, ngames=ngames, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
         loss_perc = get_loss_percents(results)
         print("Benchmark done. A great result is < 20% loss")
         os.chdir("..")
@@ -172,8 +172,8 @@ if __name__ == "__main__":
     # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
     player = PlayerWrapper(player_type, player_args)
     # Run the benchmark
-    BENCH3.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
-    BENCH1.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
+    BENCH3.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
+    BENCH1.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
+    BENCH2.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
 
 
