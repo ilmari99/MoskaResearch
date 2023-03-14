@@ -75,7 +75,7 @@ BENCH1 = Benchmark(
         PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260",
                                     "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
-                                    "pred_format":"old",
+                                    "pred_format":"old-algbr",
                                     "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }),
         PlayerWrapper(MoskaBot3,{"name" : "B3", "log_file":"Game-{x}-B3.log"}),
@@ -99,19 +99,19 @@ BENCH2 = Benchmark(
         PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260-1",
                                     "log_file":"Game-{x}-NNEV1.log", 
                                     "max_num_states":1000,
-                                    "pred_format":"old",
+                                    "pred_format":"old-algbr",
                                     "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }),
         PlayerWrapper(NNEvaluatorBot,{"name" : f"ModelMB11-260-2",
                                     "log_file":"Game-{x}-NNEV2.log", 
                                     "max_num_states":1000,
-                                    "pred_format":"old",
+                                    "pred_format":"old-algbr",
                                     "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }),
         PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260-3",
                                     "log_file":"Game-{x}-NNEV3.log", 
                                     "max_num_states":1000,
-                                    "pred_format":"old",
+                                    "pred_format":"old-algbr",
                                     "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                                     }),
     ],
@@ -152,8 +152,8 @@ BENCH3 = Benchmark(
 if __name__ == "__main__":
     # Specify the model paths
     game_kwargs = {
-        "model_paths" : [os.path.abspath("./Models/ModelNN1/model.tflite")],
-        "gather_data" : False,
+        "model_paths" : [os.path.abspath("./model.tflite"), os.path.abspath("./Models/ModelNN1/model.tflite")],
+        "gather_data" : True,
         "log_level" : logging.DEBUG
     }
     # Specify the player type
@@ -165,15 +165,15 @@ if __name__ == "__main__":
                     "log_level":logging.DEBUG,
                     "max_num_states":1000,
                     "max_num_samples":100,
-                    "pred_format":"new",
+                    "pred_format":"bitmap",
                     "model_id":game_kwargs["model_paths"][0],
                     #"coefficients":"random",
     }
     # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
     player = PlayerWrapper(player_type, player_args)
     # Run the benchmark
-    BENCH3.run(player,cpus = 10,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
-    BENCH1.run(player,cpus = 10,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = 10,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
+    BENCH3.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
+    BENCH1.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
+    BENCH2.run(player,cpus = 12,chunksize=1,ngames=100,custom_game_kwargs=game_kwargs)
 
 
