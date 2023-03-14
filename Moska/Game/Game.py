@@ -508,14 +508,14 @@ class MoskaGame:
         
         
     def get_random_file_name(self,min_val = 1, max_val = 1000000000):
-        fname = "data_"+str(random.randint(int(min_val),int(max_val)))+".out"
+        fname = "data_"+str(random.randint(int(min_val),int(max_val)))+".csv"
         tries = 0
         while os.path.exists(fname) and tries < 1000:
-            fname = "data_"+str(random.randint(0,max_val))+".out"
+            fname = "data_"+str(random.randint(0,max_val))+".csv"
             tries += 1
         if tries == 1000:
             print("Could not find a unique file name. Saving to custom file name.")
-            fname = "data_new_"+str(random.randint(0,max_val))+".out"
+            fname = "data_new_"+str(random.randint(0,max_val))+".csv"
         return fname
     
     def start(self) -> bool:
@@ -547,7 +547,7 @@ class MoskaGame:
         if self.GATHER_DATA:
             state_results = self.get_player_state_vectors()
             with open("Vectors/"+self.get_random_file_name(),"w") as f:
-                data = str(state_results).replace("], [","\n")
+                data = str(state_results).replace("], [","\n").replace(" ","")
                 data = data.strip("[]")
                 f.write(data)
         
