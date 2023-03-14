@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+import warnings
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
@@ -39,6 +40,9 @@ def create_dataset(nrounds : int,
                    ):
     """Creates a dataset by playing games between random players.
     """
+    if os.path.exists(folder):
+        warnings.warn(f"Folder {folder} already exists. Overwriting.")
+    CWD = os.getcwd()
     model_paths = [os.path.abspath("./Models/ModelMB11-260/model.tflite"),
                       os.path.abspath("./Models/ModelNN1/model.tflite")]
     gamekwargs = {
@@ -55,7 +59,6 @@ def create_dataset(nrounds : int,
     print(f"Game kwargs: ")
     for k,v in gamekwargs.items():
         print(f"\t{k}: {v}")
-    make_log_dir(folder)
     time_taken = 0
     for i in range(nrounds):
         start_time = time.time()
@@ -63,7 +66,9 @@ def create_dataset(nrounds : int,
         print(f"Round {i+1} players:")
         for p in acting_players:
             print(p)
+        make_log_dir(folder,append=True)
         results = play_games(acting_players, gamekwargs, ngames=num_games, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=verbose)
+        os.chdir(CWD)
         if not verbose:
             get_loss_percents(results)
         end_time = time.time()
@@ -75,4 +80,4 @@ def create_dataset(nrounds : int,
 
 if __name__ == "__main__":
     folder = "./Dataset"
-    create_dataset(nrounds=1,num_games=10,folder=folder,cpus=4,use_HIF=False,players="random",verbose=True)
+    create_dataset(nrounds=2,num_games=10,folder=folder,cpus=4,use_HIF=False,players="random",verbose=True)
