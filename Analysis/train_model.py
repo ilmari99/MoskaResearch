@@ -6,6 +6,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import sys
+from create_bitmap_dataset import create_bitmap_dataset
 
 
 def create_tf_dataset(paths, add_channel=False,sep=",") -> tf.data.Dataset:
@@ -206,7 +207,8 @@ def get_conv_model():
 
 INPUT_SHAPE = (442,1)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./Benchmark1/Vectors/", "./Benchmark2/Vectors/", "./Benchmark3/Vectors/", "./HumanLogs/Bitmaps/"],
+    #all_dataset = create_tf_dataset(["./Benchmark1/Vectors/", "./Benchmark2/Vectors/", "./Benchmark3/Vectors/", "./HumanLogs/Bitmaps/"],
+    all_dataset = create_bitmap_dataset(["./Benchmark1/Vectors/","./HumanLogs/Vectors/"],
     add_channel=True,
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
@@ -214,8 +216,8 @@ if __name__ == "__main__":
     #model = get_loaded_model("./ModelNN1/model.h5")
     model = get_conv_model()
     print(model.summary())
-    VALIDATION_LENGTH = 6000
-    TEST_LENGTH = 5000
+    VALIDATION_LENGTH = 60
+    TEST_LENGTH = 50
     BATCH_SIZE = 128*2
     tensorboard_log = "tensorboard-log/"
     checkpoint_filepath = './model-checkpoints/'
