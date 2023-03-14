@@ -8,7 +8,7 @@ import pandas as pd
 import sys
 
 
-def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Dataset:
+def create_tf_dataset(paths, add_channel=False,sep=",") -> tf.data.Dataset:
     """ Create a tf dataset from a folder of files"""
     if not isinstance(paths, (list, tuple)):
         try:
@@ -16,10 +16,6 @@ def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Datas
         except:
             raise ValueError("Paths should must be a list of strings")
     # Cards on table, vards in hand + players ready, players out, kopled
-    misc_parts = list(range(0,5)) + list(range(161,171))
-    card_parts = list((n for n in range(0,431) if n not in misc_parts))
-    print(f"Number of card parts" + str(len(card_parts)))
-    print(f"Misc parts: {misc_parts}")
     file_paths = []
     for path in paths:
         if not os.path.isdir(path):
@@ -28,17 +24,9 @@ def create_tf_dataset(paths, add_channel=False,get_part="full") -> tf.data.Datas
     print("Number of files: " + str(len(file_paths)))
     random.shuffle(file_paths)
     print("Shuffled files.")
-    dataset = tf.data.TextLineDataset(file_paths)
-    dataset = dataset.map(lambda x: tf.strings.split(x, sep=", "), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = tf.data.TextLineDataset(file_paths, num_parallel_reads=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(lambda x: tf.strings.split(x, sep=sep), num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.map(lambda x: (tf.strings.to_number(x[:-1]), tf.strings.to_number(x[-1])), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    print(f"Getting part: {get_part}")
-    # Get only the parts we want
-    if get_part == "cards":
-        dataset = dataset.map(lambda x,y: (tf.gather(x, card_parts), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    elif get_part == "misc":
-        dataset = dataset.map(lambda x,y: (tf.gather(x, misc_parts), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    elif get_part != "full":
-        raise ValueError(f"get_part should be 'cards', 'misc' or 'full', not {get_part}")
     
     # Add a channel dimension
     if add_channel:
@@ -194,40 +182,41 @@ def get_conv_model():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_SHAPE))
     model.add(tf.keras.layers.BatchNormalization(axis=1,))
-    model.add(tf.keras.layers.Conv1D(6,3,activation="linear"))
+    model.add(tf.keras.layers.Conv1D(32,3,activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
-    model.add(tf.keras.layers.MaxPooling1D(pool_size=2, strides=None, padding='valid', data_format='channels_last'))
-    model.add(tf.keras.layers.Conv1D(32,6, activation="linear"))
+    model.add(tf.keras.layers.Conv1D(16,5, activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
-    model.add(tf.keras.layers.Conv1D(32,12, activation="linear"))
+    model.add(tf.keras.layers.Conv1D(8,13, activation="linear"))
     model.add(tf.keras.layers.LeakyReLU(alpha=0.3))
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dropout(rate=0.2))
+    model.add(tf.keras.layers.Dropout(rate=0.3))
     model.add(tf.keras.layers.Dense(500,activation="relu"))
     model.add(tf.keras.layers.Dropout(rate=0.4))
     model.add(tf.keras.layers.Dense(400,activation="relu"))
+    model.add(tf.keras.layers.Dropout(rate=0.4))
+    model.add(tf.keras.layers.Dense(500,activation="relu"))
     model.add(tf.keras.layers.Dense(1,activation="sigmoid"))
     
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=True),
-        loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=2,from_logits=False,label_smoothing=0),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, amsgrad=False),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False,label_smoothing=0),
         metrics=['accuracy'],
     )
     return model
 
-INPUT_SHAPE = (430,)
+INPUT_SHAPE = (442,1)
 if __name__ == "__main__":
-    all_dataset = create_tf_dataset(["./Dataset2/Vectors/","./Minimize/Vectors/","./Dataset-Lumi2/Vectors/", "./Dataset-Lumi3/Vectors/"],
-    add_channel=False,
-    get_part="full",
+    all_dataset = create_tf_dataset(["./Benchmark1/Vectors/", "./Benchmark2/Vectors/", "./Benchmark3/Vectors/", "./HumanLogs/Bitmaps/"],
+    add_channel=True,
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
     #model = load_from_checkpoint(get_nn_model(),'./model-checkpoints/')
-    model = get_loaded_model("./ModelNN1/model.h5")
+    #model = get_loaded_model("./ModelNN1/model.h5")
+    model = get_conv_model()
     print(model.summary())
-    VALIDATION_LENGTH = 5000000
-    TEST_LENGTH = 5000000
-    BATCH_SIZE = 4096
+    VALIDATION_LENGTH = 6000
+    TEST_LENGTH = 5000
+    BATCH_SIZE = 128*2
     tensorboard_log = "tensorboard-log/"
     checkpoint_filepath = './model-checkpoints/'
     model_file = "model.h5" 
@@ -239,7 +228,7 @@ if __name__ == "__main__":
     print("Tensorboard log directory: ",tensorboard_log)
     print("Checkpoint directory: ",checkpoint_filepath)
     print("Model file: ",model_file)
-    
+    all_dataset = all_dataset.shuffle(1000)
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     test_ds = all_dataset.skip(VALIDATION_LENGTH).take(TEST_LENGTH).batch(BATCH_SIZE)
     train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
