@@ -33,8 +33,10 @@ def create_tf_dataset(paths) -> tf.data.Dataset:
 
 if __name__ == "__main__":
     dataset : tf.data.Dataset = create_tf_dataset(["./Benchmark3/Vectors/","./Benchmark1/Vectors/"])
+    #dataset : tf.data.Dataset = create_tf_dataset(["./HumanLogs/Vectors/"])
     output_file = "./HumanLogs/Bitmaps/bitmaps.csv"
     verbose = False
+    cant_deduce_player = 0
     with open(output_file, "w") as f:
         data_buffer = []
         for cards,misc,y in dataset.as_numpy_iterator():
@@ -69,7 +71,27 @@ if __name__ == "__main__":
             cards = tf.where(cards == 0, 1, cards)
             cards = tf.where(cards == -1, 0, cards)
             cards = tf.where(cards > 0, 1, cards)
-            data = list(cards.numpy()) + list(misc.numpy()) + [y]
+            #card_rows = cards.reshape([cards.shape[0]//52, 52])
+            card_rows = tf.reshape(cards, [cards.shape[0]//52, 52])
+            # Multiply the last row card_rows.shape[0]
+            last_row_duplication = tf.reshape(tf.tile(card_rows[-1], [card_rows.shape[0]]), [card_rows.shape[0], card_rows.shape[1]])
+            # Add the last row to each row by element
+            card_row_add = tf.add(card_rows, last_row_duplication)
+            # Now, the row index between index 3 - 6 which has a value 2 somewhere, is the player
+            player_pid = tf.argmax(tf.reduce_any(tf.equal(card_row_add[3:7], 2), axis=1), output_type=tf.int32)
+            # argmax also returns 0, if no 2 is found, so we need to check if the player pid is 0
+            # Check if the player pid is 0, if yes, check if there is a 2 in the row
+            if player_pid == 0:
+                has2 = tf.argmax(card_row_add[3+player_pid], output_type=tf.int32)
+                if has2 == 0:
+                    if card_row_add[3+player_pid][0] != 2:
+                        cant_deduce_player += 1
+                        continue
+            player_pid_one_hot = tf.one_hot(player_pid, 4, dtype=tf.int32)
+            misc = tf.concat([misc, player_pid_one_hot], axis=0)
+            #print("Card rows",card_rows)
+            #print("Player pid",player_pid)
+            data = list(misc.numpy()) + list(cards.numpy()) + [y]
             data_buffer.append(data)
             if verbose:
                 print("misc_after",misc)
@@ -77,9 +99,11 @@ if __name__ == "__main__":
                 print("misc shape", misc.shape)
                 print("cards shape",cards.shape)
                 print("data shape", len(data))
+            print("Misc shape", misc.shape)
             if len(data_buffer) == 100:
                 f.write("\n".join([",".join([str(d) for d in data]) for data in data_buffer]) + "\n")
                 data_buffer = []
+        print("Could not deduce player pid", cant_deduce_player, "times")
         f.write("\n".join([",".join([str(d) for d in data]) for data in data_buffer]))
 
 
