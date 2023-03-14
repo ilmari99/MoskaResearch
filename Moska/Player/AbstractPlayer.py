@@ -282,7 +282,7 @@ class AbstractPlayer(ABC):
         # If gathering data, save the state vector
         if (success and (move != "Skip" or len(self.state_vectors) == 0)) and self.moskaGame.GATHER_DATA:
             state = FullGameState.from_game(self.moskaGame, copy=False)
-            vec = state.as_perspective_vector(self)
+            vec = state.as_perspective_vector(self,fmt="bitmap")
             self.state_vectors.append(vec)
         return success, msg
     
