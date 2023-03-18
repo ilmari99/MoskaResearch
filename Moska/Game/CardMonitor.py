@@ -105,10 +105,10 @@ class CardMonitor:
             """
             pool = tuple(iterable)
             n = len(pool)
-            indices = sorted(random.sample(range(n), r))
+            indices = sorted(random.sample(range(n), min(r, n)))
             return tuple(pool[i] for i in indices)
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
-        combs = random_combination(combs,ncards)
+        combs = random_combination(combs,max_samples)
         for comb in combs:
             samples.append(comb)
             if len(samples) >= max_samples:
