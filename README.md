@@ -15,6 +15,45 @@ Move to the created directory (`cd moska`), and run `pip install -r play-require
 ### **Play games**
 To play games against three neural network players, run `python3 ./Play/play_as_human.py` (depends on your OS). To customize which players to play against, see the file `./Play/play_as_human.py` and change the players to your liking. This might require you to look at the `__init__` method of your chosen player, to see which arguments are required. There is little documentation currently, and error handling might not be very informative.
 
+When playing, you can currently see which cards each player has *publically* lifted to their hand. This is to reduce the need to scroll up and down in the terminal, to see which cards a player has lifted.
+
+The players turns are assigned pseudo-randomly, and there is no speed aspect to this version (since computer is much faster).
+
+Everything in the game happens by selecting a number, that references to something (index).
+When the game begins, the players start playing. When you can play, the game automatically stops, and the command line then presents you with information about the current game state (the `*` next to a player means, that the player is the target), and the possible moves (classes of moves). For example:
+```
+Human playing...
+Triumph card: ♦12
+Deck left: 11
+NNEV1(0.69) : [X-1, X-1, X-1, X-1, ♦13, X-1]
+NNEV2(0.46) : [♥10, X-1, X-1, X-1, X-1, X-1, X-1]
+NNEV3(0.8) : [♣10, ♦10, X-1, X-1, X-1, X-1, X-1]
+Human*(0.36) : [X-1, X-1, X-1, X-1, X-1, X-1]
+Cards to fall : [♥8]
+Fell cards : []
+
+{'target': 'Human', 'cards_to_fall': [♥8], 'fell_cards': [], 'hand': ♠9 ♠8 ♣9 ♣4 ♠13 ♥9 , 'Deck': 11}
+0. EndTurn
+1. PlayToSelf
+2. PlayFallFromHand
+3. PlayFallFromDeck
+What do you want to play:
+```
+You then choose a move, and select the cards to play.
+For example, I want to play ♠8 to myself, so I first choose the move `1. PlayToSelf` by typing `1`. After that, I select the index of the card I want (in `'hand': ♠9 ♠8 ♣9 ♣4 ♠13 ♥9`) to play to myself, in this case the index is `1`. The game then continues, and the next player plays, and so on.
+```
+What do you want to play: 1
+Which cards do you want to play to self (indices of cards in hand separated by space):
+1
+```
+The command line generally instructs you how to make a move, and the game shouldn't fail even if you make a mistake.
+A specific note: If you fall cards on the table, with cards in your hand, you must do it by specifying two cards: one from your hand, and the other from `Cards to fall`.
+
+Furthermore, there are currently ways to cheat, by looking at other peoples cards, but come on... It will be removed in the future.
+
+The game can be stopped at any time by pressing `Ctrl+C`.
+
+
 ### **Training a model**
 Simulated data can be found from Kaggle: https://www.kaggle.com/datasets/ilmarivahteristo/card-game-state-evaluation.
 
