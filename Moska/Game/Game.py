@@ -46,7 +46,6 @@ class MoskaGame:
     random_seed = None
     nplayers : int = 0
     card_monitor : CardMonitor = None
-    model_paths : List[str] = [""]
     __prev_lock_holder__ = None
     GATHER_DATA : bool = True
     EXIT_FLAG = False
@@ -67,8 +66,10 @@ class MoskaGame:
         Args:
             deck (StandardDeck): The deck instance, from which to draw cards.
         """
+        self.REDUCED_PRINTS = True
         self.GATHER_DATA = gather_data
         self.IS_RUNNING = False
+        self.plotting_data : Dict[int,List[int]] = {}
         #print(self.input_details)
         self.threads = {}
         if self.players or self.nplayers > 0:
@@ -386,8 +387,21 @@ class MoskaGame:
                     pred_format = pl.pred_format
                 evaluation = self.model_predict(np.array(state.as_perspective_vector(pl,fmt=pred_format),dtype=np.float32),model_id=model_id)
                 player_evals.append(round(float(evaluation),2))
+                if any((pl.requires_graphic for pl in self.players)):
+                    if pl.pid not in self.plotting_data.keys():
+                        self.plotting_data[pl.pid] = []
+                    self.plotting_data[pl.pid].append(float(evaluation))
         for pid,pl in enumerate(self.players):
-            s += f"{pl.name}{'*' if pl is self.get_target_player() else ''}({player_evals[pid]}) : {self.card_monitor.player_cards[pl.name]}\n"
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            if "Human" in pl.name and self.REDUCED_PRINTS:
+                s += f"({player_evals[pid]})"
+            # Add spaces to make the prints more readable
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            if self.REDUCED_PRINTS:
+                s += f" : {len(self.card_monitor.player_cards[pl.name])}"
+            else:
+                s += f" : {self.card_monitor.player_cards[pl.name]}"
+            s += "\n"
         s += f"Cards to fall : {self.cards_to_fall}\n"
         s += f"Fell cards : {self.fell_cards}\n"
         return s
@@ -518,6 +532,23 @@ class MoskaGame:
             fname = "data_new_"+str(random.randint(0,max_val))+".csv"
         return fname
     
+    def plot_evaluations(self):
+        try:
+            import matplotlib.pyplot as plt
+        except:
+            print("Could not import matplotlib.pyplot. Skipping plotting.")
+            return
+        fig, ax = plt.subplots()
+        for pl in self.players:
+            ax.plot(self.plotting_data[pl.pid],label=pl.name)
+        ax.legend()
+        ax.set_xlabel("Turns")
+        ax.set_ylabel("Evaluation")
+        fig.set_size_inches(15,10)
+        ax.grid()
+        plt.show()
+        return
+    
     def start(self) -> bool:
         """The main method of MoskaGame. Sets the triumph card, locks the game to avoid race conditions between players,
         initializes and starts the player threads.
@@ -550,7 +581,8 @@ class MoskaGame:
                 data = str(state_results).replace("], [","\n").replace(" ","")
                 data = data.strip("[]")
                 f.write(data)
-        
+        if self.plotting_data:
+            self.plot_evaluations()
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
         for p,rank in ranks:
             self.glog.info(f"#{rank} - {p}")
