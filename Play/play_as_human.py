@@ -30,7 +30,7 @@ from scipy import stats as sc_stats
 from Utils import args_to_gamekwargs, make_log_dir,get_random_players, replace_setting_values
 from PlayerWrapper import PlayerWrapper
 
-def get_human_players() -> List[PlayerWrapper]:
+def get_human_players(model_path = "model.tflite", pred_format = "bitmap") -> List[PlayerWrapper]:
     """Returns a list of PlayerWrappers, including 1 human player.
     """
     shared_kwargs = {"log_level" : logging.DEBUG,
@@ -42,22 +42,22 @@ def get_human_players() -> List[PlayerWrapper]:
                                             "log_file":"Game-{x}-NNEV1.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
-                                            "pred_format":"bitmap",
-                                            "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
                                             }}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV2",
                                             "log_file":"Game-{x}-NNEV2.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
-                                            "pred_format":"bitmap",
-                                            "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
                                             }}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV3",
                                             "log_file":"Game-{x}-NNEV3.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
-                                            "pred_format":"bitmap",
-                                            "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
                                             }}))
     return players
 
@@ -81,7 +81,7 @@ def get_next_game_id(path : str, filename : str) -> int:
 
 
 def play_as_human(game_id = 0):
-    players = get_human_players()
+    players = get_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
     cwd = os.getcwd()
     #players = get_random_players(4)
     folder = "HumanLogs"
@@ -91,7 +91,7 @@ def play_as_human(game_id = 0):
         "players" : players,
         "log_level" : logging.DEBUG,
         "timeout" : 2000,
-        "model_paths":[os.path.abspath(path) for path in ["./Models/Model-nn1-BB/model.tflite"]]
+        "model_paths":[os.path.abspath(path) for path in ["./Models/Model-nn1-fuller/model.tflite"]]
     }
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
     # Changes to the log directory for the duration of the game
