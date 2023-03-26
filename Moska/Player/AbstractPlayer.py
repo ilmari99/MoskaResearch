@@ -398,7 +398,8 @@ class AbstractPlayer(ABC):
                 if self.requires_graphic:
                     print(f"{self.name} playing...",flush=True)
                     print(self.moskaGame,flush=True)
-                    print(msgd, flush=True)
+                    if "Human" in self.name:
+                        print(msgd, flush=True)
                     self.moskaGame.glog.debug(f"{self.name} playing...")
                     self.moskaGame.glog.debug(self.moskaGame)
                     self.moskaGame.glog.debug(msgd)
