@@ -61,6 +61,42 @@ def get_human_players(model_path = "model.tflite", pred_format = "bitmap") -> Li
                                             }}))
     return players
 
+def get_test_human_players(model_path="./model.tflite", pred_format="bitmap"):
+    shared_kwargs = {"log_level" : logging.DEBUG,
+                     "delay":0.1,
+                     "requires_graphic":True}
+    players = []
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs, **{"name" : "NNEV-test",
+                                            "log_file":"Game-{x}-NNEV-test.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
+                                            }}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV1",
+                                            "log_file":"Game-{x}-NNEV1.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
+                                            }}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV2",
+                                            "log_file":"Game-{x}-NNEV2.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
+                                            }}))
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NNEV3",
+                                            "log_file":"Game-{x}-NNEV3.log", 
+                                            "max_num_states":8000,
+                                            "max_num_samples":1000,
+                                            "pred_format":pred_format,
+                                            "model_id":os.path.abspath(model_path),
+                                            }}))
+    return players
+
+
 
 def get_next_game_id(path : str, filename : str) -> int:
     """Returns the next available game id, by checking which files exist in the given path.
@@ -82,6 +118,7 @@ def get_next_game_id(path : str, filename : str) -> int:
 
 def play_as_human(game_id = 0):
     players = get_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
+    #players = get_test_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
     cwd = os.getcwd()
     #players = get_random_players(4)
     folder = "HumanLogs"
