@@ -1,9 +1,9 @@
 # Moska Card game simulator
 
 ## **General** <!-- omit in toc -->
-This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players.
+This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players. Moska is a cousin to the more popular russian card game "Durak", but played with a full deck, and a variation of the rules.
 
-The aim of this project is to create an agent, which plays at a human level. The general approach is to use deep (convolutional) neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with hand-made agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
+The aim of this project is to create an agent, which plays near a human level. The general approach is to use deep neural networks to evaluate how good a position is from a certain players perspective. The neural network is trained on data acquired from simulations with hand-made agents, where each players states are recorded through-out the game, and after the game each recorded state is labeled according to whether the player lost (0) or did not lose (1). The neural network is then implemented on a player, which uses the neural network to evaluate each possible next move, and greedily choose the best with no look-ahead.
 
 ## **Usage** <!-- omit in toc -->
 Tested on Python version 3.6, 3.8, 3.9 and 3.10. **Version 3.11 does not work!**
@@ -13,22 +13,22 @@ To get set up, clone this repository, for example with the command: `git clone h
 Move to the created directory (`cd moska`), and run `pip install -r play-requirements.txt` to install the required packages for most agents. To install all required packages, install the `requirements.txt`.
 
 ### **Play games**
-To play games against three neural network players, run `python3 ./Play/play_as_human.py` (depends on your OS). To customize which players to play against, see the file `./Play/play_as_human.py` and change the players to your liking. This might require you to look at the `__init__` method of your chosen player, to see which arguments are required. There is little documentation currently, and error handling might not be very informative.
+To play games against three neural network players, run `python3 ./Play/play_as_human.py` (just `py ./Play/play_as_human.py` on Windows).
 
-When playing, you can currently see which cards each player has *publically* lifted to their hand. This is to reduce the need to scroll up and down in the terminal, to see which cards a player has lifted.
+When playing, you can the evaluation of your current state. The evaluation has perfect memory about the played cards, and which cards each player has lifted. As a player, if you want, you can scroll back and see whether some cards were already played.
 
 The players turns are assigned pseudo-randomly, and there is no speed aspect to this version (since computer is much faster).
 
 Everything in the game happens by selecting a number, that references to something (index).
-When the game begins, the players start playing. When you can play, the game automatically stops, and the command line then presents you with information about the current game state (the `*` next to a player means, that the player is the target), and the possible moves (classes of moves). For example:
+When the game begins, the players start playing. When you can play, the game automatically stops, and the command line then presents you with information about the current game state (the `(TG)` next to a player means, that the player is the target), and the possible moves (classes of moves). The numbers next to each player tell how many cards they have in their hand. For example:
 ```
 Human playing...
 Triumph card: ♦12
 Deck left: 11
-NNEV1(0.69) : [X-1, X-1, X-1, X-1, ♦13, X-1]
-NNEV2(0.46) : [♥10, X-1, X-1, X-1, X-1, X-1, X-1]
-NNEV3(0.8) : [♣10, ♦10, X-1, X-1, X-1, X-1, X-1]
-Human*(0.36) : [X-1, X-1, X-1, X-1, X-1, X-1]
+NNEV1           : 6
+NNEV2           : 6
+NNEV3           : 6
+Human (TG)(0.41): 6
 Cards to fall : [♥8]
 Fell cards : []
 
@@ -38,21 +38,17 @@ Fell cards : []
 2. PlayFallFromHand
 3. PlayFallFromDeck
 What do you want to play:
-```
-You then choose a move, and select the cards to play.
-For example, I want to play ♠8 to myself, so I first choose the move `1. PlayToSelf` by typing `1`. After that, I select the index of the card I want (in `'hand': ♠9 ♠8 ♣9 ♣4 ♠13 ♥9`) to play to myself, in this case the index is `1`. The game then continues, and the next player plays, and so on.
-```
-What do you want to play: 1
 Which cards do you want to play to self (indices of cards in hand separated by space):
 1
 ```
-The command line generally instructs you how to make a move, and the game shouldn't fail even if you make a mistake.
-A specific note: If you fall cards on the table, with cards in your hand, you must do it by specifying two cards: one from your hand, and the other from `Cards to fall`.
-
-Furthermore, there are currently ways to cheat, by looking at other peoples cards, but come on... It will be removed in the future.
+You choose a move, and select the cards to play.
+For example, I want to play ♠8 to myself, so I first choose the move `1. PlayToSelf` by typing `1`. After that, I select the index of the card I want (in `'hand': ♠9 ♠8 ♣9 ♣4 ♠13 ♥9`) to play to myself, in this case the index is `1`. The game then continues, and the next player plays, and so on.
+The command line generally instructs you how to make a move, and the game shouldn't fail even if you make a mistake. Once you play a move, you can't undo it, but don't worry that is normal in moska.
+A specific note: If you fall cards on the table, with cards in your hand, you must do it by specifying two cards: one from your hand, and the other from `Cards to fall` as a tuple of two indices `(a,b)`.
 
 The game can be stopped at any time by pressing `Ctrl+C`.
 
+To customize which players to play against, see the file `./Play/play_as_human.py` and change the players to your liking. This might require you to look at the `__init__` method of your chosen player, to see which arguments are required. There is little documentation currently, and error handling might not be very informative - sorry about that!
 
 ### **Training a model**
 Simulated data can be found from Kaggle: https://www.kaggle.com/datasets/ilmarivahteristo/card-game-state-evaluation.
@@ -71,10 +67,9 @@ To run a pre-defined benchmark, see the file `./Play/benchmark_model.py` and cha
 ### **Implementing custom players**
 
 ![player-flowchart](./img/player-diagram.png)
-*Flowchart of the players logic. Abstract classes implement everything, except selecting the move to play.*
+*Flowchart of the players logic. Abstract classes implement the necessary stuff required for using the agent - except selecting the move to play.*
 
-The agents can either implement `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
-
+The agents can either implement `Moska/Player/AbstractHIFEvaluatorBot.py`, `Moska/Player/AbstractEvaluatorBot.py` or `Moska/Player/AbstractPlayer.py`.
 
 **AbstractPlayer**
 
