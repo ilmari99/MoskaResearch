@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, List, TYPE_CHECKING
+from typing import Dict, List, TYPE_CHECKING, Tuple
 import warnings
 from .Deck import Card
 if TYPE_CHECKING:
@@ -10,7 +10,13 @@ REFERENCE_DECK = tuple(StandardDeck(shuffle = False).cards)
 
 
 class FullGameState:
+    """ A class representing the full game state.
+    This is an entirely static representation and is not perfect, i.e. you can not restore an arbitrary games state from this.
+    You atleast need the player instances.
+    This used to represent the game as a vector, and to store information about the game and later to restore it (mock move).
+    """
     def __init__(self,*args, copy : bool = False):
+        """ Initilize the game state, with either copying everything or not. """
         self.copied = copy
         if copy:
             self.__init__with_copy(*args)
@@ -30,6 +36,9 @@ class FullGameState:
                  target_pid : int,
                  trump : str
                  ):
+        """ Initilize the game state, without copying everything.
+        This is faster, but if you modify the game state, this instance will be modified as well.
+        """
         self.deck = deck # The deck of cards
         self.full_player_cards = full_player_cards # Complete information about the players current cards
         self.known_player_cards = known_player_cards # Known player cards
@@ -56,6 +65,10 @@ class FullGameState:
                 target_pid : int,
                 trump : str
                 ):
+        """ Initilize the game state, with copying everything.
+        This is slower, but if you modify the game state, this instance will not be modified.
+        All mutable objects are deepcopied.
+        """
         self.deck = copy.deepcopy(deck) # The deck of cards
         self.full_player_cards = copy.deepcopy(full_player_cards) # Complete information about the players current cards
         self.known_player_cards = copy.deepcopy(known_player_cards) # Known player cards
@@ -69,11 +82,12 @@ class FullGameState:
         self.trump = trump
         
         
-    def restore_game_state(self,game : 'MoskaGame', check : bool = False):
-        if check:
-            passed, msg = self.is_game_equal(game,return_msg=True)
-            if not passed:
-                raise ValueError(msg)
+    def restore_game_state(self,game : 'MoskaGame', check : bool = False) -> None:
+        """ Restore the game state of a game.
+        If check is True, the game state is checked to be equal to this game state after restoration.
+        If check is False, the game state is not checked after restoration.
+        If check is True and the game state is not equal to this game state, a ValueError is raised.
+        """
         if not self.copied:
             warnings.warn("The game state was not copied. This may cause unexpected behaviour.")
         # These should be fine
@@ -91,10 +105,15 @@ class FullGameState:
             # the players again, and that is not currently possible.
         for pl, cards in zip(game.players,self.full_player_cards):
             pl.hand.cards = cards
+        if check:
+            passed, msg = self.is_game_equal(game,return_msg=True)
+            if not passed:
+                raise ValueError(msg)
         return      
 
     @classmethod
-    def from_game(cls,game : 'MoskaGame', copy : bool = True):
+    def from_game(cls,game : 'MoskaGame', copy : bool = True) -> 'FullGameState':
+        """ Create a game state from a game."""
         full_player_cards = [pl.hand.cards for pl in game.players]
         known_player_cards = [game.card_monitor.player_cards[pl.name] for pl in game.players]
         players_ready = [pl.ready for pl in game.players]
@@ -114,8 +133,10 @@ class FullGameState:
                    copy = copy,
                    )
 
-    def copy(self):
-        """ Create a shallow copy of this object"""
+    def copy(self) -> 'FullGameState':
+        """ Create a shallow copy of this object.
+        This is used when sampling the possible future game states in some models.
+        """
         return type(self)(self.deck,
                           [copy.copy(cards) for cards in self.known_player_cards],
                           [copy.copy(cards) for cards in self.full_player_cards],
@@ -130,37 +151,49 @@ class FullGameState:
                           copy = False,
                           )
         
-    def is_game_equal(self, other : 'MoskaGame', return_msg : bool = False):
+    def is_game_equal(self, other : 'MoskaGame', return_msg : bool = False) -> Tuple[bool,str]:
+        """ Check if the game state is equal to the game state of a game instance.
+        If return_msg is True, a tuple of a boolean and a string is returned.
+        """
         out = True
         msg = ""
+        # Check if the turncycle index is equal
         if self.tc_index != other.turnCycle.ptr:
             out = False
             msg = "The tc_index is not equal. {} != {}".format(self.tc_index,other.turnCycle.ptr)
+        # Check if the kopled status is the same
         elif [card.kopled for card in self.cards_to_fall] != [card.kopled for card in other.cards_to_fall]:
             out = False
             msg = "The cards_to_fall kopled state is not equal. {} != {}".format(self.cards_to_fall,other.cards_to_fall)
+        # Check if the cards in the deck are the same and in same order
         elif self.deck.cards != other.deck.cards:
             out = False
             msg = "The decks are not equal. {} != {}".format(self.deck.cards,other.deck.cards)
+        # Check if the players have the same cards
         elif self.full_player_cards != [pl.hand.cards for pl in other.players]:
             out = False
             msg = "The full player cards are not equal. {} != {}".format(self.full_player_cards,[pl.hand.cards for pl in other.players])
-        
+        # Check if the publically known cards are the same
         elif self.known_player_cards != [other.card_monitor.player_cards[pl.name] for pl in other.players]:
             out = False
             msg = "The known player cards are not equal. {} != {}".format(self.known_player_cards,[other.card_monitor.player_cards[pl.name] for pl in other.players])
+        # Check if the fell cards are the same
         elif self.fell_cards != other.fell_cards:
             out = False
             msg = "The fell cards are not equal. {} != {}".format(self.fell_cards,other.fell_cards)
+        # Check if the cards to fall are the same
         elif self.cards_to_fall != other.cards_to_fall:
             out = False
             msg = "The cards to fall are not equal. {} != {}".format(self.cards_to_fall,other.cards_to_fall)
+        # Check if the cards in game are the same
         elif self.cards_fall_dict != other.card_monitor.cards_fall_dict:
             out = False
             msg = "The cards fall dict are not equal. {} != {}".format(self.cards_fall_dict,other.card_monitor.cards_fall_dict)
+        # Check if the players ready are the same
         elif self.players_ready != [pl.ready for pl in other.players]:
             out = False
             msg = "The players ready are not equal. {} != {}".format(self.players_ready,[pl.ready for pl in other.players])
+        # Check if the players still in the game are the same
         elif self.players_in_game != [pl.rank is None for pl in other.players]:
             out = False
             msg = "The players in game are not equal. {} != {}".format(self.players_in_game,[pl.rank is None for pl in other.players])
@@ -172,10 +205,12 @@ class FullGameState:
         return len(self.cards_fall_dict[card])
 
     def encode_cards(self, cards : List[Card],fill = -1,cards_fall_dict = None) -> List[int]:
-        """Encodes a list of cards into a list of integers.
+        """ DEPRECATED!!!!
+        Encodes a list of cards into a list of integers.
         Returns a list of 52 zeros, with the index of the card in the reference deck set to the number of cards that the card can fall.
         If a card is not in the game (not in cards_fall), the value is -1.
         """
+        warnings.warn("The card encoding method is deprecated",DeprecationWarning)
         if not cards_fall_dict:
             cards_fall_dict = self.cards_fall_dict
         out = [fill] * len(REFERENCE_DECK)
@@ -225,7 +260,11 @@ class FullGameState:
             out += self.encode_cards(cards)
         return out
     
-    def _as_perspective_bitmap_vector(self,player : 'AbstractPlayer'):
+    def _as_perspective_bitmap_vector(self,player : 'AbstractPlayer') -> List[int]:
+        """ Returns a vector of the game state from the perspective of the given player.
+        This is the latest version of the encoding.
+        TODO: Add the description of the encoding.
+        """
         out = []
         out += [len(self.deck.cards)]
         out += [len(hand) for hand in self.known_player_cards]
@@ -317,98 +356,5 @@ class FullGameState:
         out += local_encode_cards(player_cards)
         # len should be 1 + 4 +52 + 52 + 52 + 4 + 4 + 1 + 4*52 (+1) = 431/432
         return out
-
-
-class GameState:
-    """ A class representing a state of a MoskaGame, from the perspective of a player. Contains information about the state of the game, and methods to handle the information. """
-    def __init__(self, deck_left : int, player_cards : List[List[Card]], cards_fall : Dict[Card,List[Card]], cards_on_table : List[Card], fell_cards : List[Card], player_status : List[int]):
-        """Initializes a GameState object. The object contains information about the state of the game, and methods to handle the information.
-
-        Args:
-            deck_left (int): How many cards are left in the deck.
-            player_cards (List[List[Card]]): A list of lists of cards. The lists are ordered by the players pid.
-            cards_fall (Dict[Card,List[Card]]): A dictionary containing each card left in the game, and the cards that the card can fall.
-            cards_on_table (List[Card]): A list of cards that are currently on the table.
-            player_status (List[int]): A list of integers representing the status of each player. The list is ordered by the players pid. 
-        """
-        self.deck_left = deck_left
-        self.player_cards = player_cards
-        self.cards_fall = cards_fall
-        self.cards_on_table = cards_on_table
-        self.fell_cards = fell_cards
-        self.player_status = tuple(player_status)
-    
-    @classmethod
-    def from_game(cls, game : 'MoskaGame'):
-        """ Creates a GameState object from a MoskaGame object."""
-        player_hands_dict = copy.deepcopy(game.card_monitor.player_cards)
-        player_names = [pl.name for pl in game.players]
-        player_hands = []
-        # Loop through the list by pid, and add the player's hand to the list.
-        for pl in player_names:
-            player_hands.append(player_hands_dict[pl])
-        return cls(len(game.deck), player_hands, copy.deepcopy(game.card_monitor.cards_fall_dict), game.cards_to_fall.copy(), game.fell_cards.copy(), cls._get_player_status(cls,game))
-    
-    def encode_cards(self, cards : List[Card]) -> List[int]:
-        """Encodes a list of cards into a list of integers.
-        Returns a list of 52 zeros, with the index of the card in the reference deck set to the number of cards that the card can fall.
-        If a card is not in the game (not in cards_fall), the value is -1.
-        """
-        out = [0] * len(REFERENCE_DECK)
-        if len(out) != 52:
-            raise ValueError("The reference deck is not 52 cards long.")
-        for card in cards:
-            # If no such card exists, the value is -1, which indicates that the card is not in the game.
-            #encoding_value = self.cards_fall.get(card,-1)
-            encoding_value = -1
-            if card in self.cards_fall:
-                encoding_value = len(self.cards_fall[card])
-            try:
-                out[REFERENCE_DECK.index(card)] = encoding_value
-            # If the card is not in the reference deck it is likely an unknown card
-            except ValueError:
-                pass
-        return out
-    
-    def as_vector(self,normalize : bool = False):
-        """Returns a numeric vector representation of the state.
-        The vector contains hot-encoded information about the state. The vectors are ordered by reference deck or by pid.
-        The vector is ordered as follows:
-        - The number of cards left in the deck.
-        - The cards in each player's hand, that are known by everyone, ordered by pid.
-        - All cards, and how many cards they can fall, or -1 if the card is not in the game.
-        - The cards on the table, waiting to be fell
-        - The cards that have fallen during this turn
-        - The status of each player, ordered by pid.
-        """
-        if normalize:
-            raise DeprecationWarning("Normalizing the vector is not supported.")
-        player_hands = []
-        player_cards = []
-        for cards in self.player_cards:
-            player_hands += self.encode_cards(cards)
-            player_cards.append(len(cards))
-        out = [self.deck_left] + player_hands + self.encode_cards(REFERENCE_DECK) + self.encode_cards(self.cards_on_table) + self.encode_cards(self.fell_cards) + player_cards
-        out += list(self.player_status)
-        # len out should be 7x52 + 1 + 4 + 4 (+52 + 1) = 426  
-        return out
-    
-    def _get_player_status(cls, game : 'MoskaGame', fmt = "new") -> List[int]:
-        """Get the status vector of the players in the game instance.
-            - -1 : the player is not in the game.
-            - 0 : the player is in the game.
-            - 1 : the player is in the game, and is not ready.
-            - 2 : The player has the turn to fall cards
-        """
-        players = game.players
-        statuses = []
-        for pl in players:
-            out = 0
-            #if pl.rank is None:
-            #    out += 1
-            if pl is game.get_target_player():
-                out += 1
-            statuses.append(out)
-        return tuple(statuses)
     
         
