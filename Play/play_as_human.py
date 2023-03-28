@@ -4,34 +4,24 @@ import os
 import sys
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import time
 import sys
 from Moska.Game.Game import MoskaGame
-from Moska.Player.MoskaBot3 import MoskaBot3
-from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
-import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
-from Moska.Player.MoskaBot2 import MoskaBot2
-from Moska.Player.MoskaBot0 import MoskaBot0
-from Moska.Player.MoskaBot1 import MoskaBot1
-from Moska.Player.RandomPlayer import RandomPlayer
-from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
-from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
-from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
-from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
-import random
-import numpy as np
-from scipy.optimize import minimize
-from scipy import stats as sc_stats
 from Utils import args_to_gamekwargs, make_log_dir,get_random_players, replace_setting_values
 from PlayerWrapper import PlayerWrapper
 
-def get_human_players(model_path = "model.tflite", pred_format = "bitmap") -> List[PlayerWrapper]:
-    """Returns a list of PlayerWrappers, including 1 human player.
+def get_human_players(model_path : str = "model.tflite",
+                      pred_format : str = "bitmap") -> List[PlayerWrapper]:
+    """Returns a list of
+    - Three identical PlayerWrapper(NNHIFEvaluatorBot)s, using the model found in model_path, with pred_format.
+    - One PlayerWrapper(HumanPlayer) that can be controlled by the user.
+    Args:
+        model_path (str): Path to the model file.
+        pred_format (str): The format of the predictions. Can be "bitmap" or "vector".
+    Returns:
+        List[PlayerWrapper]: A list of PlayerWrappers.
     """
     shared_kwargs = {"log_level" : logging.DEBUG,
                      "delay":1,
@@ -61,7 +51,11 @@ def get_human_players(model_path = "model.tflite", pred_format = "bitmap") -> Li
                                             }}))
     return players
 
-def get_test_human_players(model_path="./model.tflite", pred_format="bitmap"):
+def get_test_human_players(model_path : str = "./model.tflite",
+                           pred_format : str = "bitmap") -> List[PlayerWrapper]:
+    """Returns a list of four identical PlayerWrapper(NNHIFEvaluatorBot)s, using the model found in model_path, with pred_format.
+    This is used for testing purposes.
+    """
     shared_kwargs = {"log_level" : logging.DEBUG,
                      "delay":0.1,
                      "requires_graphic":True}
@@ -116,12 +110,15 @@ def get_next_game_id(path : str, filename : str) -> int:
     return i
 
 
-def play_as_human(game_id = 0):
-    players = get_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
+def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap"):
+    """ Play as a human against three NNHIFEvaluatorBots. The order of the players is shuffled.
+    """
+    # Get a list of players
+    players = get_human_players(model_path = model_path, pred_format=pred_format)
     #players = get_test_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
     cwd = os.getcwd()
-    #players = get_random_players(4)
     folder = "HumanLogs"
+    # Find the next available game id
     game_id = get_next_game_id("./" + folder,"HumanGame-{x}.log")
     gamekwargs = {
         "log_file" : "HumanGame-{x}.log",
@@ -130,6 +127,7 @@ def play_as_human(game_id = 0):
         "timeout" : 2000,
         "model_paths":[os.path.abspath(path) for path in ["./Models/Model-nn1-fuller/model.tflite"]]
     }
+    # Convert general game arguments to game specific arguments (replace '{x}' with game_id)
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
     # Changes to the log directory for the duration of the game
     make_log_dir(folder,append=True)
