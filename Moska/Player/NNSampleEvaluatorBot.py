@@ -7,7 +7,7 @@ import numpy as np
 
 from Moska.Player.AbstractHIFEvaluatorBot import AbstractHIFEvaluatorBot
 from typing import Dict, List,TYPE_CHECKING, Tuple
-from ..Game.GameState import FullGameState, GameState
+from ..Game.GameState import FullGameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
     from ..Game.Game import MoskaGame

@@ -14,7 +14,7 @@ from typing import Any, Dict, List,TYPE_CHECKING, Tuple
 
 from .utils import Assignment, _get_single_assignments, _get_assignments
 
-from ..Game.GameState import FullGameState, GameState
+from ..Game.GameState import FullGameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
     from ..Game.Game import MoskaGame

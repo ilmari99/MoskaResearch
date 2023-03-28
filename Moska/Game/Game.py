@@ -2,7 +2,7 @@ import contextlib
 import os
 import sys
 import time
-from Moska.Game.GameState import FullGameState, GameState
+from Moska.Game.GameState import FullGameState
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -405,8 +405,6 @@ class MoskaGame:
             raise AssertionError(f"Mock move failed: {msg}")
         if state_fmt == "FullGameState" or "FullGameState-Depr":
             new_state = FullGameState.from_game(self,copy=True)
-        elif state_fmt == "GameState":
-            new_state = GameState.from_game(self)
         else:
             raise NameError(f"Argument 'state_fmt' was not recognized. Given argument: {state_fmt}")
         # Save the new game state, for evaluation of the move

@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List,TYPE_CHECKING, Tuple
 from .AbstractEvaluatorBot import AbstractEvaluatorBot
-from ..Game.GameState import FullGameState, GameState
+from ..Game.GameState import FullGameState
 if TYPE_CHECKING:
     from ..Game.Deck import Card
     from ..Game.Game import MoskaGame
