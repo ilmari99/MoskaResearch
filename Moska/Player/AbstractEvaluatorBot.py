@@ -5,9 +5,7 @@ from dataclasses import dataclass
 import itertools
 import logging
 import random
-import threading
 import time
-import warnings
 import numpy as np
 from .AbstractPlayer import AbstractPlayer
 from typing import Any, Dict, List,TYPE_CHECKING, Tuple
@@ -26,7 +24,11 @@ class AbstractEvaluatorBot(AbstractPlayer):
     NOTE: This class has extra information, when the next immediate future state is not known!!
     This is to reduce complexity (otherwise the next immediate next states must be sampled and averaged).
 
+    Use the subclass 'AbstractHIFEvaluatorBot', if you only want to use realistic information.
+
     The 'evaluate_states' method must be implemented by the child class.
+
+    Some decisions in this class might seem weird, but are made that way to make it more easy to subclass (for example AbstractHIFEvaluatorBot).
     
     """
     def __init__(self, moskaGame: MoskaGame = None,
@@ -54,17 +56,21 @@ class AbstractEvaluatorBot(AbstractPlayer):
         - Find all single card assignments (row-col pairs where the intersection == 1)
         - Add the assignment to found_assignments
         - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
-        - Repeat
+        - Repeat until no new assignments are found.
         """
         return _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, triumph=self.moskaGame.triumph, max_num=self.max_num_states)
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
-        """ Get a prediction for a moves best 'goodness' """
+        """ Get a move and a prediction evaluation for the best move in a class of moves ("PlayToSelf" etc.).
+        Finds all possible moves, for a class of moves, and evaluates the immediate next states.
+        Returns the best moves arguments, and the evaluation.
+        """
         # Get the possible next states for a move
         # The states should not be empty, because the next states are only computed if the move is valid
         plays, states, evals = self.get_possible_next_states(move)
         if len(plays) == 0:
             raise ValueError("No possible next states for move: ", move)
+        # If the move is 'PlayFallFromDeck' then even this class doesn't have PIF about it.
         if move == "PlayFallFromDeck":
             # Store the scores, to be able to get the best pre-computed score for a specific play
             self.play_fall_from_deck_scores = {tuple(play) : eval for play, eval in zip(plays, evals)}
@@ -72,6 +78,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
             states = ["unknown"]
             evals = [float(np.mean(evals))]
         combined = list(zip(plays, states, evals))
+        # Find the best move.
         try:
             best = max(combined, key=lambda x : x[2])
         except:
@@ -79,19 +86,20 @@ class AbstractEvaluatorBot(AbstractPlayer):
             print("Evals: ", evals, flush=True)
             print("Plays: ", plays, flush=True)
             raise Exception("Could not find best play")
-        #print("Best play: ", best[0], " with eval: ", best[2], flush=True)
         if get_n:
             return best[0],best[2],len(plays)
         return best[0],best[2]
 
     def _make_mock_move(self,move,args):
+        """ A wrapper around making a mock move, which is used to check the immediate next state.
+        This is more relevant in the AbstractHIFEvaluatorBot.
+        """
         state = self.moskaGame._make_mock_move(move,args)
         return state
     
     def _get_skip_play_states(self):
-        """ Get the states for the skip play """
+        """ Get the next state, after skipping. Only the players ready status will change."""
         plays = [[]]
-        # The state should be the same, so this is likely unnecessary
         states = self._make_mock_move("Skip",[self])
         if isinstance(states,list):
             if len(states) != 1:
@@ -100,7 +108,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
         return plays, [states]
     
     def _get_play_fall_from_hand_play_states(self) -> Tuple[List[dict[Card,Card]], List[FullGameState]]:
-        """ Get N possible plays and the resulting states for falling a card on the table from hand
+        """ Get N possible plays and the resulting states for falling a card on the table from hand.
+        Returns the plays, and the corresponding states.
         """
         # Get a list of tuples, where each odd index (1,3,..) is a card from hand, and each even index (0,2,..) is a card on the table
         # Ex: (hand_card1, table_card1, hand_card2, table_card2)
@@ -109,7 +118,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         self.plog.debug("Found {} possible plays".format(assignments))
         
         # Get a random sample of the plays. Evaluating each could take a long time
-        # TODO: Prioritize by length
+        # TODO: Prioritize by length?
         assignments = random.sample(assignments, min(len(assignments), self.max_num_states))
         
         plays = []
@@ -133,6 +142,8 @@ class AbstractEvaluatorBot(AbstractPlayer):
         """
         Get N possible plays and the resulting states for playing a card to self.
         This is done by finding all combinations of cards in hand that can be played to self.
+
+        Returns a list of plays, and the corresponding states.
         """
         playable_from_hand = self._playable_values_from_hand()
         chand = self.hand.copy()
@@ -158,7 +169,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
     def _get_play_from_deck_play_states(self) -> Tuple[List[Card], List[FullGameState]]:
         """ Returns a list of plays and states, that are possible from the current deck.
         If the length of a play is 2, the first card is the card to play from the deck, and the second is the card to fall.
-        If the length of a play is 1, the card is the card to play to self.
+        If the length of a play is 1, the card from deck can't kill a card, and is played to the table.
 
         NOTE: This is a special case wrt to hidden information. Even this agent doesn't know the card from deck
         """
@@ -170,8 +181,6 @@ class AbstractEvaluatorBot(AbstractPlayer):
             # If the card can fall cards, make a cost matrix and get the assignments
             if self._map_to_list(card):
                 assignments = _get_assignments(from_ = [card], to = self.moskaGame.cards_to_fall,triumph=self.moskaGame.triumph)
-                #cm = self._make_cost_matrix([card], self.moskaGame.cards_to_fall, scoring=lambda c1,c2 : 1, max_val=0)
-                #assignments = self._get_assignments(matrix=cm)
                 # Evaluate the assignments. If the deck_card can fall a card, we can check the state as 'PlayFallFromHand' -play
                 for assign in assignments:
                     play = [card, self.moskaGame.cards_to_fall[assign._table_inds[0]]]
@@ -190,6 +199,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
                     # Remove the card and update card_monitor
                     self.moskaGame.card_monitor.update_unknown(self.name)
                     states.append(state)
+            # If the card from deck can't kill a card
             else:
                 play = [card]
                 plays.append(play)
@@ -208,17 +218,16 @@ class AbstractEvaluatorBot(AbstractPlayer):
     
     def _get_play_to_other_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
         """ Get N possible plays and the resulting states for playing a card to other.
+        Returns a list of plays, and the corresponding states.
         """
         playable_from_hand = self._playable_values_from_hand()
         chand = self.hand.copy()
         playable_cards = chand.pop_cards(cond=lambda c : c.value in playable_from_hand)
         self.plog.debug(f"Playable cards: {playable_cards}")
-        #start = time.time()
         play_iterables = []
         for i in range(1,min(len(playable_cards)+1,self._fits_to_table()+1)):
             play_iterables.append(itertools.combinations(playable_cards,i))
         plays = list(itertools.chain.from_iterable(play_iterables))
-        #self.plog.debug(f"Found plays to 'PlayToOther': {plays}")
         self.plog.debug(f"Found {len(plays)} plays to 'PlayToOther'. Sampling {min(len(plays),self.max_num_states)}.")
         plays = random.sample(plays,min(len(plays),self.max_num_states))
         states = []
@@ -235,6 +244,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
     
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
         """ Get N possible plays and the resulting states for playing cards to other on an Initiating turn.
+        Return the possible plays, and the corresponding states.
         """
         cards = self.hand.copy().cards
         fits = min(self._fits_to_table(), len(cards))
@@ -250,11 +260,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
                 tmp_cards = [c for c in tmp_cards if counter[c.value] >= 2]
             # Add the i length combinations to the play_iterables
             play_iterables.append(itertools.combinations(tmp_cards,i))
-        # TODO: convert to a filter expression, or a generator
         plays = itertools.chain.from_iterable(play_iterables)
         legal_plays = []
         count = 0
-        # TODO: See if checking legality is necessary, or is the algorithm correct.
+        # TODO: See if checking legality is actually necessary, i.e. proof of correctness
         for play in plays:
             count += 1
             c = Counter([c.value for c in play])
@@ -278,8 +287,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         return legal_plays, states
     
     def get_possible_next_states(self, move : str) -> Tuple[List[Any], List[FullGameState], List[float]]:
-        """ Returns a tuple containing the possible next moves,
-        the corresponding states and the evaluation of the game after playing the move.
+        """ Returns a tuple containing the possible next moves, the corresponding states and the evaluation of the game after playing the move.
         """
         state = FullGameState.from_game(self.moskaGame,copy=True)
         self.plog.info("Getting possible next states for move: " + move)
@@ -316,6 +324,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         else:
             raise Exception("Unknown move: " + move)
         self.plog.info(f"Found {len(states)} states for move {move}. Time taken: {time.time() - start}")
+        # Check whether the state of the game was accidentally changed between getting the states.
         is_eq, msg = state.is_game_equal(self.moskaGame,return_msg=True)
         if not is_eq:
             raise Exception("State changed during get_possible_next_states:\n" + msg)
@@ -327,6 +336,12 @@ class AbstractEvaluatorBot(AbstractPlayer):
     
     
     def choose_move(self, playable: List[str]) -> str:
+        """ Choose which class of moves to make.
+        Does this by finding all moves for each class of moves, evaluating the result states, and selecting the best move for each class of moves.
+        Store the moves.
+        After that, pick the class of moves, which has the best evaluation and return its name ("PlayFallFromDeck" etc.).
+        This pre-computed play is then played later.
+        """
         self.plog.info("Choosing move...")
         self.plog.debug(f"Triumph: {self.moskaGame.triumph_card}")
         self.plog.debug(f"Hand: {self.hand}")
@@ -350,29 +365,25 @@ class AbstractEvaluatorBot(AbstractPlayer):
         return best_move[0]
     
     def play_fall_card_from_hand(self) -> Dict[Card, Card]:
-        """Select random card-in-hand : card-on-table pairs
-
-        Returns:
-            Dict[Card, Card]: _description_
+        """ Make the pre-computed play
         """
         out = self.move_play_scores["PlayFallFromHand"][0]
         return out
     
     def play_initial(self) -> List[Card]:
-        """Play a random single card, to the table on an initialization
-
-        Returns:
-            List[Card]: _description_
+        """ Make the pre-computed play
         """
-        
         out = self.move_play_scores["InitialPlay"][0]
         return out
     
     def play_to_self(self) -> List[Card]:
+        """Make the pre-computed play
+        """
         out = self.move_play_scores["PlayToSelf"][0]
         return out
     
     def play_to_target(self) -> List[Card]:
+        """ Make the pre-computed play """
         out = self.move_play_scores["PlayToOther"][0]
         return out
     
@@ -385,6 +396,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
                 return play
     
     def end_turn(self) -> List[Card]:
+        """ Make the pre-computed play """
         out = self.move_play_scores["EndTurn"][0]
         return out
     
