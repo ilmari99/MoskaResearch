@@ -10,6 +10,7 @@ CARD_SUIT_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}    #Con
 MAIN_DECK = None                                            # The main deck
 
 def check_signature(sig : Sequence, inp : Sequence) -> bool:
+    """ Check whether the input sequences types match the expected sequence."""
     for s, i in zip(sig,inp):
         if not isinstance(i,s):
             return False
@@ -67,7 +68,8 @@ def check_can_fall_card(played_card : Card, fall_card : Card,triumph : str) -> b
     return success
 
 def announce_new_card(self) -> None:
-    """Change all players ready -state to False.
+    """ DEPRECATED
+    Change all players ready -state to False.
     This is called, when new values are played to the table.
     """
     for pl in self.moskaGame.players:
@@ -78,7 +80,9 @@ def check_new_card(func : Callable) -> Callable:
     """A wrapper, that checks the state of the game before the function is applied and after the function is applied.
     If the length of playable cards (set of values in the table) has changed, then changes all the players ready -states to False.
     
-    NOTE: This wrapper is in a weird place, and it can only be wrapped to methods of MoskaPlayer.
+    NOTE and TODO: This wrapper is in a weird place, and it can only be wrapped to methods of MoskaPlayer.
+
+    DEPRECATED
 
     Args:
         func (Callable): The function to wrap
