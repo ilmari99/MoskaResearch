@@ -21,14 +21,15 @@ class NNHIFEvaluatorBot(AbstractHIFEvaluatorBot):
                  max_num_states : int = 1000,
                  max_num_samples : int = 100,
                  pred_format : str ="new",
-                 model_id : (str or int) = "all"
+                 model_id : (str or int) = "all",
+                 sampling_bias : float = 0,
                  ):
         self.pred_format = pred_format
         self.max_num_states = max_num_states
         self.model_id = model_id
         if not name:
             name = "NNEVHIF"
-        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states, max_num_samples)
+        super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states, max_num_samples, sampling_bias)
         
     def evaluate_states(self, states: List[FullGameState]) -> List[float]:
         state_vectors = [state.as_perspective_vector(self,fmt=self.pred_format) for state in states]
