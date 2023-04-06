@@ -91,8 +91,11 @@ class HumanPlayer(AbstractPlayer):
         pairs = pairs.split(" ")
         pairs = [p.strip("()") for p in pairs]
         try:
-            hand_indices = [int(p[0]) for p in pairs]
-            table_indices = [int(p[-1]) for p in pairs]
+            # [(0,0),(1,1),(2,2)]
+            #hand_indices = [int(p[0]) for p in pairs]
+            #table_indices = [int(p[-1]) for p in pairs]
+            hand_indices = [int(p.split(",")[0]) for p in pairs]
+            table_indices = [int(p.split(",")[-1]) for p in pairs]
             return {self.hand.cards[ih] : self.moskaGame.cards_to_fall[iff] for ih,iff in zip(hand_indices,table_indices)}
         except Exception as e:
             print(e,flush=True)
