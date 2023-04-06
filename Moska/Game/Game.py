@@ -307,7 +307,7 @@ class MoskaGame:
         return
     
     @contextlib.contextmanager
-    def get_lock(self,player=None) -> Generator[bool,None]:
+    def get_lock(self,player=None) -> bool:
         """A wrapper around getting the moskagames main_lock.
         Sets the lock_holder to the obtaining threads id
         and yields True if the lock was obtained.
@@ -609,7 +609,7 @@ class MoskaGame:
         plt.show()
         return
     
-    def start(self) -> List[Tuple(str,int)]:
+    def start(self) -> List[Tuple[str,int]]:
         """ The main method of MoskaGame. Sets the triumph card, locks the game to avoid race conditions between players,
         initializes and starts the player threads.
         After that, the players play the game, only one modifying the state of the game at a time.
