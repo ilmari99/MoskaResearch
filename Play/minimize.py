@@ -65,12 +65,16 @@ def to_minimize_func(params : List,
         param_kwargs[key] = params[i]
 
     # NOTE: The keyword is 'coefficients' for Wide model, and parameters for ModelBot3 for example
+    found = False
     for i,pl in enumerate(players):
         if pl.settings["name"] == player_to_minimize:
-            pl.settings["coefficients"] = param_kwargs
-            break
+            for key,val in param_kwargs.items():
+                pl.settings[key] = val
+            found = True
+            #pl.settings["coefficients"] = param_kwargs
+            #break
     # This else part is executed if the for loop is not broken; the player is not found
-    else:
+    if not found:
         raise ValueError(f"Could not find player '{player_to_minimize}' in players list.")
 
     gamekwargs = {**{
@@ -78,13 +82,16 @@ def to_minimize_func(params : List,
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":True,
-        "model_paths":["../Models/ModelMB11-260/model.tflite","../ModelNN1/model.tflite"]},
+        },
         **custom_gamekwargs
     }
     print(f"Simulating with params: {param_kwargs}")
     results = play_games(players, gamekwargs, ngames=ngames, cpus=cpus, chunksize=4,shuffle_player_order=True, verbose=verbose)
     out = get_loss_percents(results,player=player_to_minimize, show=False)
     print(f"Player '{player_to_minimize}' lost: {out} %")
+    # Calculate the statistical 95% upper bound of the loss percent
+    out = out + 1.96 * np.sqrt(out * (100 - out) / ngames)
+    print(f"95% upper bound of loss: {out} %")
     return out
 
 def to_minimize_call(players : List[PlayerWrapper],
@@ -121,7 +128,7 @@ if __name__ == "__main__":
     }
     # NOTE: The model_paths should be either absolute, or or prefix with "../" to be relative to the current directory
     custom_gamekwargs = {
-        "model_paths":[os.path.abspath(path) for path in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]],
+        "model_paths":[os.path.abspath(path) for path in ["./Models/Model-nn1-BB/model.tflite"]],
         "gather_data":False
     }
     # These are the parameters to change for the player. This is also the initial quess
@@ -131,26 +138,25 @@ if __name__ == "__main__":
     #                        "kopled":0.39,
     #                        "missing_card" : 52
     #                        })
-    param_kwargs = OrderedDict({str(i):1 for i in range(10)})
+    #param_kwargs = OrderedDict({str(i):1 for i in range(10)})
+    param_kwargs = {"sampling_bias" : -0.001}
     players = [
-        PlayerWrapper(SVDEvaluatorBot, {**shared_kwargs,**{"name" : f"SVD",
-                                                    "mat_file":os.path.abspath("./V.npy"),
-                                                    "coefficients":{},
-                                                    "max_num_states":1000,
-                                                    #"max_num_samples":100,
-                                                    # "pred_format":"new",
-                                                    # "model_id":1,
-                                                    }},infer_log_file=True),
+        PlayerWrapper(NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV",
+                                                  "max_num_states":1000,
+                                                  "pred_format":"bitmap",
+                                                  "model_id":0,
+                                                  }},infer_log_file=True),
 
         PlayerWrapper(MoskaBot2, {**shared_kwargs,**{"name" : f"B2-1"}},infer_log_file=True),
 
-        PlayerWrapper(NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV",
+        PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : f"NNHIF",
                                                   "max_num_states":1000,
-                                                  "pred_format":"old",
+                                                  "pred_format":"bitmap",
+                                                  "max_num_samples":100,
                                                   "model_id":0,
                                                   }}, infer_log_file=True),
 
         PlayerWrapper(MoskaBot3,{**shared_kwargs,**{"name" : f"B3-2"}},infer_log_file=True),
     ]
 
-    to_minimize_call(players, param_kwargs,player_to_minimize="SVD",log_dir="Minimize",ngames=10,verbose=True,cpus=4,custom_gamekwargs=custom_gamekwargs)
+    to_minimize_call(players, param_kwargs,player_to_minimize="NNHIF",log_dir="Minimize",ngames=10,verbose=True,cpus=4,custom_gamekwargs=custom_gamekwargs)
