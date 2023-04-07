@@ -14,6 +14,7 @@ from Moska.Player.MoskaBot2 import MoskaBot2
 from Moska.Player.MoskaBot0 import MoskaBot0
 from Moska.Player.MoskaBot1 import MoskaBot1
 from Moska.Player.RandomPlayer import RandomPlayer
+from Moska.Player.NewRandomPlayer import NewRandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
@@ -98,6 +99,21 @@ def args_to_gamekwargs(
         random.shuffle(game_args["players"])
     return game_args
 
+def get_four_players_that_are_NewRandomPlayers():
+    """ Return a list of NewRandomPlayers in PlayerWrappers"""
+    # Due to import conflict
+    from PlayerWrapper import PlayerWrapper
+    shared_kwargs = {
+        "log_level" : logging.WARNING,
+    }
+    players = [
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-1"}}),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-2"}}),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-3"}}),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-4"}}),
+    ]
+    return players
+
 
 def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool = False, infer_log_file = False) -> List['PlayerWrapper']:
     """ Return a list of PlayerWrappers with random parameters.
@@ -113,29 +129,11 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
 
     # NOTE: The players logs might not be correct for the game index, to reduce the number of files
     much_players = [
-        (HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV1",
-                                                    "max_num_states":random.randint(1,10000),
-                                                    "coefficients" : "random"
-                                                    }}),
-
-        (HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV2",
-                                                    "max_num_states":random.randint(1,10000),
-                                                    "coefficients" : "random"
-                                                               }}),
-
-        (HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV3",
-                                                    "max_num_states":random.randint(1,10000),
-                                                    "coefficients" : "random"
-                                                               }}),
-        (HeuristicEvaluatorBot, {**shared_kwargs,**{"name" : f"HEV4",
-                                                    "max_num_states":random.randint(1,10000),
-                                                    "coefficients" : "random"
-                                                               }}),
-
         (MoskaBot3, {**shared_kwargs,**{"name" : f"B3-1","parameters":"random"}}),
         (MoskaBot3, {**shared_kwargs,**{"name" : f"B3-2","parameters":"random"}}),
         (MoskaBot3, {**shared_kwargs,**{"name" : f"B3-3","parameters":"random"}}),
         (MoskaBot3, {**shared_kwargs,**{"name" : f"B3-4","parameters":"random"}}),
+        (MoskaBot3, {**shared_kwargs,**{"name" : f"B3-5","parameters":"random"}}),
         
         (MoskaBot2, {**shared_kwargs,**{"name" : f"B2-1","parameters":"random"}}),
         (MoskaBot2, {**shared_kwargs,**{"name" : f"B2-2","parameters":"random"}}),
@@ -144,27 +142,53 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
         
         (RandomPlayer, {**shared_kwargs,**{"name" : f"R1"}}),
         (RandomPlayer, {**shared_kwargs,**{"name" : f"R2"}}),
+        (RandomPlayer, {**shared_kwargs,**{"name" : f"R3"}}),
+        (RandomPlayer, {**shared_kwargs,**{"name" : f"R4"}}),
         
-        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1",
-                                            "max_num_states":random.randint(1,10000),
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1-old",
+                                            "max_num_states":random.randint(1,5000),
                                             "pred_format":"old-algbr",
                                             "model_id":nn_models[0],
                                             }}),
         
-        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2",
-                                            "max_num_states":random.randint(1,10000),
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2-old",
+                                            "max_num_states":random.randint(1,5000),
+                                            "pred_format":"old-algbr",
+                                            "model_id":nn_models[0],
+                                            }}),
+
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3-old",
+                                            "max_num_states":random.randint(1,5000),
                                             "pred_format":"old-algbr",
                                             "model_id":nn_models[0],
                                             }}),
         
-        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3",
-                                                    "max_num_states":random.randint(1,10000),
-                                                    "pred_format":"new-algbr",
-                                                    "model_id":nn_models[1],
-                                                    }}),
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4-old",
+                                            "max_num_states":random.randint(1,5000),
+                                            "pred_format":"old-algbr",
+                                            "model_id":nn_models[0],
+                                            }}),
         
-        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4",
-                                            "max_num_states":random.randint(1,10000),
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1-new",
+                                            "max_num_states":random.randint(1,5000),
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
+                                            }}),
+        
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2-new",
+                                            "max_num_states":random.randint(1,5000),
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
+                                            }}),
+
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3-new",
+                                            "max_num_states":random.randint(1,5000),
+                                            "pred_format":"new-algbr",
+                                            "model_id":nn_models[1],
+                                            }}),
+        
+        (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4-new",
+                                            "max_num_states":random.randint(1,5000),
                                             "pred_format":"new-algbr",
                                             "model_id":nn_models[1],
                                             }}),
