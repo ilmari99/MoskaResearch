@@ -13,21 +13,11 @@ from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
 import multiprocessing
 from typing import Any, Callable, Dict, Iterable, List, Tuple
-from Moska.Player.MoskaBot2 import MoskaBot2
-from Moska.Player.MoskaBot0 import MoskaBot0
-from Moska.Player.MoskaBot1 import MoskaBot1
-from Moska.Player.RandomPlayer import RandomPlayer
-from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
-from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
-from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
-from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 import random
 import numpy as np
 from scipy.optimize import minimize
 from Simulate import play_games, get_loss_percents
-from Utils import make_log_dir, get_random_players
+from Utils import make_log_dir, get_random_players, get_four_players_that_are_NewRandomPlayers
 
 def create_dataset(nrounds : int,
                    num_games : int,
@@ -50,7 +40,7 @@ def create_dataset(nrounds : int,
         "log_level" : logging.WARNING,
         "timeout" : 30,
         "gather_data":True,
-        "model_paths":model_paths,
+        #"model_paths":model_paths,
     }
     print(f"Creating dataset with {nrounds} rounds and {num_games} games per round.")
     print(f"Total games: {nrounds*num_games}.")
@@ -79,5 +69,6 @@ def create_dataset(nrounds : int,
     return
 
 if __name__ == "__main__":
-    folder = "./Dataset"
-    create_dataset(nrounds=2,num_games=10,folder=folder,cpus=4,use_HIF=False,players="random",verbose=True)
+    folder = "./Dataset-rand"
+    players = get_four_players_that_are_NewRandomPlayers()
+    create_dataset(nrounds=10,num_games=10000,folder=folder,cpus=50,use_HIF=False,players=players,verbose=True)
