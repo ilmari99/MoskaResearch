@@ -13,7 +13,7 @@ from .PolicyParameters.HeuristicParameters import HeuristicParameters
 from ..Game.utils import check_can_fall_card
 
 class NewRandomPlayer(AbstractPlayer):
-    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=0, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "NR-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
