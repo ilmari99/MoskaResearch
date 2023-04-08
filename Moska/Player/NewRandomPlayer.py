@@ -102,7 +102,7 @@ class NewRandomPlayer(AbstractPlayer):
         playable_cards = random.sample(playable_cards,random.randint(0,len(playable_cards)))
         return playable_cards
     
-    def play_initial(self) -> List[Card]:
+    def _play_initial_old(self) -> List[Card]:
         """Return a list of cards to play from hand to an empty table.
         """
         cards = self.hand.copy().cards
@@ -127,6 +127,25 @@ class NewRandomPlayer(AbstractPlayer):
                 legal_plays.append(list(play))
         to_play = random.choice(legal_plays)
         return list(to_play)
+    
+    def play_initial(self) -> List[Card]:
+        """ Return a list of cards to play from hand to an empty table.
+        """
+        cards_to_play = []
+        hand_cards = self.hand.copy().cards
+        for i in range(10):
+            if len(cards_to_play) == self._fits_to_table() or not hand_cards:
+                break
+            card_to_play = random.choice(hand_cards)
+            cards_to_play.append(card_to_play)
+            c = Counter([c.value for c in cards_to_play])
+            # If the play is not valid, remove the card from the play
+            if not (len(cards_to_play) == 1 or all((count >= 2 for count in c.values()))):
+                cards_to_play.remove(card_to_play)
+            # If the play is valid, remove the card from the hand
+            else:
+                hand_cards.remove(card_to_play)
+        return cards_to_play
     
     def play_to_target(self) -> List[Card]:
         """ Return a list of cards, that will be played to target.
