@@ -37,7 +37,7 @@ def create_dataset(nrounds : int,
                       os.path.abspath("./Models/ModelNN1/model.tflite")]
     gamekwargs = {
         "log_file" : "Game-{x}.log",
-        "log_level" : logging.WARNING,
+        "log_level" : logging.DEBUG,
         "timeout" : 30,
         "gather_data":True,
         #"model_paths":model_paths,
@@ -64,11 +64,11 @@ def create_dataset(nrounds : int,
         end_time = time.time()
         time_taken += (end_time - start_time)
         print(f"Round {i+1} took {end_time - start_time} seconds.")
-        print(f"Estimated time remaining: {time_taken/(i+1) * (nrounds - i-1)} minutes.")
+        print(f"Estimated time remaining: {(time_taken/(i+1) * (nrounds - i-1))/60} minutes.")
     print(f"Finished. Total time taken: {time_taken/60} minutes.")
     return
 
 if __name__ == "__main__":
     folder = "./Dataset-rand"
     players = get_four_players_that_are_NewRandomPlayers()
-    create_dataset(nrounds=10,num_games=10000,folder=folder,cpus=50,use_HIF=False,players=players,verbose=True)
+    create_dataset(nrounds=1000,num_games=1000,chunksize=3,folder=folder,cpus=50,use_HIF=False,players=players,verbose=True)
