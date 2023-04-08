@@ -114,6 +114,24 @@ def get_four_players_that_are_NewRandomPlayers():
     ]
     return players
 
+def get_four_same_players(pl_type, pl_kwargs):
+    """ Return a list of PlayerWrappers with the same parameters.
+    """
+    # Due to import conflict
+    from PlayerWrapper import PlayerWrapper
+    default_kwargs = {
+        "log_level" : logging.DEBUG,
+        "delay" : 0,
+    }
+    pl_name = pl_type.__name__
+    players = [
+        PlayerWrapper(pl_type, {**default_kwargs,**{"name" : pl_name + "-1",**pl_kwargs}},infer_log_file=True),
+        PlayerWrapper(pl_type, {**default_kwargs,**{"name" : pl_name + "-2",**pl_kwargs}},infer_log_file=True),
+        PlayerWrapper(pl_type, {**default_kwargs,**{"name" : pl_name + "-3",**pl_kwargs}},infer_log_file=True),
+        PlayerWrapper(pl_type, {**default_kwargs,**{"name" : pl_name + "-4",**pl_kwargs}},infer_log_file=True),
+    ]
+    return players
+
 
 def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool = False, infer_log_file = False) -> List['PlayerWrapper']:
     """ Return a list of PlayerWrappers with random parameters.
