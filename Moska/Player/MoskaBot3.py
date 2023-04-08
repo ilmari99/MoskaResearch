@@ -15,7 +15,7 @@ class MoskaBot3(AbstractPlayer):
     cost_matrix_max = 10000
     scoring : _ScoreCards = None
     parameters : HeuristicParameters = None
-    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=10 ** -6, requires_graphic: bool = False, log_level=logging.INFO, log_file="",parameters = {}):
+    def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=0, requires_graphic: bool = False, log_level=logging.INFO, log_file="",parameters = {}):
         if not name:
             name = "B3-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
