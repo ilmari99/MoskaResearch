@@ -39,9 +39,11 @@ class NewRandomPlayer(AbstractPlayer):
         self.plog.info(f"Cost matrix:\n {C}")
         hand_ind, fall_ind = C.nonzero()
         play_cards = {}
+        chand = self.hand.copy()
+        ctable = self.moskaGame.cards_to_fall.copy()
         for h,f in zip(hand_ind,fall_ind):
-            card_from_hand = self.hand.cards[h]
-            card_on_table = self.moskaGame.cards_to_fall[f]
+            card_from_hand = chand.cards[h]
+            card_on_table = ctable[f]
             if card_from_hand in play_cards.keys() or card_on_table in play_cards.values():
                 continue
             if random.random() < 0.5:
@@ -59,11 +61,11 @@ class NewRandomPlayer(AbstractPlayer):
         """Return a list of random cards to play to self.
         """
         playable_values = self._playable_values_to_table()
-        playable_cards = [c for c in self.hand.cards if c.value in playable_values]
+        playable_cards = [c for c in self.hand.copy().cards if c.value in playable_values]
         playable_cards = random.sample(playable_cards,random.randint(0,len(playable_cards)))
         return playable_cards
     
-    def play_initial(self) -> List[Card]:
+    def _play_initial_old(self) -> List[Card]:
         """Return a list of cards to play from hand to an empty table.
         """
         cards = self.hand.copy().cards
@@ -97,6 +99,6 @@ class NewRandomPlayer(AbstractPlayer):
         Default: Play all playable values that fit.
         """
         playable_values = self._playable_values_from_hand()
-        playable_cards = [c for c in self.hand.cards if c.value in playable_values]
+        playable_cards = [c for c in self.hand.copy().cards if c.value in playable_values]
         playable_cards = random.sample(playable_cards,random.randint(0,min(len(playable_cards),self._fits_to_table())))
         return playable_cards
