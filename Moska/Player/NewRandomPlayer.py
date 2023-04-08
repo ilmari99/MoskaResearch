@@ -65,7 +65,7 @@ class NewRandomPlayer(AbstractPlayer):
         playable_cards = random.sample(playable_cards,random.randint(0,len(playable_cards)))
         return playable_cards
     
-    def _play_initial_old(self) -> List[Card]:
+    def play_initial(self) -> List[Card]:
         """Return a list of cards to play from hand to an empty table.
         """
         cards = self.hand.copy().cards
