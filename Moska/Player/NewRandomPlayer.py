@@ -11,12 +11,49 @@ if TYPE_CHECKING:
 from .AbstractPlayer import AbstractPlayer
 from .PolicyParameters.HeuristicParameters import HeuristicParameters
 from ..Game.utils import check_can_fall_card
+from ..Game.GameState import FullGameState
 
 class NewRandomPlayer(AbstractPlayer):
     def __init__(self, moskaGame: MoskaGame = None, name: str = "", delay=0, requires_graphic: bool = False, log_level=logging.INFO, log_file=""):
         if not name:
             name = "NR-"
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file)
+
+    def _play_move(self) -> Tuple[bool,str]:
+        """Calls moskaGame to propose a move.
+        This is called on each turn from _continuous play.
+
+        First chooses a move with the abstract method 'choose_move(playable)' where playable contains all the allowed moves.
+
+        After the move is selected, the corresponding wrapper method is called,
+        and the moskagame's '_make_move' is called with arguments from the wrapper method.
+
+        Returns:
+            Tuple[bool,str] : The first value tells whether the move was valid, and the second tells the reason the move wasn't valid IF the move failed.
+        """
+        success = False
+        # Playable moves
+        playable = self._playable_moves()
+        # Return the move id to play
+        move = self.choose_move(playable)
+        state = FullGameState.from_game(self.moskaGame, copy=True)
+        # Get the function to call, which returns the arguments to pass to the game
+        extra_args = self.moves[move]()
+        is_eq, msg = state.is_game_equal(self.moskaGame, return_msg=True)
+        if not is_eq:
+            print(msg)
+            raise AssertionError("Game state changed when getting arguments for making move.")
+        # Copy lists, so that they are not modified by the game
+        extra_args = [arg.copy() if isinstance(arg,list) else arg for arg in extra_args]
+        args = [self] + extra_args
+        # Call the game to play the move. Catches Assertion (incorrect move) and Type errors
+        success, msg  = self.moskaGame._make_move(move,args)
+        # If gathering data, save the state vector
+        if (success and (move != "Skip" or len(self.state_vectors) == 0)) and self.moskaGame.GATHER_DATA:
+            state = FullGameState.from_game(self.moskaGame, copy=False)
+            vec = state.as_perspective_vector(self,fmt="bitmap")
+            self.state_vectors.append(vec)
+        return success, msg
         
     def choose_move(self, playable: List[str]) -> str:
         """ Choose a random move from playable moves."""
