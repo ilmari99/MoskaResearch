@@ -107,10 +107,10 @@ def get_four_players_that_are_NewRandomPlayers():
         "log_level" : logging.WARNING,
     }
     players = [
-        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-1"}}),
-        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-2"}}),
-        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-3"}}),
-        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-4"}}),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-1"}},infer_log_file=True),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-2"}},infer_log_file=True),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-3"}},infer_log_file=True),
+        PlayerWrapper(NewRandomPlayer, {**shared_kwargs,**{"name" : f"NewRandomPlayer-4"}},infer_log_file=True),
     ]
     return players
 
