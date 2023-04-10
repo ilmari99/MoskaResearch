@@ -2,11 +2,9 @@ import unittest
 import copy
 import sys
 import os
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)).split("/")
-SCRIPT_DIR = "\\".join(SCRIPT_DIR[0:-2])
-#print(SCRIPT_DIR)
-sys.path.insert(1,os.path.dirname(SCRIPT_DIR))
-from Moska import Deck
+# Add the main directory to the path
+sys.path.append(os.path.abspath(".\\"))
+from Moska.Game import Deck
 
 class TestDeck(unittest.TestCase):
     deck = None

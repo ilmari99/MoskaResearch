@@ -212,17 +212,16 @@ def create_mat(n):
     return mat
 
 def test_complexity():
+    import big_o
     best,others = big_o.big_o(_get_assignments_custom, create_mat, n_repeats=1,min_n=2, max_n=24, n_measures = 22)
     print(best)
     for class_, residuals in others.items():
         print('{!s:<60s}    (res: {:.2G})'.format(class_, residuals))
 
-import cProfile
-import big_o
 if __name__ == "__main__":
     for i in range(1):
         deck = [Card(val,s) for val,s in itertools.product(CARD_VALUES, CARD_SUITS)]
-        tot_cards = random.sample(deck, 30)
+        tot_cards = random.sample(deck, 10)
         hand = tot_cards[0:len(tot_cards)//2]
         table = tot_cards[len(tot_cards)//2:]
         print(f"Triumph: {CARD_SUIT_SYMBOLS['H']}")

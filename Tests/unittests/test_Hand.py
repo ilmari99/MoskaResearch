@@ -1,20 +1,22 @@
 import unittest
 import sys
 import os
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)).split("/")
-SCRIPT_DIR = "\\".join(SCRIPT_DIR[0:-2])
-#print(SCRIPT_DIR)
-sys.path.insert(1,os.path.dirname(SCRIPT_DIR))
-from Moska import Hand,Game,Deck
+# Add the main directory to the path
+sys.path.append(os.path.abspath(".\\"))
+from Moska.Game.Hand import MoskaHand
+from Moska.Game.Game import MoskaGame
+from Moska.Game.Deck import StandardDeck
+from Moska.Player.MoskaBot0 import MoskaBot0
+#from Moska.han import Hand,Game,Deck
 
 class TestHand(unittest.TestCase):
     game = None
     deck = None
     hand = None
     def setUp(self) -> None:
-        self.deck = Deck.StandardDeck()
-        self.game = Game.MoskaGame(deck=self.deck)
-        self.hand = Hand.MoskaHand(self.game)
+        players = [MoskaBot0(name="Bot0"),MoskaBot0(name="Bot1"),MoskaBot0(name="Bot2"),MoskaBot0(name="Bot3")]
+        self.game = MoskaGame(players=players)
+        self.hand = MoskaHand(self.game)
     
     def test_iterating(self):
         for card,itcard in zip(self.hand.cards,self.hand):
@@ -35,13 +37,18 @@ class TestHand(unittest.TestCase):
         self.assertTrue(len(chand) == 3 and len(self.hand) == 6)
         
     def test_adding_to_hand(self):
-        cards = self.deck.pop_cards(6)
+        self.assertEqual(len(self.hand),6)
+
+        cards = self.game.deck.pop_cards(6)
         self.hand.add(cards)
         self.assertTrue(len(self.hand) == 12)
-        self.hand.pop_cards(lambda x : x in cards)
+
+        popped_cards = self.hand.pop_cards(lambda x : x in cards)
         self.assertTrue(len(self.hand) == 6)
+
         self.hand.add((c for c in cards))
         self.assertTrue(len(self.hand) == 12)
+
         self.hand.pop_cards(lambda x : x in cards)
         self.assertTrue(len(self.hand) == 6)
             

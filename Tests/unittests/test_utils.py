@@ -1,11 +1,14 @@
 import unittest
 import sys
 import os
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)).split("/")
-SCRIPT_DIR = "\\".join(SCRIPT_DIR[0:-2])
-#print(SCRIPT_DIR)
-sys.path.insert(1,os.path.dirname(SCRIPT_DIR))
-from Moska import Hand,Game,Deck,utils, Player
+# Add the main directory to the path
+sys.path.append(os.path.abspath(".\\"))
+#from Moska import Hand,Game,Deck,utils, Player
+from Moska.Game.Game import MoskaGame
+from Moska.Game.Hand import MoskaHand
+from Moska.Game.Deck import StandardDeck, Card
+from Moska.Game.utils import check_can_fall_card
+from Moska.Player.MoskaBot0 import MoskaBot0
 
 class TestUtils(unittest.TestCase):
     game = None
@@ -14,8 +17,9 @@ class TestUtils(unittest.TestCase):
     def setUp(self):
         """For some reason this doesn't appear to be called before each 'test_'' method
         """
-        self.deck = Deck.StandardDeck()
-        self.game = Game.MoskaGame(deck=self.deck,nplayers=6)
+        self.deck = StandardDeck()
+        players = [MoskaBot0(name="Bot0"),MoskaBot0(name="Bot1"),MoskaBot0(name="Bot2"),MoskaBot0(name="Bot3"),MoskaBot0(name="Bot4"),MoskaBot0(name="Bot5")]
+        self.game = MoskaGame(players=players)
         self.player = self.game.players[0]
         self.game.turnCycle.ptr = 0
     
@@ -26,14 +30,14 @@ class TestUtils(unittest.TestCase):
     def test_can_fall(self):
         cards = []
         triumph = "H"
-        cards.append(Deck.Card(2,"H"))
-        cards.append(Deck.Card(6,"S"))
+        cards.append(Card(2,"H"))
+        cards.append(Card(6,"S"))
         table_cards = []
-        table_cards.append(Deck.Card(14,"H"))
-        table_cards.append(Deck.Card(5,"S"))
+        table_cards.append(Card(14,"H"))
+        table_cards.append(Card(5,"S"))
         for card in cards:
             for tcard in table_cards:
-                success = utils.check_can_fall_card(card,tcard,triumph)
+                success = check_can_fall_card(card,tcard,triumph)
                 if card.value == 2 and card.suit == "H":
                     self.assertTrue(not success or tcard.suit == "S")
                 if card.value == 6:
@@ -57,8 +61,10 @@ class TestUtils(unittest.TestCase):
         
     def test_TurnCycle_increments_ptr(self):
         tc = self.game.turnCycle
+        print(f"ptr: {tc.ptr}")
         tc.get_next_condition(lambda x : x.pid == 2)
         #ptr should be 2
+        print(f"ptr: {tc.ptr}")
         self.assertTrue(tc.ptr == 2)
         tc.ptr = 0  # Because setUp doesn't reset ptr :d
         

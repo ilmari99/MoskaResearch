@@ -82,7 +82,25 @@ case3 = ([Card(val,suit) for val, suit in case3_as_tuple[0]], case3_as_tuple[1])
 
 def your_solution(cards : List[Card], fits : int) -> List[Tuple[Card]]:
     """ Write here"""
-    return get_initial_plays_brute(cards, fits)
+    play_iterables = []
+    counter = Counter([c.value for c in cards])
+    # We can play each single card, and all cards that have at least 2 of the same value
+    for i in range(1,fits + 1):
+        tmp_cards = cards.copy()
+        # Filter out cards that have less than 2 of the same value
+        if i > 1:
+            tmp_cards = [c for c in tmp_cards if counter[c.value] >= 2]
+        # Add the i length combinations to the play_iterables
+        play_iterables.append(itertools.combinations(tmp_cards,i))
+    plays = itertools.chain.from_iterable(play_iterables)
+    legal_plays = []
+    count = 0
+    for play in plays:
+        count += 1
+        c = Counter([c.value for c in play])
+        if (len(play) == 1 or all((count >= 2 for count in c.values()))):
+            legal_plays.append(play)
+    return legal_plays
 
 import time
 
