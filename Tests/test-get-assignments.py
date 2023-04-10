@@ -45,16 +45,16 @@ class Card:
         return hash((self.value, self.suit))
 
 
-def check_can_fall_card(played_card : Card, fall_card : Card,triumph : str) -> bool:
+def check_can_fall_card(played_card : Card, fall_card : Card,trump : str) -> bool:
     """Returns true, if the played_card, can fall the fall_card.
     The played card can fall fall_card, if:
     - The played card has the same suit and is greater than fall_card
-    - If the played_card is triumph suit, and the fall_card is not.
+    - If the played_card is trump suit, and the fall_card is not.
 
     Args:
         played_card (Card): The card played from hand
         fall_card (Card): The card on the table
-        triumph (str): The triumph suit of the current game
+        trump (str): The trump suit of the current game
 
     Returns:
         bool: True if played_card can fall fall_card, false otherwise
@@ -64,7 +64,7 @@ def check_can_fall_card(played_card : Card, fall_card : Card,triumph : str) -> b
     if played_card.suit == fall_card.suit and played_card.value > fall_card.value:
         success = True
     # Jos pelattu kortti on valttia, ja kaadettava kortti ei ole valttia
-    elif played_card.suit == triumph and fall_card.suit != triumph:
+    elif played_card.suit == trump and fall_card.suit != trump:
             success = True
     return success
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         tot_cards = random.sample(deck, 10)
         hand = tot_cards[0:len(tot_cards)//2]
         table = tot_cards[len(tot_cards)//2:]
-        print(f"Triumph: {CARD_SUIT_SYMBOLS['H']}")
+        print(f"Trump: {CARD_SUIT_SYMBOLS['H']}")
         print(f"Hand: {hand}")
         print(f"Table: {table}")
         #cProfile.run('_get_assignments(_make_matrix(hand,table),max_num_states = 1000000)', sort='tottime')

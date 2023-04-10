@@ -29,7 +29,7 @@ class TestUtils(unittest.TestCase):
     
     def test_can_fall(self):
         cards = []
-        triumph = "H"
+        trump = "H"
         cards.append(Card(2,"H"))
         cards.append(Card(6,"S"))
         table_cards = []
@@ -37,7 +37,7 @@ class TestUtils(unittest.TestCase):
         table_cards.append(Card(5,"S"))
         for card in cards:
             for tcard in table_cards:
-                success = check_can_fall_card(card,tcard,triumph)
+                success = check_can_fall_card(card,tcard,trump)
                 if card.value == 2 and card.suit == "H":
                     self.assertTrue(not success or tcard.suit == "S")
                 if card.value == 6:
