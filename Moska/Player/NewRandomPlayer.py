@@ -72,7 +72,7 @@ class NewRandomPlayer(AbstractPlayer):
         """
         #self.scoring.assign_scores_inplace()
         # Create the cost matrix
-        C = self._make_cost_matrix(scoring = lambda ch,ct : 1 if check_can_fall_card(ch,ct,self.moskaGame.triumph) else 0,max_val=0)
+        C = self._make_cost_matrix(scoring = lambda ch,ct : 1 if check_can_fall_card(ch,ct,self.moskaGame.trump) else 0,max_val=0)
         self.plog.info(f"Cost matrix:\n {C}")
         hand_ind, fall_ind = C.nonzero()
         play_cards = {}

@@ -217,7 +217,7 @@ class AbstractPlayer(ABC):
         # Loop through the hand, and table and see if there is a card that can be used to kill a card on the table.
         for pc in self.hand:
             for fc in self.moskaGame.cards_to_fall:
-                 if utils.check_can_fall_card(pc,fc,self.moskaGame.triumph):
+                 if utils.check_can_fall_card(pc,fc,self.moskaGame.trump):
                      return True
         return False
 
@@ -389,7 +389,7 @@ class AbstractPlayer(ABC):
         The thread is killed, if the main (game) thread fails for any reason.
         """
         tb_info = {"players" : len(self.moskaGame.players),
-                   "Triumph card" : self.moskaGame.triumph_card,
+                   "Trump card" : self.moskaGame.trump_card,
                    }
         self.plog.info(f"Table info: {tb_info}")
         curr_target = self.moskaGame.get_target_player()
@@ -481,22 +481,22 @@ class AbstractPlayer(ABC):
         """ Returns true, if the played_card, can fall the fall_card.
         The played card can fall fall_card, if:
         - The played card has the same suit and is greater than fall_card
-        - If the played_card is triumph suit, and the fall_card is not.
+        - If the played_card is trump suit, and the fall_card is not.
 
         Args:
             played_card (Card): The card played from hand
             fall_card (Card): The card on the table
-            triumph (str): The triumph suit of the current game
+            trump (str): The trump suit of the current game
 
         Returns:
             bool: True if played_card can fall fall_card, false otherwise
         """
-        return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.triumph)
+        return utils.check_can_fall_card(played_card,fall_card,self.moskaGame.trump)
     
     def _map_to_list(self,card : Card) -> List[Card]:
         """ Return a list of cards, that the input card can fall from moskaGame.cards_to_fall
         """
-        return _map_to_list(card,self.moskaGame.cards_to_fall,self.moskaGame.triumph)
+        return _map_to_list(card,self.moskaGame.cards_to_fall,self.moskaGame.trump)
     
     def _map_each_to_list(self,from_ = None, to = None) -> Dict[Card,List[Card]]:
         """Map each card in hand, to a list of cards on the table, that can be fallen.
@@ -510,7 +510,7 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        return _map_each_to_list(from_,to,self.moskaGame.triumph)
+        return _map_each_to_list(from_,to,self.moskaGame.trump)
     
     def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000) -> np.ndarray:
         """ Create a matrix, from from_ to to. The lists from_ and to have to contain Card -instances.
@@ -541,7 +541,7 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        return _make_cost_matrix(from_,to, self.moskaGame.triumph,scoring,max_val)
+        return _make_cost_matrix(from_,to, self.moskaGame.trump,scoring,max_val)
     
 
     #### ABSTRACT METHODS ####

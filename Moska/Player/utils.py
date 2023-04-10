@@ -24,29 +24,29 @@ class Assignment:
         #return hash(frozenset(self._hand_inds)) + hash(frozenset(self._table_inds))
         return hash(tuple(sorted(list(self._hand_inds)) + sorted(list(self._table_inds))))
 
-def _map_to_list(card : Card, to : List[Card], triumph : str) -> List[Card]:
+def _map_to_list(card : Card, to : List[Card], trump : str) -> List[Card]:
     """ Return a list of cards, that the input card can fall from `to` list of cards.
     """
-    return [c for c in to if utils.check_can_fall_card(card,c,triumph)]
+    return [c for c in to if utils.check_can_fall_card(card,c,trump)]
 
-def _map_each_to_list(from_ : List[Card] , to : List[Card], triumph : str) -> Dict[Card,List[Card]]:
+def _map_each_to_list(from_ : List[Card] , to : List[Card], trump : str) -> Dict[Card,List[Card]]:
     """Map each card in hand, to cards on the table, that can be fallen. Returns a dictionary of from_c : List_t pairs.
     """
     # Make a dictionary of 'card-in-hand' : List[card-on-table] pairs, to know what which cards can be fallen with which cards
     can_fall = {}
     for card in from_:
-        can_fall[card] = _map_to_list(card,to,triumph)
+        can_fall[card] = _map_to_list(card,to,trump)
     return can_fall
 
 
-def _make_cost_matrix(from_ : List[Card], to : List[Card], triumph : str, scoring : Callable, max_val : int = 100000) -> np.ndarray:
+def _make_cost_matrix(from_ : List[Card], to : List[Card], trump : str, scoring : Callable, max_val : int = 100000) -> np.ndarray:
     """ Make a matrix (len(from_) x len(to)), where each index (i,j) is `scoring(from[i],to[j])` if the card from_[i] can fall to to[j].
     Else the value is `max_val`.
 
     TODO: Reverse this, so bigger values are better, and smaller values are worse.
 
     """
-    can_fall = _map_each_to_list(from_,to,triumph)
+    can_fall = _map_each_to_list(from_,to,trump)
     # Initialize the cost matrix (NOTE: Using inf to denote large values does not work for Scipy)
     C = np.full((len(from_),len(to)),max_val)
     #self.plog.info(f"can_fall: {can_fall}")
@@ -68,7 +68,7 @@ def _get_single_assignments(matrix : np.ndarray) -> List[List[int]]:
     inds = [list(i) for i in inds]
     return inds
 
-def _get_assignments(from_ : List[Card], to : List[Card] = [], triumph : str = "", start=[], found_assignments = None, max_num : int = 1000) -> set[Assignment]:
+def _get_assignments(from_ : List[Card], to : List[Card] = [], trump : str = "", start=[], found_assignments = None, max_num : int = 1000) -> set[Assignment]:
     """ Return a set of found Assignments, containing all possible assignments of cards from the hand to the cards to fall.
     Symmetrical assignments are considered the same when the same cards are played to the same cards, regardless of order.
     
@@ -88,9 +88,9 @@ def _get_assignments(from_ : List[Card], to : List[Card] = [], triumph : str = "
         found_assignments = set()
     # If no matrix is given, create the matrix, where 1 means that the card can fall, and 0 means it can't
     if matrix is None:
-        if not triumph:
-            raise ValueError("triumph must be given if from_ is not a cost matrix")
-        matrix = _make_cost_matrix(from_ = from_, to = to, triumph = triumph, max_val=0, scoring=lambda hc,tc : 1)
+        if not trump:
+            raise ValueError("trump must be given if from_ is not a cost matrix")
+        matrix = _make_cost_matrix(from_ = from_, to = to, trump = trump, max_val=0, scoring=lambda hc,tc : 1)
         
     # Find all single card assignments (row-col pairs where the intersection == 1)
     new_assignments = _get_single_assignments(matrix)

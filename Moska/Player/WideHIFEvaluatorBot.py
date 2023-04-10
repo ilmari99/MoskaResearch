@@ -79,11 +79,11 @@ class WideHIFEvaluatorBot(AbstractHIFEvaluatorBot):
         # If no cards in deck, return empty list
         if len(state.deck) <= 0:
             return []
-        # If only one card in deck, it is the triumph card, so we know the card
+        # If only one card in deck, it is the trump card, so we know the card
         if len(state.deck) == 1:
-            triumph_card = state.deck.cards.copy().pop()
-            triumph_card.score = len(state.cards_fall_dict[triumph_card])
-            return [triumph_card]
+            trump_card = state.deck.cards.copy().pop()
+            trump_card.score = len(state.cards_fall_dict[trump_card])
+            return [trump_card]
         
         # Cards in self hand, cards in table and known cards are not in the deck
         cards_not_in_deck = state.full_player_cards[self.pid] + state.fell_cards + state.cards_to_fall

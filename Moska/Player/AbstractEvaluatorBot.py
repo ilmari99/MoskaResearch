@@ -58,7 +58,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
         - Repeat until no new assignments are found.
         """
-        return _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, triumph=self.moskaGame.triumph, max_num=self.max_num_states)
+        return _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, trump=self.moskaGame.trump, max_num=self.max_num_states)
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
         """ Get a move and a prediction evaluation for the best move in a class of moves ("PlayToSelf" etc.).
@@ -180,7 +180,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         for card in cards_possibly_in_deck:
             # If the card can fall cards, make a cost matrix and get the assignments
             if self._map_to_list(card):
-                assignments = _get_assignments(from_ = [card], to = self.moskaGame.cards_to_fall,triumph=self.moskaGame.triumph)
+                assignments = _get_assignments(from_ = [card], to = self.moskaGame.cards_to_fall,trump=self.moskaGame.trump)
                 # Evaluate the assignments. If the deck_card can fall a card, we can check the state as 'PlayFallFromHand' -play
                 for assign in assignments:
                     play = [card, self.moskaGame.cards_to_fall[assign._table_inds[0]]]
@@ -343,7 +343,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         This pre-computed play is then played later.
         """
         self.plog.info("Choosing move...")
-        self.plog.debug(f"Triumph: {self.moskaGame.triumph_card}")
+        self.plog.debug(f"Trump: {self.moskaGame.trump_card}")
         self.plog.debug(f"Hand: {self.hand}")
         self.plog.debug(f"Table: {self.moskaGame.cards_to_fall}")
         self.plog.debug(f"Fell: {self.moskaGame.fell_cards}")

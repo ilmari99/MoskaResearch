@@ -67,7 +67,7 @@ class _ScoreCards:
     def _basic_count_score(self,card : Card) -> int:
         """Return how many cards can the input card fall;
         How many cards are smaller and same suit
-        or if suit is triumph, how many cards are not triumph or are smaller triumph cards.
+        or if suit is trump, how many cards are not trump or are smaller trump cards.
         
         Doesn't require counting cards.
         
@@ -77,7 +77,7 @@ class _ScoreCards:
         Returns:
             int: How many cards the card can fall
         """
-        if card.suit == self.player.moskaGame.triumph:
+        if card.suit == self.player.moskaGame.trump:
             return 4*13 - (14 - card.value)
         else:
             return 12 - (14 - card.value)

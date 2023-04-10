@@ -166,7 +166,7 @@ class MoskaBot3(AbstractPlayer):
     
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
-        Default play all playable values, except triumphs
+        Default play all playable values, except trumps
 
         Returns:
             List[Card]: list of cards played to self
