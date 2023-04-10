@@ -129,7 +129,7 @@ class FullGameState:
                    players_in_game,
                    game.turnCycle.ptr,
                    target_pid,
-                   game.triumph,
+                   game.trump,
                    copy = copy,
                    )
 

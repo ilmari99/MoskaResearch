@@ -46,8 +46,8 @@ class MoskaGame:
 
     """
     players : List[AbstractPlayer] = []     # List of players, with unique pids, and cards already in hand
-    triumph : str = ""                      # Triumph suit, set when the moskaGame is started
-    triumph_card : Card = None              # Trump card
+    trump : str = ""                      # Trump suit, set when the moskaGame is started
+    trump_card : Card = None              # Trump card
     cards_to_fall : List[Card] = []         # Current cards on the table, for the target to fall
     fell_cards : List[Card] = []            # Cards that have fell during the last turn
     turnCycle = utils.TurnCycle([],ptr = 0) # A TurnCycle instance, that rotates from the last to the first, created when players defined
@@ -117,6 +117,8 @@ class MoskaGame:
         self.EXIT_FLAG = False
         self.card_monitor = CardMonitor(self)
         self._set_turns()
+        self.glog.info(f"Game initialization complete.")
+
 
     def set_model_vars_from_paths(self) -> None:
         """Set the model paths, interpreters, input and output details from the model paths.
@@ -142,8 +144,12 @@ class MoskaGame:
         # All output can not be disabled from tflite, without a custom build, so we just minimize it
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
         import tensorflow as tf
-        for path in self.model_paths:    
-            interpreter = tf.lite.Interpreter(model_path=path)
+        for path in self.model_paths:
+            try:
+                interpreter = tf.lite.Interpreter(model_path=path)
+            except Exception as e:
+                self.glog.error(f"Could not load model from path {path}.")
+                raise e
             interpreter.allocate_tensors()
             self.interpreters.append(interpreter)
             input_details = interpreter.get_input_details()
@@ -165,7 +171,7 @@ class MoskaGame:
             X (np.ndarray): The input data to the model. The shape must be (n, input_size)
             model_id (str or int, optional): The id of the model to use. Defaults to "all". If "all", then all models are used.
         """
-        self.threads[threading.get_native_id()].plog.debug(f"Predicting with model, X.shape = {X.shape}")
+        # See which models the player wants to use
         if model_id == "all":
             model_id = list(range(len(self.interpreters)))
         if isinstance(model_id,int):
@@ -175,10 +181,11 @@ class MoskaGame:
                 model_id = [self.model_paths.index(model_id)]
             except:
                 raise Exception(f"Could not find model path {model_id} in {self.model_paths}")
+        player_logger = self.threads[threading.get_native_id()].plog
         output_data = []
         if not isinstance(X,np.ndarray):
             try:
-                self.glog.debug(f"Converting X {type(X)} to np.ndarray")
+                player_logger.debug(f"Converting X {type(X)} to np.ndarray")
                 X = np.array(X)
             except:
                 raise Exception(f"Could not convert {X} to np.ndarray")
@@ -193,15 +200,17 @@ class MoskaGame:
             if m_id not in model_id:
                 continue
             if len(X.shape) != len(input_details[0]["shape"]):
-                self.glog.info(f"Expanding X.shape from {X.shape} to {input_details[0]['shape']}")
+                prev_shape = X.shape
                 X = np.expand_dims(X, axis=-1)
-                self.glog.info(f"Expanded X.shape to {X.shape}")
+                player_logger.info(f"Expanded {prev_shape} to {X.shape}.")
             interpreter.resize_tensor_input(input_details[0]["index"],X.shape)
             interpreter.allocate_tensors()
             interpreter.set_tensor(input_details[0]['index'], X)
             interpreter.invoke()
             out = interpreter.get_tensor(output_details[0]['index'])
             output_data.append(out)
+        output_data = np.array(output_data)
+        player_logger.debug(f"Output data shape: {output_data.shape}.")
         return np.mean(output_data,axis=0)
     
     def _set_turns(self):
@@ -250,15 +259,16 @@ class MoskaGame:
             assert isinstance(value, str), f"'{name}' of MoskaGame attribute must be a string"
             self.name = value.split(".")[0]
             self._set_glogger(value)
-            self.glog.debug(f"Set GameLogger (glog) to file {value}")
         # If setting nplayers, create random players and set self.players
         if name == "nplayers":
             self.players = self.players if self.players else self._get_random_players(value)
             self.glog.debug(f"Created {value} random players.")
         # If setting the random seed, set the random seed
         if name == "random_seed":
-            random.seed(value)     
+            random.seed(value)
             self.glog.info(f"Set random_seed to {self.random_seed}")
+        if self.threads and self.lock_holder and (self is not self.threads[self.lock_holder]) and name not in ["deck", "fell_cards", "cards_to_fall"]:
+            self.glog.debug(f"Setting MoskaGame attribute {name} to {value}")
         return
     
     def _set_players(self,players : List[AbstractPlayer]) -> None:
@@ -298,6 +308,7 @@ class MoskaGame:
         formatter = logging.Formatter("%(name)s:%(levelname)s:%(message)s")
         fh.setFormatter(formatter)
         self.glog.addHandler(fh)
+        self.glog.debug(f"Set GameLogger (glog) to file {log_file}")
         return
     
     def _create_locks(self) -> None:
@@ -323,7 +334,6 @@ class MoskaGame:
                 self.lock_holder = None
                 yield False
                 return
-            og_state = len(self.cards_to_fall + self.fell_cards)
             if self.lock_holder not in self.threads:
                 self.lock_holder = None
                 print(f"Game {self.log_file}: Couldn't find lock holder id {self.lock_holder}!")
@@ -334,16 +344,23 @@ class MoskaGame:
                 yield False
                 return
             # Here we tell the player that they have the key
+            if not player:
+                player = self.threads[self.lock_holder]
+            if isinstance(player, AbstractPlayer):
+                self.glog.info(f"{player.name} has locked the game.")
             yield True
-            state = len(self.cards_to_fall + self.fell_cards)
-            if og_state != state:
-                self.glog.info(f"{self.threads[self.lock_holder].name}: new board: {self.cards_to_fall}")
-            assert len(set(self.cards_to_fall)) == len(self.cards_to_fall), f"Game log {self.log_file} failed, DUPLICATE CARD"
+            if len(set(self.cards_to_fall)) != len(self.cards_to_fall):
+                print(f"Game log {self.log_file} failed, DUPLICATE CARD")
+                self.glog.error(f"Game log {self.log_file} failed, DUPLICATE CARD")
+                self.EXIT_FLAG = True
+                raise AssertionError(f"DUPLICATE CARD in game {self.log_file}")
             self.__prev_lock_holder__ = self.lock_holder
             self.lock_holder = None
+        if isinstance(player, AbstractPlayer):
+            self.glog.info(f"{player.name} has unlocked the game.")
         return
     
-    def _make_move(self,move,args) -> Tuple[bool,str]:
+    def _make_move(self,move,args,mock=False) -> Tuple[bool,str]:
         """ This is called from an AbstractPlayer -instance.
         This is the heart of a game simulation.
 
@@ -365,14 +382,22 @@ class MoskaGame:
         if move not in self.turns.keys():
             raise NameError(f"Attempted to make move '{move}' which is not recognized as a move in Turns.py")
         move_call = self.turns[move]
-        self.glog.debug(f"Player {self.threads[self.lock_holder].name} called {move} with args {args}")
+        player = self.threads[self.lock_holder]
+        if not mock:
+            self.glog.info(f"Player {player.name} called {move} with args {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
         try:
+            # If mock move, change logging level to warning
+            if mock:
+                pl_log_level = player.log_level
+                game_log_level = self.log_level
+                player.plog.setLevel(logging.WARNING)
+                self.glog.setLevel(logging.WARNING)
             move_call(*args)  # Calls a class from Turns, which raises AssertionError if the move is not playable
         except AssertionError as ae:
-            self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{ae}")
+            self.glog.warning(f"{player.name}:{ae}")
             return False, str(ae)
         except TypeError as te:
-            self.glog.warning(f"{self.threads[threading.get_native_id()].name}:{te}")
+            self.glog.warning(f"{player.name}:{te}")
             return False, str(te)
         self.card_monitor.update_from_move(move,args)
         # If the move is something else than Skip, have all players play again, except the player who just played
@@ -382,6 +407,10 @@ class MoskaGame:
                 if pl.thread_id == self.lock_holder or pl.rank is not None:
                     continue
                 pl.ready = False
+                    # If mock move, change logging level back to original
+        if mock:
+            player.plog.setLevel(pl_log_level)
+            self.glog.setLevel(game_log_level)
         return True, ""
     
     def _make_mock_move(self,move,args,state_fmt="FullGameState") -> FullGameState:
@@ -391,16 +420,9 @@ class MoskaGame:
         state = FullGameState.from_game(self,copy=True)
         #self.glog.debug("Saved state data. Setting logger to level WARNING for Mock move")
         player = args[0]
-        game_log_level = self.glog.getEffectiveLevel()
-        player_log_level = player.plog.getEffectiveLevel()
-        # Disable logging for Mock move
-        self.glog.setLevel(logging.WARNING)
-        player.plog.setLevel(logging.WARNING)
 
-        # Normally play the move; change games state precisely as it would actually change.
-        success, msg = self._make_move(move,args)
-        self.glog.setLevel(game_log_level)
-        player.plog.setLevel(player_log_level)
+        # Normally play the move; change games state precisely as it would actually change, but with different logging
+        success, msg = self._make_move(move,args,mock=True)
         if not success:
             raise AssertionError(f"Mock move failed: {msg}")
         if state_fmt == "FullGameState" or "FullGameState-Depr":
@@ -420,7 +442,7 @@ class MoskaGame:
         If REDUCED_PRINT is True, only print that information, which is visible to a player in a real game.
         Else, also print information about each players cards (perfect memory), and the players personal evaluations.
         """
-        s = f"Triumph card: {self.triumph_card}\n"
+        s = f"Trump card: {self.trump_card}\n"
         s += f"Deck left: {len(self.deck.cards)}\n"
         if True and all((pl.requires_graphic for pl in self.players)) and self.model_paths:
             player_evals = []
@@ -430,6 +452,9 @@ class MoskaGame:
                 # If player doesn't have model_id or pred_format, use default values. Atleast one player needs to have these.
                 if not hasattr(pl,"model_id") or not hasattr(pl,"pred_format"):
                     pl_to_copy = self.get_players_condition(lambda x : x.name != pl.name and hasattr(x,"model_id") and hasattr(x,"pred_format"))[0]
+                    if not pl_to_copy:
+                        self.EXIT_FLAG = True
+                        raise AttributeError(f"Can not play with these settings (requires_graphic) if no player has a model.")
                     model_id = pl_to_copy.model_id
                     pred_format = pl_to_copy.pred_format
                 else:
@@ -472,13 +497,15 @@ class MoskaGame:
         self.fell_cards.clear()
         # Add self to allowed threads
         self.threads[threading.get_native_id()] = self
+        self.glog.info("Starting player threads")
         with self.get_lock() as ml:
             for pl in self.players:
                 tid = pl._start()
                 self.threads[tid] = pl
-            self.glog.debug("Started player threads")
+            self.glog.info("Started player threads")
             assert len(set([pl.pid for pl in self.players])) == len(self.players), f"A non-unique player id ('pid' attribute) found."
             self.card_monitor.start()
+            self.glog.info("Started card monitor.")
             self.IS_RUNNING = True
         return
     
@@ -488,11 +515,14 @@ class MoskaGame:
         If any thread has EXIT_STATUS 2, the game is terminated.
         The game timeouts if after 'timeout' seconds, any thread is still alive.
         """
+        self.glog.info("Main thread waiting for player threads")
         start = time.time()
         while time.time() - start < self.timeout and any([pl.thread.is_alive() for pl in self.players]):
             time.sleep(0.1)
             # Check if any thread has failed
             if any((pl.EXIT_STATUS == 2 for pl in self.players)):
+                failed_player = self.get_players_condition(lambda x : x.EXIT_STATUS == 2)[0]
+                self.glog.error(f"Player {failed_player.name} failed. File: {failed_player.log_file}. Exiting.")
                 with self.get_lock() as ml:
                     print(f"Game with log {self.log_file} failed.")
                     self.glog.error(f"Game FAILED. Exiting.")
@@ -534,28 +564,29 @@ class MoskaGame:
         """
         return self.turnCycle.get_at_index()
     
-    def _set_triumph(self) -> None:
+    def _set_trump(self) -> None:
         """Sets the trump card of the MoskaGame.
         Takes the top-most card, checks the suit, and checks if any player has the 2 of that suit in hand.
         If some player has, then it swaps the cards.
         Places the card at the bottom of the deck.
         """
+        self.glog.info(f"Setting trump card")
         assert len(self.players) > 1 and len(self.players) < 8, "Too few or too many players"
-        triumph_card = self.deck.pop_cards(1)[0]
-        self.triumph = triumph_card.suit
+        trump_card = self.deck.pop_cards(1)[0]
+        self.trump = trump_card.suit
         # Get the player with the trump 2 in hand
-        p_with_2 = self.get_players_condition(cond = lambda x : any((x.suit == self.triumph and x.value==2 for x in x.hand.cards)))
+        p_with_2 = self.get_players_condition(cond = lambda x : any((x.suit == self.trump and x.value==2 for x in x.hand.cards)))
         # Swap the card if possible
-        self._orig_triumph_card = triumph_card
+        self._orig_trump_card = trump_card
         if p_with_2:
             assert len(p_with_2) == 1, "Multiple people have valtti 2 in hand."
             p_with_2 = p_with_2[0]
-            p_with_2.hand.add([triumph_card])
-            triumph_card = p_with_2.hand.pop_cards(cond = lambda x : x.suit == self.triumph and x.value == 2)[0]
-            self.glog.info(f"Removed {triumph_card} from {p_with_2.name}")
-        self.triumph_card = triumph_card
-        self.deck.place_to_bottom(self.triumph_card)
-        self.glog.info(f"Placed {self.triumph_card} to bottom of deck.")
+            p_with_2.hand.add([trump_card])
+            trump_card = p_with_2.hand.pop_cards(cond = lambda x : x.suit == self.trump and x.value == 2)[0]
+            self.glog.info(f"Removed {trump_card} from {p_with_2.name}")
+        self.trump_card = trump_card
+        self.deck.place_to_bottom(self.trump_card)
+        self.glog.info(f"Placed {self.trump_card} to bottom of deck.")
         return
     
     def get_player_state_vectors(self, shuffle = True, balance = True) -> List[List]:
@@ -610,13 +641,13 @@ class MoskaGame:
         return
     
     def start(self) -> List[Tuple[str,int]]:
-        """ The main method of MoskaGame. Sets the triumph card, locks the game to avoid race conditions between players,
+        """ The main method of MoskaGame. Sets the trump card, locks the game to avoid race conditions between players,
         initializes and starts the player threads.
         After that, the players play the game, only one modifying the state of the game at a time.
         """
         if len(set([pl.name for pl in self.players])) != len(self.players):
             raise ValueError("Players must have unique names.")
-        self._set_triumph()
+        self._set_trump()
         self._create_locks()
         self.glog.info(f"Starting the game with seed {self.random_seed}...")
         self._start_player_threads()
