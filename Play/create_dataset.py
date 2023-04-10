@@ -33,14 +33,14 @@ def create_dataset(nrounds : int,
     if os.path.exists(folder):
         warnings.warn(f"Folder {folder} already exists. Overwriting.")
     CWD = os.getcwd()
-    model_paths = [os.path.abspath("./Models/ModelMB11-260/model.tflite"),
+    model_paths = [os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
                       os.path.abspath("./Models/ModelNN1/model.tflite")]
     gamekwargs = {
         "log_file" : "Game-{x}.log",
         "log_level" : logging.DEBUG,
         "timeout" : 30,
         "gather_data":True,
-        #"model_paths":model_paths,
+        "model_paths":model_paths,
     }
     print(f"Creating dataset with {nrounds} rounds and {num_games} games per round.")
     print(f"Total games: {nrounds*num_games}.")
@@ -69,6 +69,7 @@ def create_dataset(nrounds : int,
     return
 
 if __name__ == "__main__":
-    folder = "./Dataset-rand"
-    players = get_four_players_that_are_NewRandomPlayers()
-    create_dataset(nrounds=1000,num_games=1000,chunksize=3,folder=folder,cpus=50,use_HIF=False,players=players,verbose=True)
+    folder = "./Dataset-iter-3"
+    #players = get_four_players_that_are_NewRandomPlayers()
+    players = "random"
+    create_dataset(nrounds=1000,num_games=1000,chunksize=3,folder=folder,cpus=50,use_HIF=False,players=players,verbose=False)
