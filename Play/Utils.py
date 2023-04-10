@@ -143,7 +143,8 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
     }
     shared_kwargs = {**shared_kwargs_default, **shared_kwargs}
     
-    nn_models = [os.path.abspath(p) for p in ["./Models/ModelMB11-260/model.tflite","./Models/ModelNN1/model.tflite"]]
+    nn_models = [os.path.abspath(p) for p in ["./Models/ModelNN1/model.tflite","./Models/Model-nn1-BB/model.tflite"]]
+    nn_models = [(path, fmt) for path,fmt in zip(nn_models,["new-algbr","bitmap"])]
 
     # NOTE: The players logs might not be correct for the game index, to reduce the number of files
     much_players = [
@@ -158,57 +159,55 @@ def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool
         (MoskaBot2, {**shared_kwargs,**{"name" : f"B2-3","parameters":"random"}}),
         (MoskaBot2, {**shared_kwargs,**{"name" : f"B2-4","parameters":"random"}}),
         
-        (RandomPlayer, {**shared_kwargs,**{"name" : f"R1"}}),
-        (RandomPlayer, {**shared_kwargs,**{"name" : f"R2"}}),
-        (RandomPlayer, {**shared_kwargs,**{"name" : f"R3"}}),
-        (RandomPlayer, {**shared_kwargs,**{"name" : f"R4"}}),
+        (NewRandomPlayer, {**shared_kwargs,**{"name" : f"R1"}}),
+        #(NewRandomPlayer, {**shared_kwargs,**{"name" : f"R2"}}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1-old",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"old-algbr",
-                                            "model_id":nn_models[0],
+                                            "pred_format":nn_models[0][1],
+                                            "model_id":nn_models[0][0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2-old",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"old-algbr",
-                                            "model_id":nn_models[0],
+                                            "pred_format":nn_models[0][1],
+                                            "model_id":nn_models[0][0],
                                             }}),
 
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3-old",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"old-algbr",
-                                            "model_id":nn_models[0],
+                                            "pred_format":nn_models[0][1],
+                                            "model_id":nn_models[0][0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4-old",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"old-algbr",
-                                            "model_id":nn_models[0],
+                                            "pred_format":nn_models[0][1],
+                                            "model_id":nn_models[0][0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV1-new",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"new-algbr",
-                                            "model_id":nn_models[1],
+                                            "pred_format":nn_models[1][1],
+                                            "model_id":nn_models[1][0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV2-new",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"new-algbr",
-                                            "model_id":nn_models[1],
+                                            "pred_format":nn_models[1][1],
+                                            "model_id":nn_models[1][0],
                                             }}),
 
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV3-new",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"new-algbr",
-                                            "model_id":nn_models[1],
+                                            "pred_format":nn_models[1][1],
+                                            "model_id":nn_models[1][0],
                                             }}),
         
         (NNEvaluatorBot, {**shared_kwargs,**{"name" : f"NNEV4-new",
                                             "max_num_states":random.randint(1,5000),
-                                            "pred_format":"new-algbr",
-                                            "model_id":nn_models[1],
+                                            "pred_format":nn_models[1][1],
+                                            "model_id":nn_models[1][0],
                                             }}),
     ]
     
