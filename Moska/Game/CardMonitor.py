@@ -43,9 +43,10 @@ class CardMonitor:
         # Search where the card is, and if a player has it everyone knows it, so update the card monitor
         for pl in self.game.players:
             self.player_cards[pl.name] = []
+
             if self.game._orig_trump_card in pl.hand.cards:
                 cards = [Card(-1,"X") for _ in range(5)] + [self.game._orig_trump_card]
-                self.game.glog.info(f"Trump card at player: {pl.name}, cards: {cards}")
+                self.game.glog.info(f"Trump card on player: {pl.name}")
             else:
                 cards = [Card(-1,"X") for _ in range(6)]
             self.update_known(pl.name,cards=cards,add=True)
@@ -128,6 +129,9 @@ class CardMonitor:
             indices = random.sample(range(n), min(r, n))
             return tuple(pool[i] for i in indices)
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
+        # If the player will lift the remaining deck, there will be the trump card in the lifted cards
+        if ncards == len(self.game.deck):
+            combs = filter(lambda x: self.game.trump_card in x,combs)
         combs = random_combination(combs,max_samples)
         for comb in combs:
             samples.append(comb)
@@ -136,7 +140,7 @@ class CardMonitor:
         player.plog.info(f"Sampled {len(samples)} cards from deck")
         player.plog.debug(f"Sampled cards: {samples}")
         return samples
-        
+
     def make_cards_fall_dict(self):
         """Create the cards_fall_dict by going through each card
         and checking if each card can be fell with the card
