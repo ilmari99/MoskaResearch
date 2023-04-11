@@ -32,7 +32,7 @@ class NNEvaluatorBot(AbstractEvaluatorBot):
         
     def evaluate_states(self, states: List[FullGameState]) -> List[float]:
         state_vectors = [state.as_perspective_vector(self,fmt=self.pred_format) for state in states]
-        preds = self.moskaGame.model_predict(np.array(state_vectors, dtype=np.float32), model_id=self.model_id)
+        preds = self.moskaGame.model_predict(np.array(state_vectors, dtype=np.float32), model_id=self.model_id).flatten().tolist()
         return preds
 
 
