@@ -123,9 +123,9 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_fo
     gamekwargs = {
         "log_file" : "HumanGame-{x}.log",
         "players" : players,
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.INFO,
         "timeout" : 2000,
-        "model_paths":[os.path.abspath(path) for path in ["./Models/Model-nn1-fuller/model.tflite"]]
+        "model_paths":[os.path.abspath(path) for path in [model_path]]
     }
     # Convert general game arguments to game specific arguments (replace '{x}' with game_id)
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
@@ -137,4 +137,4 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_fo
     return out
 
 if __name__ == "__main__":
-    play_as_human()
+    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap")
