@@ -31,7 +31,7 @@ This file contains utility functions for playing (multiple) games of Moska.
 """
 
 
-def replace_setting_values(settings : dict[str,Any], game_id : int = 0) -> dict[str,Any]:
+def replace_setting_values(settings : Dict[str,Any], game_id : int = 0) -> Dict[str,Any]:
     """ Create a new settings dict, with the game id replaced.
     """
     # Create a new dict, so that the original settings are not changed.
@@ -133,7 +133,7 @@ def get_four_same_players(pl_type, pl_kwargs):
     return players
 
 
-def get_random_players(nplayers : int, shared_kwargs : dict = {}, use_HIF : bool = False, infer_log_file = False) -> List['PlayerWrapper']:
+def get_random_players(nplayers : int, shared_kwargs : Dict = {}, use_HIF : bool = False, infer_log_file = False) -> List['PlayerWrapper']:
     """ Return a list of PlayerWrappers with random parameters.
     """
     # Due to import conflict
