@@ -109,6 +109,9 @@ class AbstractHIFEvaluatorBot(AbstractEvaluatorBot):
     def _get_move_prediction(self, move : str, get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
+        self.plog.debug(f"Possible next states for move {move}:")
+        for play, state, eval in zip(plays, states, evals):
+            self.plog.debug(f"Play: {play}, Eval: {eval}")
         if len(plays) == 0:
             raise ValueError("No possible next states for move: " + move)
         # If the move is PlayFallFromDeck, there can be uncertainty about the future states (if len(deck) > 1)
@@ -133,7 +136,7 @@ class AbstractHIFEvaluatorBot(AbstractEvaluatorBot):
                     unique_plays.append(play)
             # For each unique play, evaluate all possible future states and use the mean of the evaluations
             for unique_play in unique_plays:
-                mean_eval = np.mean([eval for play, eval in zip(plays, evals) if play == unique_play])
+                mean_eval = float(np.mean([eval for play, eval in zip(plays, evals) if play == unique_play]))
                 #mean_eval += self.sampling_bias*len(self.moskaGame.card_monitor.get_sample_cards_from_deck(self,1,52))
                 mean_eval += self.sampling_bias if len(self.moskaGame.deck) > 0 else 0
                 mean_evals.append(mean_eval)
