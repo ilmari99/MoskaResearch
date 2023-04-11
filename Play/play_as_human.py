@@ -110,11 +110,14 @@ def get_next_game_id(path : str, filename : str) -> int:
     return i
 
 
-def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap"):
+def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap", test=False):
     """ Play as a human against three NNHIFEvaluatorBots. The order of the players is shuffled.
     """
     # Get a list of players
-    players = get_human_players(model_path = model_path, pred_format=pred_format)
+    if test:
+        players = get_test_human_players(model_path = model_path, pred_format=pred_format)
+    else:
+        players = get_human_players(model_path = model_path, pred_format=pred_format)
     #players = get_test_human_players(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap")
     cwd = os.getcwd()
     folder = "HumanLogs"
@@ -137,4 +140,4 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_fo
     return out
 
 if __name__ == "__main__":
-    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap")
+    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=True)

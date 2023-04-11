@@ -19,9 +19,6 @@ from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
-from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
 import random
 import numpy as np
@@ -152,7 +149,7 @@ BENCH3 = Benchmark(
 if __name__ == "__main__":
     # Specify the model paths
     game_kwargs = {
-        "model_paths" : [os.path.abspath("./model.tflite"), os.path.abspath("./Models/ModelNN1/model.tflite")],
+        "model_paths" : [os.path.abspath("./Models/Model-nn1-BB/model.tflite"), os.path.abspath("./Models/ModelNN1/model.tflite")],
         "gather_data" : True,
         "log_level" : logging.DEBUG
     }
@@ -172,8 +169,8 @@ if __name__ == "__main__":
     # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
     player = PlayerWrapper(player_type, player_args)
     # Run the benchmark
-    BENCH3.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
-    BENCH1.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = 12,chunksize=1,ngames=120,custom_game_kwargs=game_kwargs)
+    BENCH3.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH1.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH2.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
 
 

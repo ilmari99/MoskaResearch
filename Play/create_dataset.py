@@ -7,12 +7,6 @@ import warnings
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
 import sys
-from Moska.Game.Game import MoskaGame
-from Moska.Player.MoskaBot3 import MoskaBot3
-from Moska.Player.AbstractPlayer import AbstractPlayer
-from Moska.Player.HumanPlayer import HumanPlayer
-import multiprocessing
-from typing import Any, Callable, Dict, Iterable, List, Tuple
 import random
 import numpy as np
 from scipy.optimize import minimize

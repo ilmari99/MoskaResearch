@@ -20,9 +20,6 @@ from Moska.Player.RandomPlayer import RandomPlayer
 from Moska.Player.NNEvaluatorBot import NNEvaluatorBot
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
 from Moska.Player.HeuristicEvaluatorBot import HeuristicEvaluatorBot
-from Moska.Player.NNSampleEvaluatorBot import NNSampleEvaluatorBot
-from Moska.Player.WideEvaluatorBot import WideEvaluatorBot
-from Moska.Player.WideHIFEvaluatorBot import WideHIFEvaluatorBot
 from Moska.Player.SVDEvaluatorBot import SVDEvaluatorBot
 import random
 import numpy as np
