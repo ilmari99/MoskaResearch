@@ -151,6 +151,6 @@ class HeuristicEvaluatorBot(AbstractEvaluatorBot):
         preds = []
         for state in states:
             self._assign_score_to_state_cards(state)
-            pred = self._evaluate_single_state(state)
+            pred = float(self._evaluate_single_state(state))
             preds.append(pred)
         return preds
