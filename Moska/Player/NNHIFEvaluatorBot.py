@@ -32,8 +32,12 @@ class NNHIFEvaluatorBot(AbstractHIFEvaluatorBot):
         super().__init__(moskaGame, name, delay, requires_graphic, log_level, log_file, max_num_states, max_num_samples, sampling_bias)
         
     def evaluate_states(self, states: List[FullGameState]) -> List[float]:
+        self.plog.info(f"Evaluating {len(states)} states")
         state_vectors = [state.as_perspective_vector(self,fmt=self.pred_format) for state in states]
-        preds = self.moskaGame.model_predict(np.array(state_vectors, dtype=np.float32), model_id=self.model_id)
+        states = np.array(state_vectors, dtype=np.float32)
+        preds = self.moskaGame.model_predict(states, model_id=self.model_id).flatten()
+        self.plog.debug(f"Received {len(preds)} predictions")
+        preds = [float(pred) for pred in preds]
         return preds
 
 
