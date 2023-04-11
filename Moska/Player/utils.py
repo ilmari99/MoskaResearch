@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Set
 import numpy as np
 from Moska.Game.Deck import Card
 from ..Game import utils
@@ -68,7 +68,7 @@ def _get_single_assignments(matrix : np.ndarray) -> List[List[int]]:
     inds = [list(i) for i in inds]
     return inds
 
-def _get_assignments(from_ : List[Card], to : List[Card] = [], trump : str = "", start=[], found_assignments = None, max_num : int = 1000) -> set[Assignment]:
+def _get_assignments(from_ : List[Card], to : List[Card] = [], trump : str = "", start=[], found_assignments = None, max_num : int = 1000) -> Set[Assignment]:
     """ Return a set of found Assignments, containing all possible assignments of cards from the hand to the cards to fall.
     Symmetrical assignments are considered the same when the same cards are played to the same cards, regardless of order.
     
