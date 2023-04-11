@@ -160,7 +160,7 @@ class PlayFallFromHand(Turn):
         
     def check_cards_fall(self):
         """Returns whether all the pairs are correctly played"""
-        return all([utils.check_can_fall_card(pc,fc,self.moskaGame.triumph) for pc,fc in self.play_fall.items()])
+        return all([utils.check_can_fall_card(pc,fc,self.moskaGame.trump) for pc,fc in self.play_fall.items()])
     
     def check_cards_available(self) -> bool:
         """ Check that the cards are playable.
@@ -229,7 +229,7 @@ class PlayFallFromDeck(Turn):
             if not self.check_can_fall(in_=[play_fall[1]]):
                 self.player.plog.error(f"The card {self.card} can not fall {play_fall[1]}. Falling a random card.")
                 for card in self.moskaGame.cards_to_fall:
-                    if utils.check_can_fall_card(self.card, card, self.moskaGame.triumph):
+                    if utils.check_can_fall_card(self.card, card, self.moskaGame.trump):
                         play_fall = (self.card,card)
                         break
             self.player.plog.info(f"Playing kopled card {play_fall[0]} to {play_fall[1]}")
@@ -246,7 +246,7 @@ class PlayFallFromDeck(Turn):
     def check_can_fall(self,in_ = None):
         """ Return if the card can fall a card on the table """
         in_ = self.moskaGame.cards_to_fall if not in_ else in_
-        return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.triumph) for fc in in_])
+        return any([utils.check_can_fall_card(self.card,fc,self.moskaGame.trump) for fc in in_])
 
 class EndTurn(Turn):
     """ Class representing ending a turn. """

@@ -43,9 +43,10 @@ class CardMonitor:
         # Search where the card is, and if a player has it everyone knows it, so update the card monitor
         for pl in self.game.players:
             self.player_cards[pl.name] = []
-            if self.game._orig_triumph_card in pl.hand.cards:
-                cards = [Card(-1,"X") for _ in range(5)] + [self.game._orig_triumph_card]
-                self.game.glog.info(f"Triumph card at player: {pl.name}, cards: {cards}")
+
+            if self.game._orig_trump_card in pl.hand.cards:
+                cards = [Card(-1,"X") for _ in range(5)] + [self.game._orig_trump_card]
+                self.game.glog.info(f"Trump card on player: {pl.name}")
             else:
                 cards = [Card(-1,"X") for _ in range(6)]
             self.update_known(pl.name,cards=cards,add=True)
@@ -90,9 +91,9 @@ class CardMonitor:
         This is the same as get_hidden_cards, but with checks, for if the deck is empty, or there is only one card.
         Otherwise, all the hidden cards are returned
         """
-        # If there is only one card left in the deck, it has to be the triumph card
+        # If there is only one card left in the deck, it has to be the trump card
         if len(self.game.deck) == 1:
-            return [self.game.triumph_card]
+            return [self.game.trump_card]
         if len(self.game.deck) == 0:
                 return []
         hidden_cards = self.get_hidden_cards(player)
@@ -115,7 +116,7 @@ class CardMonitor:
             return tuple(cards_possibly_in_deck)
         # if the player will not lift the trump card, we can remove it.
         if ncards < len(self.game.deck):
-            cards_possibly_in_deck.remove(self.game.triumph_card)
+            cards_possibly_in_deck.remove(self.game.trump_card)
         samples = []
         # Shuffle the cards for fun
         random.shuffle(cards_possibly_in_deck)
@@ -128,6 +129,9 @@ class CardMonitor:
             indices = random.sample(range(n), min(r, n))
             return tuple(pool[i] for i in indices)
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
+        # If the player will lift the remaining deck, there will be the trump card in the lifted cards
+        if ncards == len(self.game.deck):
+            combs = filter(lambda x: self.game.trump_card in x,combs)
         combs = random_combination(combs,max_samples)
         for comb in combs:
             samples.append(comb)
@@ -136,7 +140,7 @@ class CardMonitor:
         player.plog.info(f"Sampled {len(samples)} cards from deck")
         player.plog.debug(f"Sampled cards: {samples}")
         return samples
-        
+
     def make_cards_fall_dict(self):
         """Create the cards_fall_dict by going through each card
         and checking if each card can be fell with the card
@@ -147,8 +151,8 @@ class CardMonitor:
             for i2,card2 in enumerate(deck):
                 if i == i2:
                     continue
-                # Requires the game to be started, otherwise we have no information on the triumph suit
-                if check_can_fall_card(card,card2,self.game.triumph):
+                # Requires the game to be started, otherwise we have no information on the trump suit
+                if check_can_fall_card(card,card2,self.game.trump):
                     self.cards_fall_dict[card].append(card2)
         return
     
@@ -223,10 +227,10 @@ class CardMonitor:
         known_cards = self.player_cards[player_name]
         # Get the cards the player actually has
         actual_cards = self.game.get_players_condition(cond = lambda x : x.name == player_name)[0].hand.cards
-        # If a player has the triumph card, and we do not know it yet
+        # If a player has the trump card, and we do not know it yet
         # This requires, that the deck is empty. Otherwise it is just a mock move
-        if any(card == self.game.triumph_card for card in actual_cards) and self.game.triumph_card not in known_cards and len(self.game.deck) == 0:
-            self.update_known(player_name,[self.game.triumph_card],add=True)
+        if any(card == self.game.trump_card for card in actual_cards) and self.game.trump_card not in known_cards and len(self.game.deck) == 0:
+            self.update_known(player_name,[self.game.trump_card],add=True)
             known_cards = self.player_cards[player_name]
         missing = len(actual_cards) - len(known_cards)
         add = True

@@ -88,14 +88,14 @@ class MoskaBot1(AbstractPlayer):
             
     def play_to_self(self) -> List[Card]:
         """Which cards from hand to play to table.
-        Default play all playable values, except triumphs
+        Default play all playable values, except trumps
 
         Returns:
             List[Card]: list of cards played to self
         """
         pv = self._playable_values_from_hand()
         chand = self.hand.copy()
-        cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.triumph)
+        cards = chand.pop_cards(cond=lambda x : x.value in pv and x.suit != self.moskaGame.trump)
         return cards
     
     def play_initial(self) -> List[Card]:
