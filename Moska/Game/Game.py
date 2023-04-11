@@ -210,7 +210,7 @@ class MoskaGame:
             out = interpreter.get_tensor(output_details[0]['index'])
             output_data.append(out)
         output_data = np.array(output_data)
-        return np.mean(output_data,axis=0)
+        return output_data
     
     def _set_turns(self):
         """Set the turns dictionary, which contains the callable turn classes."""
