@@ -109,9 +109,8 @@ class AbstractHIFEvaluatorBot(AbstractEvaluatorBot):
     def _get_move_prediction(self, move : str, get_n : bool = False) -> Tuple[Any,float]:
         """ Get a prediction for a moves best 'goodness' """
         plays, states, evals = self.get_possible_next_states(move)
-        self.plog.debug(f"Possible next states for move {move}:")
-        for play, state, eval in zip(plays, states, evals):
-            self.plog.debug(f"Play: {play}, Eval: {eval}")
+        # Here there will be duplicate plays, and corresponding states and evals
+        # We need to remove the duplicates, and calculate the mean eval for each unique play
         if len(plays) == 0:
             raise ValueError("No possible next states for move: " + move)
         # If the move is PlayFallFromDeck, there can be uncertainty about the future states (if len(deck) > 1)
