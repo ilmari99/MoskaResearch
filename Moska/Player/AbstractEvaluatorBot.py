@@ -90,7 +90,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
             return best[0],best[2],len(plays)
         return best[0],best[2]
 
-    def _make_mock_move(self,move,args):
+    def _make_mock_move(self,move,args) -> FullGameState:
         """ A wrapper around making a mock move, which is used to check the immediate next state.
         This is more relevant in the AbstractHIFEvaluatorBot.
         """
@@ -232,14 +232,18 @@ class AbstractEvaluatorBot(AbstractPlayer):
         plays = random.sample(plays,min(len(plays),self.max_num_states))
         states = []
         target = self.moskaGame.get_target_player()
+        actual_plays = []
         for i,play in enumerate(plays):
             plays[i] = list(play)
             state = self._make_mock_move("PlayToOther",[self, target, plays[i]])
             if isinstance(state,list):
                 for s in state:
                     states.append(s)
+                    actual_plays.append(plays[i])
             else:
                 states.append(state)
+                actual_plays.append(plays[i])
+        plays = actual_plays
         return plays, states
     
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
@@ -275,6 +279,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         target = self.moskaGame.get_target_player()
         random.shuffle(legal_plays)
         states = []
+        plays = []
         for i, play in enumerate(legal_plays):
             if len(states) >= self.max_num_states:
                 break
@@ -282,8 +287,13 @@ class AbstractEvaluatorBot(AbstractPlayer):
             if isinstance(state,list):
                 for s in state:
                     states.append(s)
+                    plays.append(play)
             else:
                 states.append(state)
+                plays.append(play)
+        legal_plays = plays
+        if len(legal_plays) != len(states):
+            raise ValueError("Number of plays and states don't match")
         return legal_plays, states
     
     def get_possible_next_states(self, move : str) -> Tuple[List[Any], List[FullGameState], List[float]]:
@@ -307,13 +317,17 @@ class AbstractEvaluatorBot(AbstractPlayer):
         elif move == "EndTurn":
             plays = [self.moskaGame.cards_to_fall.copy(), self.moskaGame.cards_to_fall.copy() + self.moskaGame.fell_cards.copy()]
             states = []
+            actual_plays = []
             for play in plays:
                 state_ = self._make_mock_move(move,[self, play])
                 if isinstance(state_,list):
                     for s in state_:
                         states.append(s)
+                        actual_plays.append(play)
                 else:
                     states.append(state_)
+                    actual_plays.append(play)
+            plays = actual_plays
         
         elif move == "InitialPlay":
             plays,states = self._get_initial_play_play_states()
@@ -323,6 +337,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
             plays, states = self._get_play_from_deck_play_states()
         else:
             raise Exception("Unknown move: " + move)
+        if len(plays) != len(states):
+            raise Exception("Number of plays and states don't match!!")
+        if any([not isinstance(s,FullGameState) for s in states]):
+            raise Exception("Not all states are of type FullGameState")
         self.plog.info(f"Found {len(states)} states for move {move}. Time taken: {time.time() - start}")
         # Check whether the state of the game was accidentally changed between getting the states.
         is_eq, msg = state.is_game_equal(self.moskaGame,return_msg=True)
@@ -331,6 +349,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
         # TODO: Perhaps add a check for duplicate states
         start = time.time()
         predictions = self.evaluate_states(states)
+        if len(predictions) != len(states):
+            raise Exception("Number of predictions and states don't match!!")
+        if any([not isinstance(p,float) for p in predictions]):
+            raise Exception("Not all predictions are of type float")
         self.plog.debug(f"Time taken to evaluate {len(states)} states: {time.time() - start}")
         return plays, states, predictions
     
