@@ -130,7 +130,7 @@ class CardMonitor:
             return tuple(pool[i] for i in indices)
         combs = itertools.combinations(cards_possibly_in_deck,ncards)
         # If the player will lift the remaining deck, there will be the trump card in the lifted cards
-        if ncards == len(self.game.deck):
+        if ncards >= len(self.game.deck):
             combs = filter(lambda x: self.game.trump_card in x,combs)
         combs = random_combination(combs,max_samples)
         for comb in combs:
