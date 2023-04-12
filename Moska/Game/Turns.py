@@ -156,7 +156,12 @@ class PlayFallFromHand(Turn):
         assert self.check_cards_fall(), "Some of the played cards were not matched to a correct card to fall."
         assert self.check_player_has_turn(), "The player does not have the turn."
         assert self.check_cards_available(), "Some of the played cards are not available"
+        assert self.check_unique_cards(), "Some of the cards were played multiple times."
         self.play()
+
+    def check_unique_cards(self):
+        """ Returns whether the played cards are unique """
+        return len(self.play_fall.keys()) == len(set(self.play_fall.keys())) and len(self.play_fall.values()) == len(set(self.play_fall.values()))
         
     def check_cards_fall(self):
         """Returns whether all the pairs are correctly played"""
