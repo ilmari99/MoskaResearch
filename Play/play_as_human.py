@@ -140,4 +140,4 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_fo
     return out
 
 if __name__ == "__main__":
-    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=True)
+    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=False)
