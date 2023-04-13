@@ -412,29 +412,10 @@ class AbstractPlayer(ABC):
                 
                 if not ml:
                     continue
-
-                msgd = {
-                    "target" : curr_target.name,
-                    "cards_to_fall" : self.moskaGame.cards_to_fall,
-                    "fell_cards" : self.moskaGame.fell_cards,
-                    "hand" : self.hand,
-                    "Deck" : len(self.moskaGame.deck),
-                    }
-                # If a human is playing, then we print the values to terminal
-                if self.requires_graphic:
-                    print(f"{self.name} playing...",flush=True)
-                    print(self.moskaGame,flush=True)
-                    # Only print the players personal information, if the name has 'Human'
-                    if "Human" in self.name:
-                        print(msgd, flush=True)
-                    self.moskaGame.glog.debug(f"{self.name} playing...")
-                    self.moskaGame.glog.debug(self.moskaGame)
-                    self.moskaGame.glog.debug(msgd)
                 # If there is only 1 active player in the game, the player is last
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
                     self._set_rank()
                     break
-                self.plog.debug(f"{msgd}")
                 try:
                     # Try to play moves, as long as a valid move is played.
                     # At _play_move, the self.ready is set to True
