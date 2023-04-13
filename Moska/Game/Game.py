@@ -1,8 +1,10 @@
 import contextlib
+import functools
 import os
 import sys
 import time
 from Moska.Game.GameState import FullGameState
+from ..Player.HumanPlayer import HumanPlayer
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -67,7 +69,6 @@ class MoskaGame:
     __prev_lock_holder__ = None             # The previous lock holder, used to check if the lock holder has changed, to avoid one thread locking the game twice in a row
     GATHER_DATA : bool = True               # Whether to gather data or not
     EXIT_FLAG = False                       # Whether the game is running or not. If this is True, then no-one can obtain the lock, threads will stop, and start() will return
-    REDUCED_PRINTS = True                   # Whether to print the normal information for a human player. If this is False, then the player will receive information about the opponents states and have nearly perfect memory.
     IS_RUNNING = False                      # Currently no real use
     def __init__(self,
                  deck : StandardDeck = None,
@@ -79,6 +80,9 @@ class MoskaGame:
                  random_seed=None,
                  gather_data : bool = True,
                  model_paths : List[str] = [""],
+                 player_evals : str = "", # Either 'save', or 'plot' or ''
+                 print_format : str = "basic", # Either 'basic', 'with_cards', 'with_evals', 'human'
+                 to_console : bool = False,
                  ):
         """Initialize the game, by setting the deck, models, players, card monitor and some other variables.
         Args:
@@ -92,12 +96,15 @@ class MoskaGame:
             gather_data (bool, optional): Whether to gather data or not. Defaults to True. The gathered data will be written to a csv file.
             model_paths (List[str], optional): The paths to the models to use. Defaults to [""]. If the paths are empty, no neural network based models can be used.
         """
-        self.REDUCED_PRINTS = True
+        self.nturns = 0
+        self.to_console = to_console
         self.GATHER_DATA = gather_data
         self.IS_RUNNING = False
         # This plotting data is used if atleast one of the players requires graphic
         # The plot is about the progression of the state evaluations of each player (evals vs turns)
-        self.plotting_data : Dict[int,List[int]] = {}
+        self.player_evals = player_evals
+        self.print_format = print_format
+        self.player_evals_data : Dict[int,List[int]] = {}
         self.threads = {}
         # These are leftovers from debugging
         if self.players or self.nplayers > 0:
@@ -202,7 +209,6 @@ class MoskaGame:
             if len(X.shape) != len(input_details[0]["shape"]):
                 prev_shape = X.shape
                 X = np.expand_dims(X, axis=-1)
-                player_logger.info(f"Expanded {prev_shape} to {X.shape}.")
             interpreter.resize_tensor_input(input_details[0]["index"],X.shape)
             interpreter.allocate_tensors()
             interpreter.set_tensor(input_details[0]['index'], X)
@@ -346,7 +352,7 @@ class MoskaGame:
             if not player:
                 player = self.threads[self.lock_holder]
             if isinstance(player, AbstractPlayer):
-                self.glog.info(f"{player.name} has locked the game.")
+                self.glog.debug(f"{player.name} has locked the game.")
             yield True
             if len(set(self.cards_to_fall)) != len(self.cards_to_fall):
                 print(f"Game log {self.log_file} failed, DUPLICATE CARD")
@@ -356,8 +362,40 @@ class MoskaGame:
             self.__prev_lock_holder__ = self.lock_holder
             self.lock_holder = None
         if isinstance(player, AbstractPlayer):
-            self.glog.info(f"{player.name} has unlocked the game.")
+            self.glog.debug(f"{player.name} has unlocked the game.")
         return
+    
+    def _reduce_logging_wrapper(self,func) -> Callable:
+        """ A wrapper, that reduces the logging of a player in the wrapped function.
+        This is used in the _make_move function, if mock is True.
+        """
+        functools.wraps(func)
+        def wrapper(*args,**kwargs):
+            self.glog.setLevel(logging.WARNING)
+            player = self.threads[self.lock_holder]
+            player.plog.setLevel(logging.WARNING)
+            out = func(*args,**kwargs)
+            player.plog.setLevel(player.log_level)
+            self.glog.setLevel(self.log_level)
+            return out
+        return wrapper
+    
+    def _move_call_wrapper(self,move_call) -> Callable:
+        """ A wrapper that wraps a move call, and catches AssertionErrors. """
+        functools.wraps(move_call)
+        def wrapper(*args,**kwargs):
+            move = args[0]
+            try:
+                move_call(*args[1:])
+            except AssertionError as ae:
+                #self.glog.warning(f"{player.name}:{ae}")
+                return False, str(ae)
+            except TypeError as te:
+                #self.glog.warning(f"{player.name}:{te}")
+                return False, str(te)
+            self.card_monitor.update_from_move(move,args[1:])
+            return True, ""
+        return wrapper
     
     def _make_move(self,move,args,mock=False) -> Tuple[bool,str]:
         """ This is called from an AbstractPlayer -instance.
@@ -383,22 +421,34 @@ class MoskaGame:
         move_call = self.turns[move]
         player = self.threads[self.lock_holder]
         if not mock:
-            self.glog.info(f"Player {player.name} called {move} with args {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
-        try:
-            # If mock move, change logging level to warning
-            if mock:
-                pl_log_level = player.log_level
-                game_log_level = self.log_level
-                player.plog.setLevel(logging.WARNING)
-                self.glog.setLevel(logging.WARNING)
-            move_call(*args)  # Calls a class from Turns, which raises AssertionError if the move is not playable
-        except AssertionError as ae:
-            self.glog.warning(f"{player.name}:{ae}")
-            return False, str(ae)
-        except TypeError as te:
-            self.glog.warning(f"{player.name}:{te}")
-            return False, str(te)
-        self.card_monitor.update_from_move(move,args)
+            self.nturns += 1
+            self.glog.info(f"Turn number: {self.nturns}: '{player.name}' called '{move}' with args {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
+            if self.to_console:
+                print(f"Turn number: {self.nturns}: '{player.name}' played '{move}' with arguments {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
+        # Create a function for making the move, so we can wrap it with the _reduce_logging_wrapper if mock is True
+        move_call = self._move_call_wrapper(move_call)
+        if mock:
+            move_call = self._reduce_logging_wrapper(move_call)
+        suc, msg = move_call(move,*args)
+        if not suc:
+            player.plog.warning(msg)
+            return False, msg
+        if not mock and self.player_evals:
+            state = FullGameState.from_game(self,copy=False)
+            for pl in self.players:
+                model_id, fmt = self._get_players_model_or_copy(pl)
+                pl_eval = self.model_predict(np.array(state.as_perspective_vector(pl,fmt=fmt),dtype = np.float32),model_id = model_id)
+                pl_eval = round(float(pl_eval),2)
+                if pl.pid not in self.player_evals_data.keys():
+                    self.player_evals_data[pl.pid] = []
+                self.player_evals_data[pl.pid].append(pl_eval)
+        if not mock:
+            if self.log_level == logging.DEBUG:
+                self.glog.info(f"{self._basic_repr_with_all_evals_and_cards()}")
+            elif self.log_level == logging.INFO:
+                self.glog.info(f"{self._basic_repr_with_cards()}")
+            if self.to_console and move != "Skip":
+                print(f"{self._basic_repr_with_human_evals()}")
         # If the move is something else than Skip, have all players play again, except the player who just played
         # The target player can only end their turn, after every opponent has played a Skip move. Kind of like checking in poker.
         if move != "Skip":
@@ -406,10 +456,6 @@ class MoskaGame:
                 if pl.thread_id == self.lock_holder or pl.rank is not None:
                     continue
                 pl.ready = False
-                    # If mock move, change logging level back to original
-        if mock:
-            player.plog.setLevel(pl_log_level)
-            self.glog.setLevel(game_log_level)
         return True, ""
     
     def _make_mock_move(self,move,args,state_fmt="FullGameState") -> FullGameState:
@@ -436,54 +482,122 @@ class MoskaGame:
         # Return the new_state
         return new_state
     
+    def _basic_repr(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the number of cards they have in their hand.
+        """
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pl in self.players:
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            s += f" : {len(self.card_monitor.player_cards[pl.name])}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
+    def _basic_repr_with_cards(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the cards (counted) they have in their hand.
+        """
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pl in self.players:
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            s += f" : {self.card_monitor.player_cards[pl.name]}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
+    def _get_players_model_or_copy(self, pl):
+        # If player doesn't have model_id or pred_format, use default values. Atleast one player needs to have these.
+        if not hasattr(pl,"model_id") or not hasattr(pl,"pred_format"):
+            pl_to_copy = self.get_players_condition(lambda x : x.name != pl.name and hasattr(x,"model_id") and hasattr(x,"pred_format"))[0]
+            if not pl_to_copy:
+                self.EXIT_FLAG = True
+                raise AttributeError(f"Can not play with these settings (requires_graphic) if no player has a model.")
+            model_id = pl_to_copy.model_id
+            pred_format = pl_to_copy.pred_format
+        else:
+            model_id = pl.model_id
+            pred_format = pl.pred_format
+        return model_id, pred_format
+    
+    def _basic_repr_with_all_evals(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the cards (counted) they have in their hand.
+        """
+        state = FullGameState.from_game(self, copy = False)
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pid,pl in enumerate(self.players):
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            pl_eval = self.player_evals_data.get(pl.pid,[0])[-1]
+            s += f"({pl_eval})"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            s += f" : {len(self.card_monitor.player_cards[pl.name])}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
+    def _basic_repr_with_all_evals_and_cards(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the cards (counted) they have in their hand.
+        """
+        state = FullGameState.from_game(self, copy = False)
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pid,pl in enumerate(self.players):
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            pl_eval = self.player_evals_data.get(pl.pid,[0])[-1]
+            s += f"({pl_eval})"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            s += f" : {self.card_monitor.player_cards[pl.name]}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
+    def _basic_repr_with_human_evals(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the cards (counted) they have in their hand.
+        """
+        state = FullGameState.from_game(self, copy = False)
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pid,pl in enumerate(self.players):
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            if isinstance(pl,HumanPlayer):
+                pl_eval = self.player_evals_data.get(pl.pid,[0])[-1]
+                s += f"({pl_eval})"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            s += f" : {len(self.card_monitor.player_cards[pl.name])}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
     def __repr__(self) -> str:
         """ What to print when calling print(self).
         If REDUCED_PRINT is True, only print that information, which is visible to a player in a real game.
         Else, also print information about each players cards (perfect memory), and the players personal evaluations.
         """
-        s = f"Trump card: {self.trump_card}\n"
-        s += f"Deck left: {len(self.deck.cards)}\n"
-        if True and all((pl.requires_graphic for pl in self.players)) and self.model_paths:
-            player_evals = []
-            state = FullGameState.from_game(self,copy=False)
-            # Get the players evaluations of the current state
-            for pl in self.players:
-                # If player doesn't have model_id or pred_format, use default values. Atleast one player needs to have these.
-                if not hasattr(pl,"model_id") or not hasattr(pl,"pred_format"):
-                    pl_to_copy = self.get_players_condition(lambda x : x.name != pl.name and hasattr(x,"model_id") and hasattr(x,"pred_format"))[0]
-                    if not pl_to_copy:
-                        self.EXIT_FLAG = True
-                        raise AttributeError(f"Can not play with these settings (requires_graphic) if no player has a model.")
-                    model_id = pl_to_copy.model_id
-                    pred_format = pl_to_copy.pred_format
-                else:
-                    model_id = pl.model_id
-                    pred_format = pl.pred_format
-                # Get the players evaluation of the current state
-                evaluation = self.model_predict(np.array(state.as_perspective_vector(pl,fmt=pred_format),dtype=np.float32),model_id=model_id)
-                # Round to 2 decimals
-                player_evals.append(round(float(evaluation),2))
-                # If any player requires graphic, add the evaluation to the plotting data
-                # TODO: Use some other flag to determine if plotting is required
-                if any((pl.requires_graphic for pl in self.players)):
-                    if pl.pid not in self.plotting_data.keys():
-                        self.plotting_data[pl.pid] = []
-                    self.plotting_data[pl.pid].append(float(evaluation))
-        # Add player information to the string.
-        for pid,pl in enumerate(self.players):
-            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
-            if "Human" in pl.name and self.REDUCED_PRINTS:
-                s += f"({player_evals[pid]})"
-            # Add spaces to make the prints more readable
-            s += " " * max(16 - len(s.split("\n")[-1]),1)
-            if self.REDUCED_PRINTS:
-                s += f" : {len(self.card_monitor.player_cards[pl.name])}"
-            else:
-                s += f" : {self.card_monitor.player_cards[pl.name]}"
-            s += "\n"
-        s += f"Cards to fall : {self.cards_to_fall}\n"
-        s += f"Fell cards : {self.fell_cards}\n"
-        return s
+        if self.print_format == "basic":
+            return self._basic_repr()
+        elif self.print_format == "basic_with_cards":
+            return self._basic_repr_with_cards()
+        elif self.print_format == "basic_with_all_evals":
+            return self._basic_repr_with_all_evals()
+        elif self.print_format == "basic_with_all_evals_and_cards":
+            return self._basic_repr_with_all_evals_and_cards()
+        elif self.print_format == "human":
+            return self._basic_repr_with_human_evals()
+        else:
+            raise NameError(f"Argument 'print_format' was not recognized. Given argument: {self.print_format}")
     
     def _start_player_threads(self) -> None:
         """ Starts all player threads.
@@ -630,7 +744,7 @@ class MoskaGame:
             return
         fig, ax = plt.subplots()
         for pl in self.players:
-            ax.plot(self.plotting_data[pl.pid],label=pl.name)
+            ax.plot(self.player_evals_data[pl.pid],label=pl.name)
         ax.legend()
         ax.set_xlabel("Turns")
         ax.set_ylabel("Evaluation")
@@ -666,8 +780,11 @@ class MoskaGame:
                 data = str(state_results).replace("], [","\n").replace(" ","")
                 data = data.strip("[]")
                 f.write(data)
+        if self.player_evals_data:
+            for pid, pl in enumerate(self.players):
+                self.glog.info(f"{pl.name} : {self.player_evals_data[pid]}")
         # If plotting data, plot the data
-        if self.plotting_data:
+        if self.player_evals == "plot":
             self.plot_evaluations()
         # Sort the ranks by rank
         ranks = sorted(ranks,key = lambda x : x[1] if x[1] is not None else float("inf"))
