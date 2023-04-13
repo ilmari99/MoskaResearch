@@ -15,6 +15,8 @@ class HumanPlayer(AbstractPlayer):
     def choose_move(self, playable) -> str:
         if len(playable) == 1 and playable[0] == "Skip":
             return "Skip"
+        print(f"{self.moskaGame}")
+        print(f"Your cards: {self.hand}")
         while True:
             for i,k in enumerate(playable):
                 print(f"{i}. {k}")
@@ -58,7 +60,6 @@ class HumanPlayer(AbstractPlayer):
     
     def play_initial(self) -> List[Card]:
         """ Select which cards does the user want to play on an initiating turn """
-        print(self.moskaGame)
         indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n")
         indices = indices.split(" ")
         if self._check_no_input(indices):
