@@ -58,9 +58,10 @@ def get_test_human_players(model_path : str = "./model.tflite",
     """
     shared_kwargs = {"log_level" : logging.DEBUG,
                      "delay":0.1,
-                     "requires_graphic":True}
+                     "requires_graphic":True,
+                     }
     players = []
-    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs, **{"name" : "NNEV-test",
+    players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs, **{"name" : "Fake-human",
                                             "log_file":"Game-{x}-NNEV-test.log", 
                                             "max_num_states":8000,
                                             "max_num_samples":1000,
@@ -110,7 +111,9 @@ def get_next_game_id(path : str, filename : str) -> int:
     return i
 
 
-def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_format="bitmap", test=False):
+def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
+                  pred_format="bitmap",
+                  test=False):
     """ Play as a human against three NNHIFEvaluatorBots. The order of the players is shuffled.
     """
     # Get a list of players
@@ -128,7 +131,10 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite", pred_fo
         "players" : players,
         "log_level" : logging.INFO,
         "timeout" : 2000,
-        "model_paths":[os.path.abspath(path) for path in [model_path]]
+        "model_paths":[os.path.abspath(path) for path in [model_path]],
+        "player_evals" : "plot",
+        "print_format" : "human",
+        "to_console" : True,
     }
     # Convert general game arguments to game specific arguments (replace '{x}' with game_id)
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
