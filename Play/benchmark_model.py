@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 import logging
+import math
 import os
+import shutil
 import sys
+
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import time
 import sys
 from Moska.Game.Game import MoskaGame
+from Moska.Player.NewRandomPlayer import NewRandomPlayer
 from Moska.Player.MoskaBot3 import MoskaBot3
 from Moska.Player.AbstractPlayer import AbstractPlayer
 from Moska.Player.HumanPlayer import HumanPlayer
@@ -41,6 +45,10 @@ class Benchmark:
             }
         self.game_kwargs = game_kwargs
         self.shared_kwargs = shared_kwargs
+
+    def calc_CI(self, loss_p, ngames):
+        d = 1.96 * math.sqrt(loss_p * (1-loss_p) / ngames)
+        return (loss_p - d, loss_p + d)
     
     def run(self, player : PlayerWrapper, cpus : int = -1, chunksize : int = 1, ngames : int = 1000, custom_game_kwargs : Dict[str,Any] = {}):
         """ Benchmark a player against a set of predefined models.
@@ -63,7 +71,7 @@ class Benchmark:
         make_log_dir(self.folder)
         results = play_games(players, gamekwargs, ngames=ngames, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
         loss_perc = get_loss_percents(results)
-        print("Benchmark done. A great result is < 20% loss")
+        print(f"Confidence interval of {player.settings['name']}: {self.calc_CI(loss_perc.get(player.settings['name'], 0)/100, ngames)}")
         os.chdir("..")
         return loss_perc.get(player.settings["name"], 0)
 
@@ -81,13 +89,13 @@ BENCH1 = Benchmark(
     folder="Benchmark1",
     game_kwargs={
         "log_file" : "Game-{x}.log",
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.WARNING,
         "timeout" : 60,
         "gather_data":False,
         "model_paths":[os.path.abspath("./Models/ModelMB11-260/model.tflite")],
     },
     shared_kwargs={
-        "log_level" : logging.INFO,
+        "log_level" : logging.WARNING,
     }
 )
 
@@ -115,13 +123,13 @@ BENCH2 = Benchmark(
     folder="Benchmark2",
     game_kwargs={
         "log_file" : "Game-{x}.log",
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.WARNING,
         "timeout" : 60,
         "gather_data":False,
         "model_paths":[os.path.abspath("./Models/ModelMB11-260/model.tflite")],
     },
     shared_kwargs={
-        "log_level" : logging.INFO,
+        "log_level" : logging.WARNING,
     }
 )
 
@@ -134,24 +142,75 @@ BENCH3 = Benchmark(
     folder="Benchmark3",
     game_kwargs={
         "log_file" : "Game-{x}.log",
-        "log_level" : logging.DEBUG,
+        "log_level" : logging.WARNING,
         "timeout" : 60,
         "gather_data":False,
         "model_paths":[],
     },
     shared_kwargs={
-        "log_level" : logging.INFO,
+        "log_level" : logging.WARNING,
     }
 )
 
+BENCH4 = Benchmark(
+    main_players=[
+        PlayerWrapper(NewRandomPlayer,{"name" : "R1", "log_file":"Game-{x}-R1.log"}),
+        PlayerWrapper(NewRandomPlayer,{"name" : "R2", "log_file":"Game-{x}-R2.log"}),
+        PlayerWrapper(NewRandomPlayer,{"name" : "R3", "log_file":"Game-{x}-R3.log"}),
+    ],
+    folder="Benchmark4",
+    game_kwargs={
+        "log_file" : "Game-{x}.log",
+        "log_level" : logging.WARNING,
+        "timeout" : 60,
+        "gather_data":False,
+        "model_paths":[],
+        "print_format" : "basic",
+    },
+    shared_kwargs={
+        "log_level" : logging.WARNING,
+    }
+)
 
+def small_benchmark(player_type, pl_args, game_kwargs):
+    game_kwargs = { **{
+        "model_paths" : [],
+        "gather_data" : False,
+        "log_level" : logging.WARNING
+    },**game_kwargs
+    }
+    player = PlayerWrapper(player_type, pl_args)
+    BENCH1.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH2.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH3.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH4.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+
+def standard_benchmark(player_type, pl_args, game_kwargs, cpus=50,chunksize=3):
+    game_kwargs = { **{
+        "model_paths" : [os.path.abspath("./Models/Model-nn1-BB/model.tflite")],
+        "gather_data" : False,
+        "log_level" : logging.WARNING
+    },**game_kwargs
+    }
+    player = PlayerWrapper(player_type, pl_args)
+    BENCH1.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    BENCH2.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    BENCH3.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    BENCH4.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+
+def clean_up():
+    shutil.rmtree("./Benchmark1", ignore_errors=True)
+    shutil.rmtree("./Benchmark2", ignore_errors=True)
+    shutil.rmtree("./Benchmark3", ignore_errors=True)
+    shutil.rmtree("./Benchmark4", ignore_errors=True)
 
 if __name__ == "__main__":
+    clean_up()
     # Specify the model paths
     game_kwargs = {
-        "model_paths" : [os.path.abspath("./Models/Model-nn1-BB/model.tflite"), os.path.abspath("./Models/ModelNN1/model.tflite")],
-        "gather_data" : True,
-        "log_level" : logging.DEBUG
+        "model_paths" : [os.path.abspath("./Models/Model-nn1-BB/model.tflite")],
+        "gather_data" : False,
+        "log_level" : logging.WARNING
     }
     # Specify the player type
     player_type = NNHIFEvaluatorBot
@@ -166,11 +225,8 @@ if __name__ == "__main__":
                     "model_id":game_kwargs["model_paths"][0],
                     #"coefficients":"random",
     }
-    # 6.15410198,  2.20813565,  1.57294909, -2.99886373, 52.61803385
-    player = PlayerWrapper(player_type, player_args)
-    # Run the benchmark
-    BENCH3.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
-    BENCH1.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = 12,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    #small_benchmark(player_type, player_args, game_kwargs)
+    standard_benchmark(player_type, player_args, game_kwargs, cpus=50,chunksize=3)
+
 
 
