@@ -19,15 +19,15 @@ class HumanPlayer(AbstractPlayer):
         print(f"Your cards: {self.hand}")
         while True:
             for i,k in enumerate(playable):
-                print(f"{i}. {k}")
+                print(f"{i+1}. {k}")
             inp = input(f"What do you want to play: ").strip()
             if self._check_no_input(inp):
                 print(f"No input given.")
                 continue
             try:
-                return playable[int(inp)]
+                return playable[int(inp)-1]
             except:
-                print(f"Incorrect input. Input must be one of: {list(range(len(playable)))}")
+                print(f"Incorrect input. Input must be one of: {list(range(1,len(playable)+1))}")
                 continue
     
     
@@ -65,7 +65,7 @@ class HumanPlayer(AbstractPlayer):
         if self._check_no_input(indices):
             return []
         try:
-            indices = [int(d) for d in indices]
+            indices = [int(d)-1 for d in indices]
             return [self.hand.cards[i] for i in indices]
         except Exception as e:
             print(e)
@@ -78,7 +78,7 @@ class HumanPlayer(AbstractPlayer):
         if self._check_no_input(indices):
             return []
         try:
-            indices = [int(d) for d in indices]
+            indices = [int(d)-1 for d in indices]
             return [self.hand.cards[i] for i in indices]
         except Exception as e:
             print(e)
@@ -95,8 +95,8 @@ class HumanPlayer(AbstractPlayer):
             # [(0,0),(1,1),(2,2)]
             #hand_indices = [int(p[0]) for p in pairs]
             #table_indices = [int(p[-1]) for p in pairs]
-            hand_indices = [int(p.split(",")[0]) for p in pairs]
-            table_indices = [int(p.split(",")[-1]) for p in pairs]
+            hand_indices = [int(p.split(",")[0])-1 for p in pairs]
+            table_indices = [int(p.split(",")[-1])-1 for p in pairs]
             return {self.hand.cards[ih] : self.moskaGame.cards_to_fall[iff] for ih,iff in zip(hand_indices,table_indices)}
         except Exception as e:
             print(e,flush=True)
@@ -106,7 +106,7 @@ class HumanPlayer(AbstractPlayer):
         """ When playing from deck, choose the card to fall from table """
         print(f"Card from deck: {deck_card}")
         try:
-            fall_index = int(input("Select which card you want to fall from table (index): "))
+            fall_index = int(input("Select which card you want to fall from table (index): ")) -1
             print(f"Card pair: {(deck_card, self.moskaGame.cards_to_fall[fall_index])}")
             return (deck_card, self.moskaGame.cards_to_fall[fall_index])
         except Exception as ve:
@@ -120,7 +120,7 @@ class HumanPlayer(AbstractPlayer):
         if self._check_no_input(indices):
             return []
         try:
-            indices = [int(d) for d in indices]
+            indices = [int(d) -1 for d in indices]
             return [self.hand.cards[i] for i in indices]
         except Exception as e:
             print(e)
