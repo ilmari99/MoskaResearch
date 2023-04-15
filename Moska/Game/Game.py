@@ -424,7 +424,14 @@ class MoskaGame:
             self.nturns += 1
             self.glog.info(f"Turn number: {self.nturns}: '{player.name}' called '{move}' with args {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
             if self.to_console:
-                print(f"Turn number: {self.nturns}: '{player.name}' played '{move}' with arguments {[a if not isinstance(a,AbstractPlayer) else a.name for a in args]}")
+                def _print_fmt(x):
+                    if isinstance(x,AbstractPlayer):
+                        return x.name
+                    elif isinstance(x,Callable):
+                        return ""
+                    else:
+                        return x
+                print(f"Turn number: {self.nturns}: '{player.name}' played '{move}' with arguments {[_print_fmt(a) for a in args]}")
         # Create a function for making the move, so we can wrap it with the _reduce_logging_wrapper if mock is True
         move_call = self._move_call_wrapper(move_call)
         if mock:
