@@ -8,7 +8,7 @@ import random
 import time
 import numpy as np
 from .AbstractPlayer import AbstractPlayer
-from typing import Any, Dict, List,TYPE_CHECKING, Tuple
+from typing import Any, Dict, List,TYPE_CHECKING, Set, Tuple
 
 from .utils import Assignment, _get_single_assignments, _get_assignments
 
@@ -48,7 +48,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
     def evaluate_states(self, states : List[FullGameState]) -> List[float]:
         pass
     
-    def _get_assignments(self) -> set[Assignment]:
+    def _get_assignments(self) -> Set[Assignment]:
         """ Return a set of found Assignments, containing all possible assignments of cards from the hand to the cards to fall.
         Symmetrical assignments are considered the same: where the same cards are played to the same cards, regardless of order.
         
@@ -58,16 +58,20 @@ class AbstractEvaluatorBot(AbstractPlayer):
         - Mark the vertices (row and column of the cost_matrix) as visited (0) (played_card = column, hand_card = row)
         - Repeat until no new assignments are found.
         """
-        return _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, trump=self.moskaGame.trump, max_num=self.max_num_states)
+        assignments = _get_assignments(from_ = self.hand.cards, to = self.moskaGame.cards_to_fall, trump=self.moskaGame.trump, max_num=self.max_num_states)
+        self.plog.debug(f"Found {len(assignments)} from {self.hand.cards} to {self.moskaGame.cards_to_fall}")
+        return assignments
     
     def _get_move_prediction(self, move : str,get_n : bool = False) -> Tuple[Any,float]:
         """ Get a move and a prediction evaluation for the best move in a class of moves ("PlayToSelf" etc.).
         Finds all possible moves, for a class of moves, and evaluates the immediate next states.
         Returns the best moves arguments, and the evaluation.
         """
+        self.plog.info(f"Getting prediction for move '{move}'...")
         # Get the possible next states for a move
         # The states should not be empty, because the next states are only computed if the move is valid
         plays, states, evals = self.get_possible_next_states(move)
+        self.plog.info(f"Evaluated {len(plays)} possible moves and next states")
         if len(plays) == 0:
             raise ValueError("No possible next states for move: ", move)
         # If the move is 'PlayFallFromDeck' then even this class doesn't have PIF about it.
@@ -86,6 +90,12 @@ class AbstractEvaluatorBot(AbstractPlayer):
             print("Evals: ", evals, flush=True)
             print("Plays: ", plays, flush=True)
             raise Exception("Could not find best play")
+        if self.plog.getEffectiveLevel() >= logging.DEBUG:
+            self.plog.debug(f"Moves and their evaluations:")
+            s = []
+            for play, eval_ in zip(plays,evals):
+                s.append(f"{play} : {eval_}")
+            self.plog.debug("\n".join(s))
         if get_n:
             return best[0],best[2],len(plays)
         return best[0],best[2]
@@ -115,7 +125,6 @@ class AbstractEvaluatorBot(AbstractPlayer):
         # Ex: (hand_card1, table_card1, hand_card2, table_card2)
         # This does a DFS, and returns N possible plays
         assignments = self._get_assignments()
-        self.plog.debug("Found {} possible plays".format(assignments))
         
         # Get a random sample of the plays. Evaluating each could take a long time
         # TODO: Prioritize by length?
@@ -127,7 +136,6 @@ class AbstractEvaluatorBot(AbstractPlayer):
             table_cards = [self.moskaGame.cards_to_fall[i] for i in play._table_inds]
             plays.append({hc : tc for hc,tc in zip(hand_cards,table_cards)})
         states = []
-        self.plog.debug(f"Found SAMPLE of plays to 'PlayFallFromHand': {plays}")
         for play in plays:
             # Get the state after playing 'play' from hand
             state = self._make_mock_move("PlayFallFromHand",[self, play])
@@ -148,11 +156,9 @@ class AbstractEvaluatorBot(AbstractPlayer):
         playable_from_hand = self._playable_values_from_hand()
         chand = self.hand.copy()
         playable_cards = chand.pop_cards(cond=lambda c : c.value in playable_from_hand)
-        self.plog.debug(f"Found playable cards to 'PlayToSelf': {playable_cards}")
         plays = []
         for i in range(1,len(playable_cards)+1):
             plays += list(itertools.combinations(playable_cards,i,))
-        self.plog.debug(f"Found {len(plays)} plays to 'PlayToSelf'. Sampling {min(len(plays),self.max_num_states)}.")
         plays = random.sample(plays,min(len(plays),self.max_num_states))
         states = []
         for i,play in enumerate(plays):
@@ -223,12 +229,10 @@ class AbstractEvaluatorBot(AbstractPlayer):
         playable_from_hand = self._playable_values_from_hand()
         chand = self.hand.copy()
         playable_cards = chand.pop_cards(cond=lambda c : c.value in playable_from_hand)
-        self.plog.debug(f"Playable cards: {playable_cards}")
         play_iterables = []
         for i in range(1,min(len(playable_cards)+1,self._fits_to_table()+1)):
             play_iterables.append(itertools.combinations(playable_cards,i))
         plays = list(itertools.chain.from_iterable(play_iterables))
-        self.plog.debug(f"Found {len(plays)} plays to 'PlayToOther'. Sampling {min(len(plays),self.max_num_states)}.")
         plays = random.sample(plays,min(len(plays),self.max_num_states))
         states = []
         target = self.moskaGame.get_target_player()
@@ -259,23 +263,32 @@ class AbstractEvaluatorBot(AbstractPlayer):
         # We can play each single card, and all cards that have at least 2 of the same value
         for i in range(1,fits + 1):
             tmp_cards = cards.copy()
-            # Filter out cards that have less than 2 of the same value
+            # Filter out cards that cant be a part of a play
+            # TODOOO, clean, improve, speed-up
             if i > 1:
                 tmp_cards = [c for c in tmp_cards if counter[c.value] >= 2]
+            """
+            if i == 2:
+                tmp_cards = [c for c in tmp_cards if counter[c.value] == 2]
+            if i == 3:
+                tmp_cards = [c for c in tmp_cards if counter[c.value] == 3]
+            if i == 4:
+                tmp_cards = [c for c in tmp_cards if counter[c.value] in [2,4]]
+            if i == 5:
+                tmp_cards = [c for c in tmp_cards if counter[c.value] in [2,3]]
+            """
             # Add the i length combinations to the play_iterables
             play_iterables.append(itertools.combinations(tmp_cards,i))
         plays = itertools.chain.from_iterable(play_iterables)
         legal_plays = []
         count = 0
-        # TODO: See if checking legality is actually necessary, i.e. proof of correctness
         for play in plays:
             count += 1
             c = Counter([c.value for c in play])
             if (len(play) == 1 or all((count >= 2 for count in c.values()))):
                 legal_plays.append(list(play))
-        self.plog.debug(f"Tried {count} plays")
-        self.plog.debug(f"Found legal plays to 'InitialPlay': {legal_plays}")
-        self.plog.info(f"Found {len(legal_plays)} legal plays to 'InitialPlay'.")
+        self.plog.debug(f"Tried {count} InitialPlays")
+        self.plog.debug(f"Found {len(legal_plays)} legal plays to 'InitialPlay'.")
         target = self.moskaGame.get_target_player()
         random.shuffle(legal_plays)
         states = []
@@ -339,9 +352,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
             raise Exception("Unknown move: " + move)
         if len(plays) != len(states):
             raise Exception("Number of plays and states don't match!!")
-        if any([not isinstance(s,FullGameState) for s in states]):
-            raise Exception("Not all states are of type FullGameState")
-        self.plog.info(f"Found {len(states)} states for move {move}. Time taken: {time.time() - start}")
+        self.plog.debug(f"Found {len(states)} possible next states for move {move}. Time taken: {time.time() - start}")
         # Check whether the state of the game was accidentally changed between getting the states.
         is_eq, msg = state.is_game_equal(self.moskaGame,return_msg=True)
         if not is_eq:
@@ -365,10 +376,7 @@ class AbstractEvaluatorBot(AbstractPlayer):
         This pre-computed play is then played later.
         """
         self.plog.info("Choosing move...")
-        self.plog.debug(f"Trump: {self.moskaGame.trump_card}")
-        self.plog.debug(f"Hand: {self.hand}")
-        self.plog.debug(f"Table: {self.moskaGame.cards_to_fall}")
-        self.plog.debug(f"Fell: {self.moskaGame.fell_cards}")
+        self.plog.debug(f"{self.moskaGame._basic_repr_with_cards()}")
         move_scores = {}
         total_n_moves = 0
         for move in playable:
