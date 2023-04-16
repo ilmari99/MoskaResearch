@@ -85,7 +85,8 @@ class AbstractPlayer(ABC):
         self.plog = plog
         #assert self.plog.hasHandlers(), "Logger has no handles"
         #assert not self.plog.disabled, "Logger is disabled"
-        self.plog.debug("Logger succesful")
+        self.plog.info(f"Created Player {self.name} with pid {self.pid} and log file {self.log_file}")
+        self.plog.info(f"Player type: {type(self)}")
         return
         
     def _set_moskaGame(self) -> None:
@@ -156,11 +157,11 @@ class AbstractPlayer(ABC):
         """
         play_cards = self.play_to_target()
         target = self.moskaGame.get_target_player()
-        self.plog.info(f"Playing {play_cards} to {target.name}")
-        #self._playToOther(target,play_cards)
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'PlayToTarget' {play_cards} -> {target.name}")
         return [target, play_cards]
     
     def _skip_turn(self) -> List:
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'Skip'")
         return []
         
     def _play_to_self(self) -> List[AbstractPlayer,List[Card]]:
@@ -168,7 +169,7 @@ class AbstractPlayer(ABC):
         Wrapper around the abstract method 'play_to_self'.
         """
         play_cards = self.play_to_self()
-        self.plog.info(f"Playing {play_cards} to self.")
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'PlayToSelf' {play_cards}")
         #self._playToOther(self,play_cards)
         return [self, play_cards]
     
@@ -181,9 +182,7 @@ class AbstractPlayer(ABC):
         """
         target = self.moskaGame.get_target_player()
         play_cards = self.play_initial()
-        #assert play_cards, f"INITIAL PLAY CAN NOT BE EMPTY"
-        self.plog.info(f"Playing {play_cards} to {target.name}")
-        #self._initialPlay(target,play_cards)
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'InitialPlay' {play_cards} -> {target.name}")
         return [target, play_cards]
     
     def _can_end_turn(self) -> bool:
@@ -226,14 +225,14 @@ class AbstractPlayer(ABC):
         The 'deck_lift_fall_method' is only called, if the card lifted from deck can fall a card on the table.
         If it can't the card is automatically added to the table.
         """
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'PlayFallFromDeck'")
         return [self.deck_lift_fall_method]
 
     def _play_fall_card_from_hand(self) -> None:
         """ This is a wrapper around the abstract method 'play_fall_card_from_hand'.
         """
         play_cards = self.play_fall_card_from_hand()
-        self.plog.info(f"Falling cards: {play_cards}")
-        #self._playFallCardFromHand(play_cards)
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'PlayToFallFromHand' {play_cards}")
         return [play_cards]
     
     def _end_turn(self) -> List[List[Card]]:
@@ -247,7 +246,7 @@ class AbstractPlayer(ABC):
         # If the player didn't finish fully, ask which cards to pick to hand
         if self.rank is None:
             pick_cards = self.end_turn()
-        self.plog.info(f"Ending turn and picking {pick_cards}")
+        self.plog.info(f"Turn {self.moskaGame.nturns}: 'EndTurn' {pick_cards}")
         return [pick_cards]
         
     def _set_rank(self) -> int:
@@ -275,8 +274,6 @@ class AbstractPlayer(ABC):
         self.plog.debug(f"Set rank to {self.rank}")
         return self.rank
     
-    # Disgusting!
-    #@utils.check_new_card
     def _play_move(self) -> Tuple[bool,str]:
         """Calls moskaGame to propose a move.
         This is called on each turn from _continuous play.
@@ -289,11 +286,14 @@ class AbstractPlayer(ABC):
         Returns:
             Tuple[bool,str] : The first value tells whether the move was valid, and the second tells the reason the move wasn't valid IF the move failed.
         """
+        self.plog.info(f"Turn {self.moskaGame.nturns}")
         success = False
         # Playable moves
         playable = self._playable_moves()
+        self.plog.info(f"Playable moves: {playable}")
         # Return the move id to play
         move = self.choose_move(playable)
+        self.plog.info(f"Selected move: {move}")
         # Get the function to call, which returns the arguments to pass to the game
         extra_args = self.moves[move]()
         # Copy lists, so that they are not modified by the game
@@ -318,14 +318,15 @@ class AbstractPlayer(ABC):
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
         self.ready = True
-        self.plog.debug(f"Player set to ready: {self.ready}")
         # If there are cards on the table; the game is already initiated
         initiated = int(len(self.moskaGame.cards_to_fall) + len(self.moskaGame.fell_cards)) != 0
         # Special case: if the player has played all their cards in the previous turn, they must now end the turn and finish
         if self.rank is not None:
             if self is self.moskaGame.get_target_player():
                 playable = ["EndTurn"]
+                self.plog.debug(f"Can only play 'EndTurn' because the player has finished and is the target.")
             else:
+                self.plog.debug(f"Can only play 'Skip' because the player has finished.")
                 playable = ["Skip"]
         # If player is the target
         elif self is self.moskaGame.get_target_player():
@@ -364,7 +365,6 @@ class AbstractPlayer(ABC):
             if initiated or not self is self.moskaGame.get_initiating_player():
                 playable.remove("InitialPlay")
         assert bool(playable), f"There must be something to play"
-        self.plog.info(f"Playable moves: {playable}")
         return playable
     
     def _start(self) -> int:
@@ -374,9 +374,9 @@ class AbstractPlayer(ABC):
             self._set_plogger()
             # Make daemon, to kill the thread if the mian thread (game) fails in anyway.
             self.thread = threading.Thread(target=self._continuous_play,name=self.name,daemon=True)
-            self.plog.info("Initialized thread")
             self.thread.start()
             self.thread_id = self.thread.native_id
+            self.plog.info(f"Thread started with ID {self.thread_id}")
         # Means running
         self.EXIT_STATUS = 0
         return self.thread_id
@@ -388,10 +388,6 @@ class AbstractPlayer(ABC):
 
         The thread is killed, if the main (game) thread fails for any reason.
         """
-        tb_info = {"players" : len(self.moskaGame.players),
-                   "Trump card" : self.moskaGame.trump_card,
-                   }
-        self.plog.info(f"Table info: {tb_info}")
         curr_target = self.moskaGame.get_target_player()
         turns_taken_for_this_player = 0
         self.rank = None
@@ -402,18 +398,21 @@ class AbstractPlayer(ABC):
             with self.moskaGame.get_lock(self) as ml:
                 if self.moskaGame.EXIT_FLAG:
                     self.EXIT_STATUS = 2
-                    break
+                    break                
+                if not ml:
+                    self.plog.debug(f"Lock was NOT acquired.")
+                    continue
+                self.plog.debug(f"Lock acquired.")
                 # Keep track of target changes.
                 target = self.moskaGame.get_target_player()
                 if target is not curr_target:
+                    self.plog.debug(f"Target has changed from {curr_target.name} to {target.name}")
                     turns_taken_for_this_player = 0
                     curr_target = target
                 turns_taken_for_this_player += 1
-                
-                if not ml:
-                    continue
                 # If there is only 1 active player in the game, the player is last
                 if len(self.moskaGame.get_players_condition(lambda x : x.rank is None)) <= 1:
+                    self.plog.info(f"Player lost.")
                     self._set_rank()
                     break
                 try:
@@ -445,6 +444,7 @@ class AbstractPlayer(ABC):
                 # Check if self has finished, and hasn't played "EndTurn"
                 # 'EndTurn' was last played, if the target changed during _play_move
                 if self.rank is not None and self is self.moskaGame.get_target_player():
+                    self.plog.info(f"Player finished as target. Playing 'EndTurn'.")
                     success, msg = self.moskaGame._make_move("EndTurn",[self,[]])
                     if not success:
                         self.plog.error(msg)
@@ -491,7 +491,9 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        return _map_each_to_list(from_,to,self.moskaGame.trump)
+        mapp = _map_each_to_list(from_, to, self.moskaGame.trump)
+        self.plog.debug(f"Card -> List[Card] map from {from_} to {to} : {mapp}")
+        return mapp
     
     def _make_cost_matrix(self, from_ = None, to = None, scoring : Callable = None, max_val : int = 100000) -> np.ndarray:
         """ Create a matrix, from from_ to to. The lists from_ and to have to contain Card -instances.
@@ -522,7 +524,9 @@ class AbstractPlayer(ABC):
             from_ = self.hand.cards
         if to is None:
             to = self.moskaGame.cards_to_fall
-        return _make_cost_matrix(from_,to, self.moskaGame.trump,scoring,max_val)
+        mat = _make_cost_matrix(from_,to, self.moskaGame.trump,scoring,max_val)
+        self.plog.debug(f"Created fall matrix from {from_} to {to}")
+        return mat
     
 
     #### ABSTRACT METHODS ####
