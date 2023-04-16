@@ -24,7 +24,7 @@ def get_human_players(model_path : str = "model.tflite",
     Returns:
         List[PlayerWrapper]: A list of PlayerWrappers.
     """
-    shared_kwargs = {"log_level" : logging.DEBUG,
+    shared_kwargs = {"log_level" : logging.INFO,
                      "delay":1,
                      "requires_graphic":True}
     players : List[PlayerWrapper] = []
@@ -62,7 +62,7 @@ def get_test_human_players(model_path : str = "./model.tflite",
     """Returns a list of four identical PlayerWrapper(NNHIFEvaluatorBot)s, using the model found in model_path, with pred_format.
     This is used for testing purposes.
     """
-    shared_kwargs = {"log_level" : logging.DEBUG,
+    shared_kwargs = {"log_level" : logging.INFO,
                      "delay":0.1,
                      "requires_graphic":True,
                      "max_num_states":8000,
@@ -88,8 +88,6 @@ def get_test_human_players(model_path : str = "./model.tflite",
             if pl.settings["name"] != "Fake-human":
                 pl.settings["min_player"] = "Fake-human"
     return players
-
-
 
 def get_next_game_id(path : str, filename : str) -> int:
     """Returns the next available game id, by checking which files exist in the given path.
@@ -145,4 +143,4 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
     return out
 
 if __name__ == "__main__":
-    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=False, all_against_human=True)
+    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=True, all_against_human=False)
