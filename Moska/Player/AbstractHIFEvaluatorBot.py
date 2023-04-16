@@ -63,7 +63,8 @@ class AbstractHIFEvaluatorBot(AbstractEvaluatorBot):
                 #Discard the knowledge of the lifted cards, and create states,
                 # where the lift is a random sample of cards possibly in deck
                 lifted_card_indices = [i for i,c in enumerate(state.full_player_cards[self.pid]) if c in lifted_cards]
-                for cards in self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards),self.max_num_samples):
+                card_samples = self.moskaGame.card_monitor.get_sample_cards_from_deck(self, len(lifted_cards),self.max_num_samples)
+                for cards in card_samples:
                     sample_state = state.copy()
                     for i, index_to_change in enumerate(lifted_card_indices):
                         sample_state.full_player_cards[self.pid][index_to_change] = cards[i]
@@ -135,17 +136,20 @@ class AbstractHIFEvaluatorBot(AbstractEvaluatorBot):
                     unique_plays.append(play)
             # For each unique play, evaluate all possible future states and use the mean of the evaluations
             for unique_play in unique_plays:
-                mean_eval = float(np.mean([eval for play, eval in zip(plays, evals) if play == unique_play]))
+                play_evals = [eval for play, eval in zip(plays, evals) if play == unique_play]
+                mean_eval = float(np.mean(play_evals))
                 #mean_eval += self.sampling_bias*len(self.moskaGame.card_monitor.get_sample_cards_from_deck(self,1,52))
                 mean_eval += self.sampling_bias if len(self.moskaGame.deck) > 0 else 0
                 mean_evals.append(mean_eval)
+                self.plog.debug(f"Sampled {len(evals)} possible states for {unique_play}")
                 #corresponding_states.append(states[plays.index(unique_play)])
-            self.plog.debug(f"Unique plays: {unique_plays}")
-            self.plog.debug(f"Mean evals: {mean_evals}")
-            #self.plog.debug(f"Cards in hand: {[s.full_player_cards[self.pid] for s in corresponding_states]}")
+            self.plog.info(f"Unique plays: {unique_plays[:min(len(unique_plays),10)]}")
+            self.plog.info(f"Mean evals: {mean_evals[:min(len(unique_plays),10)]}")
             plays = unique_plays
             #states = corresponding_states
             evals = mean_evals
+        if np.isnan(evals).any() or np.isinf(evals).any(): 
+            raise Exception("Nan in mean evals!")
         combined = list(zip(plays, evals))
         try:
             best = max(combined, key=lambda x : x[1])
