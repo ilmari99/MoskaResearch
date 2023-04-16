@@ -50,7 +50,7 @@ class Benchmark:
         d = 1.96 * math.sqrt(loss_p * (1-loss_p) / ngames)
         return (loss_p - d, loss_p + d)
     
-    def run(self, player : PlayerWrapper, cpus : int = -1, chunksize : int = 1, ngames : int = 1000, custom_game_kwargs : Dict[str,Any] = {}):
+    def run(self, player : PlayerWrapper, cpus : int = -1, chunksize : int = 1, ngames : int = 1000, custom_game_kwargs : Dict[str,Any] = {},custom_shared_pl_kwargs : Dict[str,Any] = {}):
         """ Benchmark a player against a set of predefined models.
         """
         custom_game_kwargs = custom_game_kwargs.copy()
@@ -65,7 +65,7 @@ class Benchmark:
         gamekwargs = {**self.game_kwargs, **custom_game_kwargs}
         players = [player] + self.main_players
         for pl in players:
-            pl.settings = {**self.shared_kwargs, **pl.settings}
+            pl.settings = {**self.shared_kwargs, **pl.settings, **custom_shared_pl_kwargs}
 
         # Make the log directory and change to it
         make_log_dir(self.folder)
@@ -172,6 +172,56 @@ BENCH4 = Benchmark(
     }
 )
 
+BENCH5 = Benchmark(
+    main_players=[
+        PlayerWrapper(NNHIFEvaluatorBot, {"name" : f"NNEV1",
+                                    "log_file":"Game-{x}-NNEV1.log", 
+                                    "max_num_states":1000,
+                                    "max_num_samples":1000,
+                                    "pred_format":"bitmap",
+                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                    #"min_player" : "player"
+                                    }),
+        PlayerWrapper(NNHIFEvaluatorBot,{"name" : f"NNEV2",
+                                    "log_file":"Game-{x}-NNEV2.log", 
+                                    "max_num_states":1000,
+                                    "max_num_samples":1000,
+                                    "pred_format":"bitmap",
+                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                    #"min_player" : "player"
+                                    }),
+        PlayerWrapper(NNHIFEvaluatorBot, {"name" : f"NNEV3",
+                                    "log_file":"Game-{x}-NNEV3.log", 
+                                    "max_num_states":1000,
+                                    "max_num_samples":1000,
+                                    "pred_format":"bitmap",
+                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
+                                    #"min_player" : "player"
+                                    }),
+    ],
+    folder="Benchmark5",
+    game_kwargs={
+        "log_file" : "Game-{x}.log",
+        "log_level" : logging.WARNING,
+        "timeout" : 60,
+        "gather_data":False,
+        "model_paths":[os.path.abspath("./Models/Model-nn1-BB/model.tflite")],
+    },
+    shared_kwargs={
+        "log_level" : logging.WARNING,
+    }
+)
+
+def run_bench5(player_type, pl_args, game_kwargs, cpus = 10, chunksize = 1, ngames = 10, custom_shared_pl_kwargs = {}):
+    game_kwargs = { **{
+        "model_paths" : [],
+        "gather_data" : False,
+        "log_level" : logging.WARNING
+    },**game_kwargs
+    }
+    player = PlayerWrapper(player_type, pl_args)
+    BENCH5.run(player,cpus = cpus,chunksize=chunksize,ngames=ngames,custom_game_kwargs=game_kwargs,custom_shared_pl_kwargs=custom_shared_pl_kwargs)
+
 def small_benchmark(player_type, pl_args, game_kwargs):
     game_kwargs = { **{
         "model_paths" : [],
@@ -210,7 +260,7 @@ if __name__ == "__main__":
     game_kwargs = {
         "model_paths" : [os.path.abspath("./Models/Model-nn1-BB/model.tflite")],
         "gather_data" : False,
-        "log_level" : logging.WARNING
+        "log_level" : logging.DEBUG
     }
     # Specify the player type
     player_type = NNHIFEvaluatorBot
@@ -225,8 +275,9 @@ if __name__ == "__main__":
                     "model_id":game_kwargs["model_paths"][0],
                     #"coefficients":"random",
     }
-    #small_benchmark(player_type, player_args, game_kwargs)
-    standard_benchmark(player_type, player_args, game_kwargs, cpus=50,chunksize=3)
+    #run_bench5(player_type, player_args, game_kwargs, cpus = 10, chunksize = 1, ngames = 10, custom_shared_pl_kwargs = {"log_level" : logging.DEBUG})
+    small_benchmark(player_type, player_args, game_kwargs)
+    #standard_benchmark(player_type, player_args, game_kwargs, cpus=50,chunksize=3)
 
 
 
