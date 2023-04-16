@@ -81,7 +81,6 @@ class CardMonitor:
             known_cards += [card for card in cards if card != Card(-1,"X")]
         # Each player knows which cards are still in the game, and which cards are known to them
         # The hidden cards are the intersection of the cards that are still in the game and the cards that are known to the player
-        player.plog.info(f"Known cards: {known_cards}")
         hidden_cards = [card for card in self.cards_fall_dict.keys() if card not in known_cards]
         return hidden_cards
     
@@ -137,8 +136,6 @@ class CardMonitor:
             samples.append(comb)
             if len(samples) >= max_samples:
                 break
-        player.plog.info(f"Sampled {len(samples)} cards from deck")
-        player.plog.debug(f"Sampled cards: {samples}")
         return samples
 
     def make_cards_fall_dict(self):
@@ -176,7 +173,8 @@ class CardMonitor:
             self.update_known(player.name,played,add=False)
         # If there are only 2 players left (and no deck), we know the other players cards, and can infer the other players cards reliably
         # This can also be possible for more players, but with 2 it is trivial
-        if len(self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0)) == 2 and player.EXIT_STATUS == 0:
+        pl_left = self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0)
+        if len(pl_left) == 2 and player.EXIT_STATUS == 0 and any((c.value == -1 for c in self.player_cards[pl_left[0].name] + self.player_cards[pl_left[1].name])):
             self.game.glog.info(f"Only two players left, updating known cards")
             # Get the cards that are hidden to the player
             # If there are only two players left, we know the other players cards
