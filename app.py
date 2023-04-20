@@ -6,9 +6,9 @@ from flask_socketio import SocketIO, emit
 import subprocess
 import sqlite3
 import json
-
 app = Flask(__name__)
-app.secret_key = os.environ["MOSKA_APP_KEY"]
+# Key is in a file APP-KEY
+app.secret_key = open("APP-KEY","r").read()
 socketio = SocketIO(app)
 CARD_CONVERSION = json.load(open("./templates/card_conversions.json","r",encoding="utf-8"))
 CARD_SUITS_TO_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}
