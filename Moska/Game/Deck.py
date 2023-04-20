@@ -35,7 +35,7 @@ class Card:
     
     def __repr__(self) -> str:
         """ How to represent the card when printing"""
-        return str(f"{utils.suit_to_symbol(self.suit)}{self.value}")
+        return str(f"{self.value}{utils.suit_to_symbol(self.suit)}")
     
     def as_str(self,symbol=True):
         """ Return the attributes as a string"""
