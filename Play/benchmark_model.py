@@ -139,7 +139,7 @@ BENCH3 = Benchmark(
         PlayerWrapper(MoskaBot3,{"name" : "B3-2", "log_file":"Game-{x}-B3-2.log"}),
         PlayerWrapper(MoskaBot3,{"name" : "B3-3", "log_file":"Game-{x}-B3-3.log"}),
     ],
-    folder="Benchmark3",
+    folder="Benchmark3-8PL",
     game_kwargs={
         "log_file" : "Game-{x}.log",
         "log_level" : logging.WARNING,
@@ -269,7 +269,7 @@ if __name__ == "__main__":
     player_args = {"name" : "player",
                     "log_file":"Game-{x}-player.log",
                     "log_level":logging.DEBUG,
-                    "max_num_states":1000,
+                    "max_num_states":5000,
                     "max_num_samples":100,
                     "pred_format":"bitmap",
                     "model_id":game_kwargs["model_paths"][0],
