@@ -40,7 +40,8 @@
     </form>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.1/socket.io.js"></script>
     <script type="text/javascript">
-      var socket = io.connect('http://' + document.domain + ':' + location.port);
+      //var socket = io.connect('http://' + document.domain + ':' + location.port);
+      var socket = io('{{ namespace }}');
       var outputContainer = document.getElementById('output-container');
       socket.on('connect', function() {
         console.log('Socket connected');
@@ -77,6 +78,17 @@
         console.log('Input: ' + input);
         socket.emit('input', input);
       }
+      // If a user navigates away from the page, disconnect the socket
+      window.onbeforeunload = function() {
+        socket.emit('on_disconnect')
+        socket.disconnect();
+      };
+      // If the user closes the tab, disconnect the socket
+      window.onunload = function() {
+        socket.emit('on_disconnect')
+        socket.disconnect();
+      };
+
     </script>
   </body>
 </html>
