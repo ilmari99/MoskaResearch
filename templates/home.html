@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to My Website</title>
+    <style>
+        #logout-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/logout" id="logout-btn">Logout</a>
+    <h1>Welcome, {{ session['username'] }}!</h1>
+    <p>What would you like to do?</p>
+    <ul>
+        <li><a href="/play_game">Play a game</a></li>
+    </ul>
+</body>
+</html>

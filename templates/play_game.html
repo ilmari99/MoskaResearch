@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Play Game</title>
+    <style>
+      .logout {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+      }
+    </style>
+    <style>
+      #output-container {
+        height: 500px;
+        overflow-y: scroll;
+        border: 1px solid black;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Play Game</h1>
+    <a href="/logout" class="logout">Logout</a>
+    <div id="output-container">
+      <pre id="output"></pre>
+    </div>
+    <form>
+      <label for="input">Input:</label>
+      <input type="text" id="input" name="input">
+      <button type="button" onclick="sendInput()">Send</button>
+      <!-- Also send the input if the user presses Enter and disable other enter functionality-->
+      <script type="text/javascript">
+        document.getElementById('input').addEventListener('keydown', function(event) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            sendInput();
+          }
+        });
+      </script>
+    </form>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.1/socket.io.js"></script>
+    <script type="text/javascript">
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
+      var outputContainer = document.getElementById('output-container');
+      socket.on('connect', function() {
+        console.log('Socket connected');
+        socket.emit('start_game');
+      });
+      socket.on('output', function(data) {
+      var tempElement = document.createElement('div');
+      tempElement.innerHTML = data;
+
+      // Replace image tags with actual images
+      tempElement.querySelectorAll('img').forEach(function(imgTag) {
+        var imgSrc = imgTag.getAttribute('src');
+        var imgAlt = imgTag.getAttribute('alt');
+        var imgHeight = imgTag.getAttribute('height');
+        var imgWidth = imgTag.getAttribute('width');
+        
+        var imgElement = document.createElement('img');
+        imgElement.src = imgSrc;
+        imgElement.alt = imgAlt;
+        imgElement.height = imgHeight;
+        imgElement.width = imgWidth;
+        
+        imgTag.parentNode.replaceChild(imgElement, imgTag);
+      });
+
+      // Append the modified HTML to the output container
+      outputContainer.appendChild(tempElement);
+      outputContainer.scrollTop = outputContainer.scrollHeight;
+    });
+
+      function sendInput() {
+        var input = document.getElementById('input').value;
+        document.getElementById('input').value = '';
+        console.log('Input: ' + input);
+        socket.emit('input', input);
+      }
+    </script>
+  </body>
+</html>
