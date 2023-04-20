@@ -60,7 +60,7 @@ class GameNamespace(Namespace):
 
     def on_disconnect(self):
         print(f"Disconnecting...")
-        if self.game_process is not None:
+        if self.game_process is not None and self.game_process.poll() is None:
             self.game_process.stdin.write(('exit\n').encode())
             self.game_process.stdin.flush()
             print(f"Killed game process",flush=True)
