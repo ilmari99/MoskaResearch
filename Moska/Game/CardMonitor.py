@@ -174,7 +174,7 @@ class CardMonitor:
         # If there are only 2 players left (and no deck), we know the other players cards, and can infer the other players cards reliably
         # This can also be possible for more players, but with 2 it is trivial
         pl_left = self.game.get_players_condition(lambda x: x.EXIT_STATUS == 0)
-        if len(pl_left) == 2 and player.EXIT_STATUS == 0 and any((c.value == -1 for c in self.player_cards[pl_left[0].name] + self.player_cards[pl_left[1].name])):
+        if len(pl_left) == 2 and len(self.game.deck) == 0 and player.EXIT_STATUS == 0 and any((c.value == -1 for c in self.player_cards[pl_left[0].name] + self.player_cards[pl_left[1].name])):
             self.game.glog.info(f"Only two players left, updating known cards")
             # Get the cards that are hidden to the player
             # If there are only two players left, we know the other players cards
