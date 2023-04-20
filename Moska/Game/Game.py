@@ -579,11 +579,27 @@ class MoskaGame:
         s += f"Deck left: {len(self.deck.cards)}\n"
         for pid,pl in enumerate(self.players):
             s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
-            if isinstance(pl,HumanPlayer):
+            if "human" in type(pl).__name__.lower():
                 pl_eval = self.player_evals_data.get(pl.pid,[0])[-1]
                 s += f"({pl_eval})"
             s += " " * max(16 - len(s.split("\n")[-1]),1)
             s += f" : {len(self.card_monitor.player_cards[pl.name])}\n"
+        s += f"Cards to kill : {self.cards_to_fall}\n"
+        s += f"killed cards : {self.fell_cards}\n"
+        return s
+    
+    def _basic_repr_with_card_symbols(self) -> str:
+        """ Print the current state of the game,
+        showing number of cards left in the deck, the trump card, target,
+        and each players name and the cards (counted) they have in their hand.
+        """
+        s = f"Trump card: {self.trump_card}\n"
+        s += f"Deck left: {len(self.deck.cards)}\n"
+        for pl in self.players:
+            s += f"{pl.name}{' (TG)' if pl is self.get_target_player() else ''}"
+            s += " " * max(16 - len(s.split("\n")[-1]),1)
+            ncards = len(self.card_monitor.player_cards[pl.name])
+            s += f" : {[Card(-1, 'X') for _ in range(ncards)]}\n"
         s += f"Cards to kill : {self.cards_to_fall}\n"
         s += f"killed cards : {self.fell_cards}\n"
         return s
@@ -595,6 +611,8 @@ class MoskaGame:
         """
         if self.print_format == "basic":
             return self._basic_repr()
+        if self.print_format == "basic_with_card_symbols":
+            return self._basic_repr_with_card_symbols()
         elif self.print_format == "basic_with_cards":
             return self._basic_repr_with_cards()
         elif self.print_format == "basic_with_all_evals":
@@ -691,7 +709,7 @@ class MoskaGame:
         Places the card at the bottom of the deck.
         """
         self.glog.info(f"Setting trump card")
-        assert len(self.players) > 1 and len(self.players) < 8, "Too few or too many players"
+        assert len(self.players) > 1 and len(self.players) <= 8, "Too few or too many players"
         trump_card = self.deck.pop_cards(1)[0]
         self.trump = trump_card.suit
         # Get the player with the trump 2 in hand
@@ -753,8 +771,9 @@ class MoskaGame:
         for pl in self.players:
             ax.plot(self.player_evals_data[pl.pid],label=pl.name)
         ax.legend()
-        ax.set_xlabel("Turns")
-        ax.set_ylabel("Evaluation")
+        ax.set_xlabel("Turns",fontsize=20)
+        ax.set_ylabel("Evaluation",fontsize=20)
+        ax.set_title("Evaluations of players",fontsize=20)
         fig.set_size_inches(15,10)
         ax.grid()
         plt.show()
