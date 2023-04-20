@@ -77,6 +77,7 @@ def init_db():
 
 @app.route('/')
 def home():
+    init_db()
     if 'username' in session:
         return render_template('home.html')
     else:
