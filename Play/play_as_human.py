@@ -24,7 +24,7 @@ def get_human_players(model_path : str = "model.tflite",
     Returns:
         List[PlayerWrapper]: A list of PlayerWrappers.
     """
-    shared_kwargs = {"log_level" : logging.INFO,
+    shared_kwargs = {"log_level" : logging.DEBUG,
                      "delay":1,
                      "requires_graphic":True}
     players : List[PlayerWrapper] = []
@@ -126,7 +126,7 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
     gamekwargs = {
         "log_file" : "HumanGame-{x}.log",
         "players" : players,
-        "log_level" : logging.INFO,
+        "log_level" : logging.DEBUG,
         "timeout" : 2000,
         "model_paths":[os.path.abspath(path) for path in [model_path]],
         "player_evals" : "plot",
@@ -143,4 +143,4 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
     return out
 
 if __name__ == "__main__":
-    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=True, all_against_human=False)
+    play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=False, all_against_human=False)
