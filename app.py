@@ -41,7 +41,7 @@ class GameNamespace(Namespace):
             poss_cards = [pcard.split(",") for pcard in poss_cards]
             poss_cards = [card for sublist in poss_cards for card in sublist]
             poss_cards = [card.strip() for card in poss_cards]
-            poss_cards = [c.replace("[","").replace("]","").replace("{","").replace("}","") for c in poss_cards]
+            poss_cards = [c.replace("[","").replace("]","").replace("{","").replace("}","").replace(":","") for c in poss_cards]
             print(f"Possible cards: {poss_cards}")
             for card in filter(lambda x : True if x else False, poss_cards):
                 if card in CARD_CONVERSION:
@@ -50,7 +50,7 @@ class GameNamespace(Namespace):
                     else:
                         # Replace the card with the unicode symbol and html image tag
                         line = line.replace(card, f"<img src=\"{CARD_CONVERSION[card]}\" alt=\"X\" height=\"65\" width=\"40\">",1)
-            line = line.replace("[","").replace("]","").replace(",","")
+            line = line.replace("[","").replace("]","")
             print(f"New line: {line}")
             self.emit('output', line)
         self.game_process.wait()
@@ -67,7 +67,7 @@ class GameNamespace(Namespace):
                     file = f"{pl_folder}/{file}/{os.listdir(p)[0]}"
                     dbutils.local_file_to_storage(file, file)
                     os.remove(file)
-        self.emit('output', 'Game over')
+        self.emit('output', 'Thank you for playing! For a new game refresh the page.')
 
     def on_input(self, input):
         self.game_process.stdin.write((input + '\n').encode())
