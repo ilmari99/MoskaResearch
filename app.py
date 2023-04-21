@@ -5,9 +5,10 @@ os.environ["PYTHONIOENCODING"] = "utf-8"
 from flask import Flask, request, session, render_template
 from flask_socketio import SocketIO, emit
 import subprocess
-import sqlite3
 import json
 from flask_socketio import Namespace
+from WebUtils import dbutils
+
 app = Flask(__name__)
 # Key is in a file APP-KEY
 app.secret_key = "avain"#open("APP-KEY","r").read()
@@ -26,7 +27,8 @@ class GameNamespace(Namespace):
         print(f"Starting game...")
         executable = sys.executable
         print(f"Executable: {executable}")
-        self.game_process = subprocess.Popen([str(executable), 'Play/play_in_browser.py', "--name", f"{session['username']}"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        game_id = dbutils.get_gameid_from_folder(session['username'])
+        self.game_process = subprocess.Popen([str(executable), 'Play/play_in_browser.py', "--name", f"{session['username']}", "--gameid",str(game_id)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         universal_newlines=False)
         print(f"Game process created")
         for line in iter(self.game_process.stdout.readline, b''):
@@ -52,6 +54,18 @@ class GameNamespace(Namespace):
             print(f"New line: {line}")
             self.emit('output', line)
         self.game_process.wait()
+        pl_folder = f"{session['username']}-Games"
+        for file in os.listdir(pl_folder):
+            if f"Game-{game_id}" in file:
+                dbutils.local_file_to_storage(f"{pl_folder}/{file}", f"{pl_folder}/{file}")
+                os.remove(f"{pl_folder}/{file}")
+            elif file == "Vectors":
+                p = f"{pl_folder}/{file}"
+                vectors = os.listdir(p)
+                if vectors:
+                    file = f"{pl_folder}/{file}/{os.listdir(p)[0]}"
+                    dbutils.local_file_to_storage(file, file)
+                    os.remove(file)
         self.emit('output', 'Game over')
 
     def on_input(self, input):
@@ -68,16 +82,9 @@ class GameNamespace(Namespace):
             print(f"No game process to kill",flush=True)
 
 
-def init_db():
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (username TEXT, password TEXT)''')
-    conn.commit()
-    conn.close()
-
 @app.route('/')
 def home():
-    init_db()
+    dbutils.init_db()
     if 'username' in session:
         return render_template('home.html')
     else:
@@ -88,16 +95,12 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        conn = sqlite3.connect('users.db')
-        c = conn.cursor()
-        c.execute('SELECT * FROM users WHERE username = ?', (username,))
-        user = c.fetchone()
-        if user:
-            return 'Username already exists'
-        c.execute('INSERT INTO users VALUES (?, ?)', (username, password))
-        conn.commit()
-        conn.close()
-        return 'Registration successful'
+        exp_level = request.form['experience']
+        email = request.form['email']
+        suc = dbutils.add_user(email=email, username=username, password=password,exp_level=exp_level)
+        if suc:
+            return render_template('login.html')
+        return 'Registration failed. Username might be taken.'
     else:
         return render_template('register.html')
 
@@ -106,13 +109,9 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        conn = sqlite3.connect('users.db')
-        c = conn.cursor()
-        c.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
-        user = c.fetchone()
-        conn.close()
+        user = dbutils.login_user(username, password)
         if user:
-            session['username'] = user[0]
+            session['username'] = username
             return render_template('home.html')
         else:
             return render_template('login.html')
@@ -130,51 +129,7 @@ def play_game():
     namespace = f"/game-{session['username']}-{str(random.randint(0,1000000))}"
     socketio.on_namespace(GameNamespace(namespace))
     return render_template('play_game.html', namespace=namespace)
-    #return render_template('play_game.html')
-
-"""
-@socketio.on('start_game')
-def handle_start_game():
-    print(f"Starting game...")
-    global game_process
-    executable = sys.executable
-    print(f"Executable: {executable}")
-    game_process = subprocess.Popen([str(executable), 'Play/play_in_browser.py', "--name", f"{session['username']}"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    universal_newlines=False)
-    print(f"Game process created")
-    session['game_process'] = game_process
-    for line in iter(game_process.stdout.readline, b''):
-        line = line.decode("utf-8")
-        # If users name is in line, then bold it
-        if session['username'] in line:
-            line = line.replace(session['username'], f"<b>{session['username']}</b>")
-        # Possible cards are separated by a space or a comma
-        poss_cards = line.split(" ")
-        poss_cards = [pcard.split(",") for pcard in poss_cards]
-        poss_cards = [card for sublist in poss_cards for card in sublist]
-        poss_cards = [card.strip() for card in poss_cards]
-        poss_cards = [c.replace("[","").replace("]","").replace("{","").replace("}","") for c in poss_cards]
-        print(f"Possible cards: {poss_cards}")
-        for card in filter(lambda x : True if x else False, poss_cards):
-            if card in CARD_CONVERSION:
-                if card == "-1X":
-                    line = line.replace(card, f"<img src=\"{CARD_CONVERSION[card]}\" alt=\"X\" height=\"50\" width=\"30\">")
-                else:
-                    # Replace the card with the unicode symbol and html image tag
-                    line = line.replace(card, f"<img src=\"{CARD_CONVERSION[card]}\" alt=\"X\" height=\"65\" width=\"40\">",1)
-        line = line.replace("[","").replace("]","").replace(",","")
-        print(f"New line: {line}")
-        emit('output', line)
-    game_process.wait()
-    emit('output', 'Game over')
-
-@socketio.on('input')
-def handle_input(input):
-    game_process.stdin.write((input + '\n').encode())
-    game_process.stdin.flush()
-"""
 
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=False)
