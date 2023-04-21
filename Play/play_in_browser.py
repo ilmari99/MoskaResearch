@@ -31,7 +31,7 @@ def get_human_players(model_path : str = "model.tflite",
                      "delay":0.1,
                      "requires_graphic":True}
     players : List[PlayerWrapper] = []
-    players.append(PlayerWrapper(HumanBrowserPlayer, {**shared_kwargs, **{"name":human_name,"log_file":f"{human_name}" + "-{x}.log"}}))
+    players.append(PlayerWrapper(HumanBrowserPlayer, {**shared_kwargs, **{"name":human_name,"log_file":"Game-{x}-" +f"{human_name}" + ".log"}}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NN2-HIF1",
                                             "log_file":"Game-{x}-NNEV1.log", 
                                             "max_num_states":8000,
@@ -110,9 +110,11 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
                   pred_format="bitmap",
                   test=False,
                   human_name="Human",
+                  game_id = 0
                   ):
     """ Play as a human against three NNHIFEvaluatorBots. The order of the players is shuffled.
     """
+    print(f"Starting game number {game_id} of player {human_name}")
     # Get a list of players
     if test:
         players = get_test_human_players(model_path = model_path, pred_format=pred_format)
@@ -122,7 +124,7 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
     cwd = os.getcwd()
     folder = human_name + "-Games"
     # Find the next available game id
-    game_id = get_next_game_id("./" + folder,"HumanGame-{x}.log")
+    #game_id = get_next_game_id("./" + folder,"HumanGame-{x}.log")
     gamekwargs = {
         "log_file" : "HumanGame-{x}.log",
         "players" : players,
@@ -145,11 +147,14 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
 def parse_args():
     """ Parses the command line arguments:
     - name : The name of the human player. Used in file naming and location.
+    - gameid : The id of the game. Used in file naming and location.
     - test : Whether to actually use a human player or not
     """
     parser = ArgumentParser(description='Play as a human against a NNHIFEvaluatorBot')
     parser.add_argument('--name', type=str, default="Human",
                         help='The name of the human player')
+    parser.add_argument('--gameid', type=int, default=0,
+                        help='The id of the game')
     parser.add_argument('--test', type=bool, default=False,
                         help='Whether to actually use a human player or not')
     args = parser.parse_args()
@@ -157,4 +162,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    play_as_human(human_name=args.name, test=args.test)
+    play_as_human(human_name=args.name, test=args.test, game_id=args.gameid)
