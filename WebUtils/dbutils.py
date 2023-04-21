@@ -7,8 +7,8 @@ from firebase import firebase
 import os
 import json
 
-DB_URL = "https://moska-377016-default-rtdb.europe-west1.firebasedatabase.app/"
-STORAGE_URL = "moska-377016.appspot.com"
+DB_URL = os.environ["DB_URL"]
+STORAGE_URL = os.environ["STORAGE_URL"]
 DB_REF : db.Reference = None
 CRED : credentials.Certificate = None
 APP : firebase_admin.App = None
@@ -20,6 +20,12 @@ def init_db():
     # If everything is already initialized, then return
     if all([CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET, DB_REF]):
         return
+    if not os.path.exists("moska-admin.json"):
+        try:
+            json_config_from_env_vars()
+        except KeyError:
+            print("Could not find moska-admin.json and could not configure database from environment variables")
+            return
     CRED = credentials.Certificate("moska-admin.json")
     APP = firebase_admin.initialize_app(CRED, {
         'databaseURL': DB_URL,
@@ -41,6 +47,25 @@ def init_db():
             print("Could not find default_user.json, database not populated")
     else:
         print("Database is not empty, not populating it")
+
+def json_config_from_env_vars():
+    """ Configure the database from environment variables"""
+    config = {}
+    config["type"] = os.environ["FIREBASE_TYPE"]
+    config["project_id"] = os.environ["FIREBASE_PROJECT_ID"]
+    config["private_key_id"] = os.environ["FIREBASE_PRIVATE_KEY_ID"]
+    config["private_key"] = os.environ["FIREBASE_PRIVATE_KEY"]
+    config["client_email"] = os.environ["FIREBASE_CLIENT_EMAIL"]
+    config["client_id"] = os.environ["FIREBASE_CLIENT_ID"]
+    config["auth_uri"] = os.environ["FIREBASE_AUTH_URI"]
+    config["token_uri"] = os.environ["FIREBASE_TOKEN_URI"]
+    config["auth_provider_x509_cert_url"] = os.environ["FIREBASE_AUTH_PROVIDER_X509_CERT_URL"]
+    config["client_x509_cert_url"] = os.environ["FIREBASE_CLIENT_X509_CERT_URL"]
+    # Save this config to a file, so that we can use it to initialize the app
+    with open("moska-admin.json", "w") as f:
+        json.dump(config, f)
+    return
+
 
 def local_file_to_storage(local_file_path, storage_file_path):
     """ Upload a local file to the storage bucket """
