@@ -55,6 +55,7 @@ class GameNamespace(Namespace):
             self.emit('output', line)
         self.game_process.wait()
         pl_folder = f"{session['username']}-Games"
+        print(f"Writing to storage...")
         for file in os.listdir(pl_folder):
             if f"Game-{game_id}" in file:
                 dbutils.local_file_to_storage(f"{pl_folder}/{file}", f"{pl_folder}/{file}")
