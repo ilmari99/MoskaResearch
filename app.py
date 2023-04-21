@@ -11,7 +11,7 @@ from WebUtils import dbutils
 
 app = Flask(__name__)
 # Key is in a file APP-KEY
-app.secret_key = "avain"#open("APP-KEY","r").read()
+app.secret_key = os.environ["APP_KEY"]
 socketio = SocketIO(app)
 CARD_CONVERSION = json.load(open("./templates/card_conversions.json","r",encoding="utf-8"))
 CARD_SUITS_TO_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}
