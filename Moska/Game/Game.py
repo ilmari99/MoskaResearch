@@ -722,6 +722,8 @@ class MoskaGame:
             p_with_2.hand.add([trump_card])
             trump_card = p_with_2.hand.pop_cards(cond = lambda x : x.suit == self.trump and x.value == 2)[0]
             self.glog.info(f"Removed {trump_card} from {p_with_2.name}")
+            if self.to_console:
+                print(f"Player {p_with_2.name} had trump 2 in hand. Swapping {self._orig_trump_card} with {trump_card}")
         self.trump_card = trump_card
         self.deck.place_to_bottom(self.trump_card)
         self.glog.info(f"Placed {self.trump_card} to bottom of deck.")
@@ -745,6 +747,8 @@ class MoskaGame:
                     not_losers.append(state + [1])
         if balance:
             state_results = losers + random.sample(not_losers,min(len(losers),len(not_losers)))
+        else:
+            state_results = losers + not_losers
         if shuffle:
             random.shuffle(state_results)
         return state_results
@@ -801,7 +805,8 @@ class MoskaGame:
         state_results = []
         # If gathering data, save the data to a file
         if self.GATHER_DATA:
-            state_results = self.get_player_state_vectors()
+            balance, shuffle = (False, False) if self.to_console else (True, True)
+            state_results = self.get_player_state_vectors(shuffle = shuffle, balance = balance)
             with open("Vectors/"+self.get_random_file_name(),"w") as f:
                 data = str(state_results).replace("], [","\n").replace(" ","")
                 data = data.strip("[]")
