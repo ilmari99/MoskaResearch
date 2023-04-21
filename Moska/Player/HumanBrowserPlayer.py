@@ -109,17 +109,16 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     def play_fall_card_from_hand(self) -> dict:
         """ Card-in-hand and card-to-fall pairs. """
-        pairs = input("Give card pairs; Which cards are used to fall which cards (as index tuples'(a,b)'):\n").strip()
+        print(f"Which cards from hand are used to kill which cards on the table (ex: (1,2) (2,3) OR shorthand 1,2 2,3 ):")
+        pairs = input().strip()
         if self._check_no_input(pairs):
             return {}
         pairs = pairs.split(" ")
-        pairs = [p.strip("()") for p in pairs]
+        pairs = [p.strip("() ") for p in pairs]
         try:
-            # [(0,0),(1,1),(2,2)]
-            #hand_indices = [int(p[0]) for p in pairs]
-            #table_indices = [int(p[-1]) for p in pairs]
-            hand_indices = [int(p.split(",")[0])-1 for p in pairs]
-            table_indices = [int(p.split(",")[-1])-1 for p in pairs]
+            # ['0,0','1,1','2,2']
+            hand_indices = [int(p.split(",")[0].strip())-1 for p in pairs]
+            table_indices = [int(p.split(",")[-1].strip())-1 for p in pairs]
             out = {self.hand.cards[ih] : self.moskaGame.cards_to_fall[iff] for ih,iff in zip(hand_indices,table_indices)}
             print(out)
             return out
@@ -131,7 +130,8 @@ class HumanBrowserPlayer(AbstractPlayer):
         """ When playing from deck, choose the card to fall from table """
         print(f"Card from deck: {deck_card}\n")
         try:
-            fall_index = int(input("Select which card you want to fall from table (index): ")) -1
+            print(f"Select which card you want to fall from table (index): ")
+            fall_index = int(input()) -1
             print(f"Card pair: {(deck_card, self.moskaGame.cards_to_fall[fall_index])}")
             return (deck_card, self.moskaGame.cards_to_fall[fall_index])
         except Exception as ve:
@@ -140,7 +140,8 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     
     def play_to_self(self) -> List[Card]:
-        indices = input("Which cards do you want to play to self (indices of cards in hand separated by space):\n ").strip()
+        print(f"Select which cards you want to play to self (ex: 1 2):")
+        indices = input().strip()
         indices = indices.split(" ")
         if self._check_no_input(indices):
             return []
