@@ -131,7 +131,7 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
         "log_level" : logging.DEBUG,
         "timeout" : 2000,
         "model_paths":[os.path.abspath(path) for path in [model_path]],
-        "player_evals" : "plot",
+        "player_evals" : "save",
         "print_format" : "basic_with_card_symbols",
         "to_console" : True,
     }
