@@ -23,10 +23,16 @@ class HumanBrowserPlayer(AbstractPlayer):
         print(f"{self.moskaGame}")
         print(f"Your cards: {self.hand}")
         while True:
+            inp = ""
             for i,k in enumerate(playable):
                 print(f"{i+1}. {k}")
-            inp = input(f"What do you want to play: ").strip()
-            print(inp)
+            try:
+                print(f"Choose one of the above options.")
+                inp = input().strip()
+            except:
+                print(f"Input error.")
+                continue
+            self.plog.info(f"Input: {inp}")
             if self._check_no_input(inp):
                 print(f"No input given.")
                 continue
@@ -34,7 +40,7 @@ class HumanBrowserPlayer(AbstractPlayer):
                 if inp == "exit":
                     self.EXIT_STATUS = 2
                     print(f"Exiting game...")
-                    return
+                    return "exit"
                 return playable[int(inp)-1]
             except:
                 print(f"Incorrect input. Input must be one of: {list(range(1,len(playable)+1)) + ['exit']}")
@@ -59,7 +65,8 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     def end_turn(self) -> List[Card]:
         """ End turn, pick all cards or not. """
-        pick_fallen = input("Pick all cards (y/n): \n").strip().lower()
+        print(f"Do you want to pick all cards from the table? (y/n)")
+        pick_fallen = input().strip().lower()
         if pick_fallen == "y":
             return self.moskaGame.cards_to_fall + self.moskaGame.fell_cards
         elif pick_fallen == "n":
@@ -70,7 +77,8 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     def play_initial(self) -> List[Card]:
         """ Select which cards does the user want to play on an initiating turn """
-        indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n")
+        print(f"Select which cards you want to play to the table (ex: 1 2):")
+        indices = input().strip()
         indices = indices.split(" ")
         if self._check_no_input(indices):
             return []
@@ -85,7 +93,8 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     def play_to_target(self) -> List[Card]:
         """ Which cards to play to target """
-        indices = input("Which cards do you want to play (indices of cards in hand separated by space):\n ").strip()
+        print(f"Select which cards you want to play to the target (ex: 1 2):")
+        indices = input().strip()
         indices = indices.split(" ")
         if self._check_no_input(indices):
             return []
@@ -120,7 +129,7 @@ class HumanBrowserPlayer(AbstractPlayer):
     
     def deck_lift_fall_method(self, deck_card: Card) -> tuple:
         """ When playing from deck, choose the card to fall from table """
-        print(f"Card from deck: {deck_card}")
+        print(f"Card from deck: {deck_card}\n")
         try:
             fall_index = int(input("Select which card you want to fall from table (index): ")) -1
             print(f"Card pair: {(deck_card, self.moskaGame.cards_to_fall[fall_index])}")
