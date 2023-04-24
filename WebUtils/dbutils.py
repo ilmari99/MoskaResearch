@@ -6,7 +6,7 @@ from firebase_admin import db
 from firebase import firebase
 import os
 import json
-from .logger_utils import Logger
+import datetime
 
 DB_URL = "https://moska-377016-default-rtdb.europe-west1.firebasedatabase.app/"#os.environ["DB_URL"]
 STORAGE_URL = "moska-377016.appspot.com"#os.environ["STORAGE_URL"]
@@ -15,7 +15,42 @@ CRED : credentials.Certificate = None
 APP : firebase_admin.App = None
 FIRESTORE_CLIENT = None
 STORAGE_BUCKET = None
-LOGGER = Logger(session=None)
+LOGGER = None
+
+def initialize(logger):
+    global LOGGER, DB_REF, CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET
+    LOGGER = logger
+    if not all([DB_REF, STORAGE_BUCKET, FIRESTORE_CLIENT, APP, CRED]):
+        init_db()
+    logs_to_db()
+    return
+
+def logs_to_db():
+    """ Every six hours, upload the logs to cloud.
+    Logs are in the Logs folder.
+    Dont upload the latest log file, as it is being written to.
+    """
+    LOGGER.info("Uploading logs to cloud")
+    try:
+        #Naming convention: "./Logs/" + "app"+datetime.datetime.now().strftime("%Y-%m-%d")+"-"+str(datetime.datetime.now().hour//6)+".log"
+        # Get the latest log file
+        latest_log_file = "app"+datetime.datetime.now().strftime("%Y-%m-%d")+"-"+str(datetime.datetime.now().hour//6)+".log"
+        # Get all the log files
+        log_files = os.listdir("./Logs")
+        # Remove the latest log file
+        log_files.remove(latest_log_file)
+        if not log_files:
+            LOGGER.info("No log files to upload")
+            return
+        # Upload all the log files
+        for log_file in log_files:
+            local_file_to_storage("./Logs/"+log_file, "Logs/"+log_file)
+            os.remove("./Logs/"+log_file)
+            LOGGER.info("Uploaded log file: "+log_file)
+    except Exception as e:
+        LOGGER.warning("Could not upload logs to cloud: "+str(e))
+    return
+
 
 def init_db():
     global CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET, DB_REF
@@ -155,7 +190,4 @@ def login_user(username, password):
     LOGGER.info(f"Password incorrect")
     #print(f"Password incorrect")
     return False
-
-if not all([DB_REF, STORAGE_BUCKET, FIRESTORE_CLIENT, APP, CRED]):
-    init_db()
 
