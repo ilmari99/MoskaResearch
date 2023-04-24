@@ -7,25 +7,26 @@ from flask_socketio import SocketIO, emit
 import subprocess
 import json
 from flask_socketio import Namespace
+from WebUtils.logger_utils import init_logger
 from WebUtils import dbutils
-from WebUtils.logger_utils import Logger
+LOGGER = init_logger(session)
+dbutils.initialize(LOGGER)
 app = Flask(__name__)
-# Key is in a file APP-KEY
 app.secret_key = os.environ["APP_KEY"]
 socketio = SocketIO(app)
 CARD_CONVERSION = json.load(open("./templates/card_conversions.json","r",encoding="utf-8"))
 CARD_SUITS_TO_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}
 CARD_SYMBOLS_TO_SUITS = {v:k for k,v in CARD_SUITS_TO_SYMBOLS.items()}
-LOGGER = Logger(session=session)
 
 class GameNamespace(Namespace):
     def __init__(self, namespace):
         super().__init__(namespace=namespace)
         self.game_process = None
+        self.RANDOM_ID = str(random.randint(0,100000))
         self.EXIT_CODE = 0
     
     def on_start_game(self):
-        LOGGER.info(f"Starting game")
+        LOGGER.info(f"Starting game {self.RANDOM_ID}")
         executable = sys.executable
         game_id = dbutils.get_gameid_from_folder(session['username'])
         self.game_process = subprocess.Popen([str(executable), 'Play/play_in_browser.py', "--name", f"{session['username']}", "--gameid",str(game_id)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -56,10 +57,16 @@ class GameNamespace(Namespace):
         self.game_process.wait()
         pl_folder = f"{session['username']}-Games"
         if self.EXIT_CODE != 0:
-            LOGGER.info(f"Game was not finished.")
+            LOGGER.info(f"Game {self.RANDOM_ID} was killed by user. (EXIT_CODE: {self.EXIT_CODE}))")
             self.emit('output', f"Game not finished.")
             return
-        LOGGER.info(f"Game finished succesfully(?).")
+        elif self.game_process.returncode != 0:
+            self.EXIT_CODE = 2
+            LOGGER.info(f"Game {self.RANDOM_ID} finished with error. (EXIT_CODE: {2}))")
+            self.emit('output', f"Game not finished.")
+            return
+        else:
+            LOGGER.info(f"Game {self.RANDOM_ID} finished succesfully.")
         for file in os.listdir(pl_folder):
             if f"Game-{game_id}" in file:
                 dbutils.local_file_to_storage(f"{pl_folder}/{file}", f"{pl_folder}/{file}")
@@ -74,6 +81,8 @@ class GameNamespace(Namespace):
         self.emit('output', 'Thank you for playing! For a new game refresh the page.')
 
     def on_input(self, input):
+        if "exit" in input:
+            self.EXIT_CODE = 1
         self.game_process.stdin.write((input + '\n').encode())
         self.game_process.stdin.flush()
 
