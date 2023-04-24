@@ -8,8 +8,8 @@ import os
 import json
 import datetime
 
-DB_URL = "https://moska-377016-default-rtdb.europe-west1.firebasedatabase.app/"#os.environ["DB_URL"]
-STORAGE_URL = "moska-377016.appspot.com"#os.environ["STORAGE_URL"]
+DB_URL = os.environ["DB_URL"]
+STORAGE_URL = os.environ["STORAGE_URL"]
 DB_REF : db.Reference = None
 CRED : credentials.Certificate = None
 APP : firebase_admin.App = None
