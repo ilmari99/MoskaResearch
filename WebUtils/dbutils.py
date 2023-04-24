@@ -6,6 +6,7 @@ from firebase_admin import db
 from firebase import firebase
 import os
 import json
+import datetime
 
 DB_URL = os.environ["DB_URL"]
 STORAGE_URL = os.environ["STORAGE_URL"]
@@ -14,15 +15,53 @@ CRED : credentials.Certificate = None
 APP : firebase_admin.App = None
 FIRESTORE_CLIENT = None
 STORAGE_BUCKET = None
+LOGGER = None
+
+def initialize(logger):
+    global LOGGER, DB_REF, CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET
+    LOGGER = logger
+    if not all([DB_REF, STORAGE_BUCKET, FIRESTORE_CLIENT, APP, CRED]):
+        init_db()
+    logs_to_db()
+    return
+
+def logs_to_db():
+    """ Every six hours, upload the logs to cloud.
+    Logs are in the Logs folder.
+    Dont upload the latest log file, as it is being written to.
+    """
+    LOGGER.info("Uploading logs to cloud")
+    try:
+        #Naming convention: "./Logs/" + "app"+datetime.datetime.now().strftime("%Y-%m-%d")+"-"+str(datetime.datetime.now().hour//6)+".log"
+        # Get the latest log file
+        latest_log_file = "app"+datetime.datetime.now().strftime("%Y-%m-%d")+"-"+str(datetime.datetime.now().hour//6)+".log"
+        # Get all the log files
+        log_files = os.listdir("./Logs")
+        # Remove the latest log file
+        log_files.remove(latest_log_file)
+        if not log_files:
+            LOGGER.info("No log files to upload")
+            return
+        # Upload all the log files
+        for log_file in log_files:
+            local_file_to_storage("./Logs/"+log_file, "Logs/"+log_file)
+            os.remove("./Logs/"+log_file)
+            LOGGER.info("Uploaded log file: "+log_file)
+    except Exception as e:
+        LOGGER.warning("Could not upload logs to cloud: "+str(e))
+    return
+
 
 def init_db():
     global CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET, DB_REF
     # If everything is already initialized, then return
     if all([CRED, APP, FIRESTORE_CLIENT, STORAGE_BUCKET, DB_REF]):
+        LOGGER.info("Database already initialized")
         return
     if not os.path.exists("moska-admin.json"):
         try:
             json_config_from_env_vars()
+            LOGGER.info("Configured database from environment variables")
         except KeyError:
             print("Could not find moska-admin.json and could not configure database from environment variables")
             return
@@ -36,7 +75,8 @@ def init_db():
     DB_REF = db.reference()
     # If the database is empty, then populate it with the default data
     if DB_REF.get() is None:
-        print("Database is empty, populating it with default data")
+        LOGGER.info("Database is empty, populating it with default data")
+        #print("Database is empty, populating it with default data")
         try:
             # Email, username, password, experience level
             with open("default_user.json","r") as f:
@@ -46,7 +86,8 @@ def init_db():
         except FileNotFoundError:
             print("Could not find default_user.json, database not populated")
     else:
-        print("Database is not empty, not populating it")
+        pass
+    LOGGER.info("Database initialized")
 
 def json_config_from_env_vars():
     """ Configure the database from environment variables"""
@@ -69,17 +110,16 @@ def json_config_from_env_vars():
 
 def local_file_to_storage(local_file_path, storage_file_path):
     """ Upload a local file to the storage bucket """
-    print(f"Uploading file '{local_file_path}' to storage '{storage_file_path}'")
+    #print(f"Uploading file '{local_file_path}' to storage '{storage_file_path}'")
+    LOGGER.info(f"Uploading file '{local_file_path}' to storage '{storage_file_path}'")
     blob = STORAGE_BUCKET.blob(storage_file_path)
     blob.upload_from_filename(local_file_path)
     return
 
 def list_blobs_in_folder(folder):
     """ List all files in the storage bucket, in the specified folder """
-    print(f"Listing files in folder '{folder}'")
     blobs = list(STORAGE_BUCKET.list_blobs())
     blobs = [blob for blob in blobs if blob.name.startswith(folder)]
-    print(f"Found blobs with names: {[blob.name for blob in blobs]}")
     return blobs
 
 
@@ -97,22 +137,21 @@ def get_gameid_from_folder(username, filename = ""):
     game_id = 0
     while True:
         fname_to_check = pl_folder + filename.format(x=game_id)
-        print(f"Checking if file '{fname_to_check}' exists")
         if not any([blob.name == fname_to_check for blob in blobs]):
             break
         game_id += 1
-    print(f"Next available game id is {game_id}")
+    #print(f"Next available game id is {game_id}")
+    LOGGER.info(f"Next available game id is {game_id}")
     return game_id
-    
-
-
 
 def add_user(email, username, password, exp_level):
     """ Add a user to the database, if they don't already exist. Returns True if the user was added, False otherwise """
     if get_user(username) is not None:
-        print(f"User '{username}' already exists")
+        #print(f"User '{username}' already exists")
+        LOGGER.info(f"User '{username}' already exists")
         return False
-    print(f"Adding user '{username}'")
+    LOGGER.info(f"Adding user '{username}'")
+    #print(f"Adding user '{username}'")
     DB_REF.push({
         "email": email,
         "username": username,
@@ -123,29 +162,32 @@ def add_user(email, username, password, exp_level):
 
 def get_user(username):
     """ Check if a user exists in the database. Returns the user if they exist, None otherwise """
-    print(f"Retriving user {username}")
+    #print(f"Retriving user {username}")
     users = DB_REF.get()
     # Traverse the nested dictionary to find the user
     for val, user in users.items():
         if not isinstance(user,dict):
             continue
         if user["username"] == username:
-            print(f"Found user {user}")
+            #print(f"Found user {user}")
+            LOGGER.info(f"Found user {user}")
             return user
-    print(f"User not found")
+    LOGGER.info(f"User {username} not found")
     return None
 
 
 def login_user(username, password):
     """ Login a user, if they exist. Returns the user if they exist, False otherwise """
     user = get_user(username)
-    print(f"Logging in: {user}")
+    #print(f"Logging in: {user}")
+    LOGGER.info(f"Logging in: {user}")
     if user is None:
         return False
     if user["password"] == password:
-        print(f"Logged in user {user}")
+        #print(f"Logged in user {user}")
+        LOGGER.info(f"Logged in user {user}")
         return user
-    print(f"Password incorrect")
+    LOGGER.info(f"Password incorrect")
+    #print(f"Password incorrect")
     return False
-
 
