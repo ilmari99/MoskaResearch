@@ -162,4 +162,8 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    play_as_human(human_name=args.name, test=args.test, game_id=args.gameid)
+    out = play_as_human(human_name=args.name, test=args.test, game_id=args.gameid)
+    if out:
+        sys.exit(0)
+    else:
+        sys.exit(1)
