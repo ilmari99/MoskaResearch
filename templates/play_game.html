@@ -47,6 +47,19 @@
         console.log('Socket connected');
         socket.emit('start_game');
       });
+
+      // If a user closes the window, emit a disconnect event
+      window.addEventListener('beforeunload', function(e) {
+        e.preventDefault();
+        socket.emit('on_disconnect');
+      });
+      // If a user navigates away from the page, emit a disconnect event
+      window.addEventListener('onunload', function(e) {
+        e.preventDefault();
+        socket.emit('on_disconnect');
+      });
+
+
       socket.on('output', function(data) {
       var tempElement = document.createElement('div');
       tempElement.innerHTML = data;
@@ -78,16 +91,6 @@
         console.log('Input: ' + input);
         socket.emit('input', input);
       }
-      // If a user navigates away from the page, disconnect the socket
-      window.onbeforeunload = function() {
-        socket.emit('on_disconnect')
-        socket.disconnect();
-      };
-      // If the user closes the tab, disconnect the socket
-      window.onunload = function() {
-        socket.emit('on_disconnect')
-        socket.disconnect();
-      };
 
     </script>
   </body>
