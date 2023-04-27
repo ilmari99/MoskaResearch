@@ -1,0 +1,10 @@
+{
+    "player_class": "NNEvaluatorBot",
+    "settings" : {
+        "name" : "NN1-MIF",
+        "log_file":"Game-{x}-NN1-MIF.log", 
+        "max_num_states":1000,
+        "pred_format":"old-algbr",
+        "model_id":"./Models/ModelMB11-260/model.tflite"
+    }
+}
