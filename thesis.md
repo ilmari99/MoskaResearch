@@ -9,7 +9,7 @@ more popular russian card game Durak. Moska is more complex than durak,
 since it is played with a full deck, the target can play directly from
 the deck, the attacking turns are not sequential, and the target player
 can attack himself. In this section, I will briefly go through the main
-rules of the game.
+rules of the game. For a more detailed description, see the appendix.
 
 ### **Short rules**
 
