@@ -26,7 +26,18 @@ from scipy.optimize import minimize
 """
 This file contains utility functions for playing (multiple) games of Moska.
 """
-
+CLASS_MAP = {
+    "MoskaBot0": MoskaBot0,
+    "MoskaBot1": MoskaBot1,
+    "MoskaBot2": MoskaBot2,
+    "MoskaBot3": MoskaBot3,
+    "HumanPlayer": HumanPlayer,
+    "RandomPlayer": RandomPlayer,
+    "NewRandomPlayer": NewRandomPlayer,
+    "NNEvaluatorBot": NNEvaluatorBot,
+    "NNHIFEvaluatorBot": NNHIFEvaluatorBot,
+    "HeuristicEvaluatorBot": HeuristicEvaluatorBot
+}
 
 def replace_setting_values(settings : Dict[str,Any], game_id : int = 0) -> Dict[str,Any]:
     """ Create a new settings dict, with the game id replaced.

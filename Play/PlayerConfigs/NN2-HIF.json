@@ -1,0 +1,11 @@
+{
+    "player_class": "NNHIFEvaluatorBot",
+    "settings" : {
+        "name" : "NN2-HIF",
+        "log_file":"Game-{x}-NN2-HIF.log", 
+        "max_num_states":1000,
+        "max_num_samples":100,
+        "pred_format":"bitmap",
+        "model_id":"./Models/Model-nn1-BB/model.tflite"
+    }
+}

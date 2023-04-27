@@ -45,7 +45,10 @@ def logs_to_db():
         # Upload all the log files
         for log_file in log_files:
             local_file_to_storage("./Logs/"+log_file, "Logs/"+log_file)
-            os.remove("./Logs/"+log_file)
+            try:
+                os.remove("./Logs/"+log_file)
+            except Exception as e:
+                LOGGER.warning("Could not delete log file: "+str(e))
             LOGGER.info("Uploaded log file: "+log_file)
     except Exception as e:
         LOGGER.warning("Could not upload logs to cloud: "+str(e))

@@ -1,0 +1,7 @@
+{
+    "player_class": "MoskaBot3",
+    "settings": {
+        "name": "B3",
+        "log_file": "Game-{x}-B3.log"
+    }
+}

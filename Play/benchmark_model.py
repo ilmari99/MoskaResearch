@@ -66,7 +66,6 @@ class Benchmark:
         players = [player] + self.main_players
         for pl in players:
             pl.settings = {**self.shared_kwargs, **pl.settings, **custom_shared_pl_kwargs}
-
         # Make the log directory and change to it
         make_log_dir(self.folder)
         results = play_games(players, gamekwargs, ngames=ngames, cpus=cpus, chunksize=chunksize,shuffle_player_order=True,verbose=False)
@@ -77,12 +76,7 @@ class Benchmark:
 
 BENCH1 = Benchmark(
     main_players=[
-        PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260",
-                                    "log_file":"Game-{x}-NNEV1.log", 
-                                    "max_num_states":1000,
-                                    "pred_format":"old-algbr",
-                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
-                                    }),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN1-MIF.json", number = 1),
         PlayerWrapper(MoskaBot3,{"name" : "B3", "log_file":"Game-{x}-B3.log"}),
         PlayerWrapper(HeuristicEvaluatorBot, {"name" : f"HEV1","log_file":"Game-{x}-HEV1.log","max_num_states":1000}),
     ],
@@ -101,24 +95,9 @@ BENCH1 = Benchmark(
 
 BENCH2 = Benchmark(
     main_players=[
-        PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260-1",
-                                    "log_file":"Game-{x}-NNEV1.log", 
-                                    "max_num_states":1000,
-                                    "pred_format":"old-algbr",
-                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
-                                    }),
-        PlayerWrapper(NNEvaluatorBot,{"name" : f"ModelMB11-260-2",
-                                    "log_file":"Game-{x}-NNEV2.log", 
-                                    "max_num_states":1000,
-                                    "pred_format":"old-algbr",
-                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
-                                    }),
-        PlayerWrapper(NNEvaluatorBot, {"name" : f"ModelMB11-260-3",
-                                    "log_file":"Game-{x}-NNEV3.log", 
-                                    "max_num_states":1000,
-                                    "pred_format":"old-algbr",
-                                    "model_id":os.path.abspath("./Models/ModelMB11-260/model.tflite"),
-                                    }),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN1-MIF.json", number = 1),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN1-MIF.json", number = 2),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN1-MIF.json", number = 3),
     ],
     folder="Benchmark2",
     game_kwargs={
@@ -135,11 +114,11 @@ BENCH2 = Benchmark(
 
 BENCH3 = Benchmark(
     main_players=[
-        PlayerWrapper(MoskaBot3,{"name" : "B3-1", "log_file":"Game-{x}-B3-1.log"}),
-        PlayerWrapper(MoskaBot3,{"name" : "B3-2", "log_file":"Game-{x}-B3-2.log"}),
-        PlayerWrapper(MoskaBot3,{"name" : "B3-3", "log_file":"Game-{x}-B3-3.log"}),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/Bot3.json", number = 1),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/Bot3.json", number = 2),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/Bot3.json", number = 3),
     ],
-    folder="Benchmark3-8PL",
+    folder="Benchmark3",
     game_kwargs={
         "log_file" : "Game-{x}.log",
         "log_level" : logging.WARNING,
@@ -174,30 +153,9 @@ BENCH4 = Benchmark(
 
 BENCH5 = Benchmark(
     main_players=[
-        PlayerWrapper(NNHIFEvaluatorBot, {"name" : f"NNEV1",
-                                    "log_file":"Game-{x}-NNEV1.log", 
-                                    "max_num_states":1000,
-                                    "max_num_samples":1000,
-                                    "pred_format":"bitmap",
-                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
-                                    #"min_player" : "player"
-                                    }),
-        PlayerWrapper(NNHIFEvaluatorBot,{"name" : f"NNEV2",
-                                    "log_file":"Game-{x}-NNEV2.log", 
-                                    "max_num_states":1000,
-                                    "max_num_samples":1000,
-                                    "pred_format":"bitmap",
-                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
-                                    #"min_player" : "player"
-                                    }),
-        PlayerWrapper(NNHIFEvaluatorBot, {"name" : f"NNEV3",
-                                    "log_file":"Game-{x}-NNEV3.log", 
-                                    "max_num_states":1000,
-                                    "max_num_samples":1000,
-                                    "pred_format":"bitmap",
-                                    "model_id":os.path.abspath("./Models/Model-nn1-BB/model.tflite"),
-                                    #"min_player" : "player"
-                                    }),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN2-HIF.json", number = 1),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN2-HIF.json", number = 2),
+        PlayerWrapper.from_config("./Play/PlayerConfigs/NN2-HIF.json", number = 3),
     ],
     folder="Benchmark5",
     game_kwargs={
@@ -234,6 +192,7 @@ def small_benchmark(player_type, pl_args, game_kwargs):
     BENCH2.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
     BENCH3.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
     BENCH4.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    BENCH5.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
 
 def standard_benchmark(player_type, pl_args, game_kwargs, cpus=50,chunksize=3):
     game_kwargs = { **{
@@ -253,6 +212,7 @@ def clean_up():
     shutil.rmtree("./Benchmark2", ignore_errors=True)
     shutil.rmtree("./Benchmark3", ignore_errors=True)
     shutil.rmtree("./Benchmark4", ignore_errors=True)
+    shutil.rmtree("./Benchmark5", ignore_errors=True)
 
 if __name__ == "__main__":
     clean_up()
@@ -269,7 +229,7 @@ if __name__ == "__main__":
     player_args = {"name" : "player",
                     "log_file":"Game-{x}-player.log",
                     "log_level":logging.DEBUG,
-                    "max_num_states":5000,
+                    "max_num_states":1000,
                     "max_num_samples":100,
                     "pred_format":"bitmap",
                     "model_id":game_kwargs["model_paths"][0],
