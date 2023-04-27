@@ -18,6 +18,10 @@ CARD_CONVERSION = json.load(open("./templates/card_conversions.json","r",encodin
 CARD_SUITS_TO_SYMBOLS = {"S":'♠', "D":'♦',"H": '♥',"C": '♣',"X":"X"}
 CARD_SYMBOLS_TO_SUITS = {v:k for k,v in CARD_SUITS_TO_SYMBOLS.items()}
 
+""" 
+NOTE: This web application is very much just a bodged together version, as this project has already exceeded its allotted time.
+"""
+
 class GameNamespace(Namespace):
     def __init__(self, namespace):
         super().__init__(namespace=namespace)
@@ -27,6 +31,7 @@ class GameNamespace(Namespace):
     
     def on_start_game(self):
         LOGGER.info(f"Starting game {self.RANDOM_ID}")
+        self.EXIT_CODE = 0
         executable = sys.executable
         game_id = dbutils.get_gameid_from_folder(session['username'])
         self.game_process = subprocess.Popen([str(executable), 'Play/play_in_browser.py', "--name", f"{session['username']}", "--gameid",str(game_id)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -62,7 +67,7 @@ class GameNamespace(Namespace):
             return
         elif self.game_process.returncode != 0:
             self.EXIT_CODE = 2
-            LOGGER.info(f"Game {self.RANDOM_ID} finished with error. (EXIT_CODE: {2}))")
+            LOGGER.info(f"Game {self.RANDOM_ID} finished with error. (EXIT_CODE: {self.EXIT_CODE}))")
             self.emit('output', f"Game not finished.")
             return
         else:
@@ -102,6 +107,8 @@ class GameNamespace(Namespace):
 @app.route('/')
 def home():
     #dbutils.init_db()
+    LOGGER = init_logger(session)
+    dbutils.initialize(LOGGER)
     LOGGER.info(f"Home page accessed")
     if 'username' in session:
         return render_template('home.html')
@@ -123,6 +130,22 @@ def register():
         return 'Registration failed. Username might be taken.'
     else:
         return render_template('register.html')
+    
+@app.route('/play-anonymously')
+def play_anonymously():
+    LOGGER.info(f"Requested to play anonymously. Creating account...")
+    username = f"Anonymous-{str(random.randint(0,10000000))}"
+    password = f"Anonymous-{str(random.randint(0,10000000))}"
+    exp_level = ""
+    email = ""
+    suc = dbutils.add_user(email=email, username=username, password=password,exp_level=exp_level)
+    if suc:
+        session['username'] = username
+        LOGGER.info(f"Anonymous account {username} created.")
+        return render_template('home.html')
+    else:
+        LOGGER.info(f"Anonymous account creation failed. Might be due to an accidental duplicate. Duplicates are not yet handled.")
+        return "Anonymous account creation failed."
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
