@@ -12,6 +12,10 @@ tensorboard-log/
 # Models
 Models/
 model-checkpoints/
+# Private files
+firebase_config.json
+moska-admin.json
+thesis/
 
 # VSCode
 .VSCodeCounter
