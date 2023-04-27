@@ -27,6 +27,7 @@ def init_logger(session):
     if not os.path.exists("./Logs"):
         os.mkdir("./Logs")
     # Log file for every six hours
+    # TODO: DOESN'T WORK!!
     log_file = "./Logs/" + "app"+datetime.datetime.now().strftime("%Y-%m-%d")+"-"+str(datetime.datetime.now().hour//6)+".log"
     fh = logging.FileHandler(log_file, mode="a")
     form = logging.Formatter("%(asctime)s-%(levelname)s-%(message)s")
