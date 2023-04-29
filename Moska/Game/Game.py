@@ -351,11 +351,6 @@ class MoskaGame:
             if not player:
                 player = self.threads[self.lock_holder]
             if isinstance(player, AbstractPlayer):
-                # Also yields false with 20% probability, to randomize turns of players
-                if random.random() < 0.2:
-                    self.lock_holder = None
-                    yield False
-                    return
                 self.glog.debug(f"{player.name} has locked the game.")
             # Here we tell the player that they have the key
             yield True
@@ -368,6 +363,9 @@ class MoskaGame:
             self.lock_holder = None
         if isinstance(player, AbstractPlayer):
             self.glog.debug(f"{player.name} has unlocked the game.")
+            # Sleep a random time between 0 and 100 ms
+            sleep_time = random.random()/100
+            time.sleep(sleep_time)
         return
     
     def _reduce_logging_wrapper(self,func) -> Callable:
