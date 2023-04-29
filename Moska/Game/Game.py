@@ -3,7 +3,6 @@ import functools
 import os
 import time
 from Moska.Game.GameState import FullGameState
-from ..Player.HumanPlayer import HumanPlayer
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -95,7 +94,6 @@ class MoskaGame:
             model_paths (List[str], optional): The paths to the models to use. Defaults to [""]. If the paths are empty, no neural network based models can be used.
         """
         self.nturns = 0
-        self.lock_holders = []
         self.to_console = to_console
         self.GATHER_DATA = gather_data
         self.IS_RUNNING = False
