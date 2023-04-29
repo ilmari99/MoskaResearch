@@ -362,7 +362,7 @@ class MoskaGame:
         if isinstance(player, AbstractPlayer):
             self.glog.debug(f"{player.name} has unlocked the game.")
             # Sleep a random time between 0 and 100 ms
-            sleep_time = random.random()/100
+            sleep_time = random.random()/10
             time.sleep(sleep_time)
         return
     
