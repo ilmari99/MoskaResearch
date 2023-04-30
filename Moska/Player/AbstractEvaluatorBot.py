@@ -250,6 +250,73 @@ class AbstractEvaluatorBot(AbstractPlayer):
         plays = actual_plays
         return plays, states
     
+    def _get_initial_plays(self, cards : List[Card], fits : int):
+        single_solutions = itertools.combinations(cards,1)
+        og_counter = Counter([c.value for c in cards])
+        cards = [c for c in cards if og_counter[c.value] >= 2]
+        #card_sets = []
+        #for val, count in og_counter.items():
+        #    if count >= 2:
+        #        card_sets.append([c for c in cards if c.value == val])
+        card_sets = [[c for c in cards if c.value == val] for val, count in og_counter.items() if count >= 2]
+
+        legal_plays = list(single_solutions)
+        # Take all combinations of atleast two cards from each set
+        # Store in a dictionary, where the first key is the cards value, and the second key is the length of the play
+        cards_set_combinations = {}
+        for i in range(1,len(card_sets) + 1):
+            value = card_sets[i - 1][0].value
+            cards_set_combinations[value] = {}
+            for len_play in range(2, min(fits, len(card_sets[i - 1]))+1):
+                plays = list(itertools.combinations(card_sets[i - 1],len_play))
+                if len(plays) > 0:
+                    cards_set_combinations[value][len_play] = plays
+
+        # Now we have a dictionary of each card value, and all the pure plays of that value
+        # cards_set_combinations = {value(int) : {len_play(int) : plays(List)}}
+
+        # Now we want to find all the combinations of those plays
+        # We do this, by sort of tree searching, where we start with a value, and add all of its pure plays to the list of plays
+        # Then for each of those plays, we go to all other values, and combine all of their pure plays with the current play and them to the list of plays
+        # Then for each of those plays, we go to all other values, and combine all of their pure plays with the current play and them to the list of plays
+        # And so on, until we have gone through all values
+        def get_play_combinations(play,visited = set(), started_with = set()):
+            """ Return a list of combinations from the cards_set_combinations dictionary. The input is a tuple play,
+            and this function returns all plays, that can be combined with the input play, that do not share values with the input play.
+            """
+            play = list(play)
+            if len(play) >= fits:
+                return [play]
+            if not visited:
+                visited = set((c.value for c in play))
+            combined_plays = [play]
+            for val, plays in cards_set_combinations.items():
+                if val not in visited:
+                    for len_play, plays in plays.items():
+                        if len_play + len(play) > fits:
+                            continue
+                        for p in plays:
+                            if p in started_with:
+                                continue
+                            visited.add(val)
+                            old_visited = visited.copy()
+                            combs = get_play_combinations(tuple(list(play) + list(p)),visited,started_with)
+                            visited = old_visited
+                            combined_plays += combs
+            return combined_plays
+        
+        started_with = set()
+        # Now we have a function that can return all combinations of plays, that do not share values, from some starting play
+        for val, plays in cards_set_combinations.items():
+            for len_play, plays in plays.items():
+                for play in plays:
+                    started_with.add(tuple(play))
+                    combs = get_play_combinations(tuple(play),started_with=started_with)
+                    legal_plays += [tuple(c) for c in combs]
+        legal_plays = list(set(legal_plays))
+        legal_plays = [list(play) for play in legal_plays]
+        return legal_plays
+    
     def _get_initial_play_play_states(self) -> Tuple[List[List[Card]], List[FullGameState]]:
         """ Get N possible plays and the resulting states for playing cards to other on an Initiating turn.
         Return the possible plays, and the corresponding states.
@@ -257,38 +324,11 @@ class AbstractEvaluatorBot(AbstractPlayer):
         cards = self.hand.copy().cards
         fits = min(self._fits_to_table(), len(cards))
         self.plog.debug(f"{fits} fits to table")
-        #plays = itertools.chain.from_iterable((itertools.combinations(cards,i) for i in range(1,fits + 1)))
-        play_iterables = []
-        counter = Counter([c.value for c in cards])
-        # We can play each single card, and all cards that have at least 2 of the same value
-        for i in range(1,fits + 1):
-            tmp_cards = cards.copy()
-            # Filter out cards that cant be a part of a play
-            # TODOOO, clean, improve, speed-up
-            if i > 1:
-                tmp_cards = [c for c in tmp_cards if counter[c.value] >= 2]
-            """
-            if i == 2:
-                tmp_cards = [c for c in tmp_cards if counter[c.value] == 2]
-            if i == 3:
-                tmp_cards = [c for c in tmp_cards if counter[c.value] == 3]
-            if i == 4:
-                tmp_cards = [c for c in tmp_cards if counter[c.value] in [2,4]]
-            if i == 5:
-                tmp_cards = [c for c in tmp_cards if counter[c.value] in [2,3]]
-            """
-            # Add the i length combinations to the play_iterables
-            play_iterables.append(itertools.combinations(tmp_cards,i))
-        plays = itertools.chain.from_iterable(play_iterables)
-        legal_plays = []
-        count = 0
-        for play in plays:
-            count += 1
-            c = Counter([c.value for c in play])
-            if (len(play) == 1 or all((count >= 2 for count in c.values()))):
-                legal_plays.append(list(play))
-        self.plog.debug(f"Tried {count} InitialPlays")
+        legal_plays = self._get_initial_plays(cards, fits)
         self.plog.debug(f"Found {len(legal_plays)} legal plays to 'InitialPlay'.")
+        if len(legal_plays) > self.max_num_states:
+            self.plog.debug(f"Sampling {self.max_num_states} states from {len(legal_plays)} legal plays.")
+            legal_plays = random.sample(legal_plays,self.max_num_states)
         target = self.moskaGame.get_target_player()
         random.shuffle(legal_plays)
         states = []

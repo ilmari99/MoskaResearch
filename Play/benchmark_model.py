@@ -188,11 +188,11 @@ def small_benchmark(player_type, pl_args, game_kwargs):
     },**game_kwargs
     }
     player = PlayerWrapper(player_type, pl_args)
-    BENCH1.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    #BENCH1.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    #BENCH2.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
     BENCH3.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
-    BENCH4.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
-    BENCH5.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    #BENCH4.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
+    #BENCH5.run(player,cpus = 10,chunksize=1,ngames=10,custom_game_kwargs=game_kwargs)
 
 def standard_benchmark(player_type, pl_args, game_kwargs, cpus=50,chunksize=3):
     game_kwargs = { **{
@@ -202,10 +202,10 @@ def standard_benchmark(player_type, pl_args, game_kwargs, cpus=50,chunksize=3):
     },**game_kwargs
     }
     player = PlayerWrapper(player_type, pl_args)
-    BENCH1.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
-    BENCH2.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    #BENCH1.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    #BENCH2.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
     BENCH3.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
-    BENCH4.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
+    #BENCH4.run(player,cpus = cpus,chunksize=chunksize,ngames=2000,custom_game_kwargs=game_kwargs)
 
 def clean_up():
     shutil.rmtree("./Benchmark1", ignore_errors=True)

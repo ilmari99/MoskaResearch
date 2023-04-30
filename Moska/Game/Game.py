@@ -1,10 +1,8 @@
 import contextlib
 import functools
 import os
-import sys
 import time
 from Moska.Game.GameState import FullGameState
-from ..Player.HumanPlayer import HumanPlayer
 from ..Player.MoskaBot3 import MoskaBot3
 from . import utils
 from ..Player.MoskaBot0 import MoskaBot0
@@ -22,7 +20,6 @@ from .CardMonitor import CardMonitor
 import threading
 import logging
 import random
-from contextlib import redirect_stdout
 #import tensorflow as tf is done at set_model_vars_from_path IF a path is given.
 # This is to gain a speedup when not using tensorflow
 from .Turns import PlayFallFromDeck, PlayFallFromHand, PlayToOther, InitialPlay, EndTurn, PlayToSelf, Skip, PlayToSelfFromDeck
@@ -344,15 +341,16 @@ class MoskaGame:
                 print(f"Game {self.log_file}: Couldn't find lock holder id {self.lock_holder}!")
                 yield False
                 return
+            # Yields false if the game is exiting
             if self.EXIT_FLAG:
                 self.lock_holder = None
                 yield False
                 return
-            # Here we tell the player that they have the key
             if not player:
                 player = self.threads[self.lock_holder]
             if isinstance(player, AbstractPlayer):
                 self.glog.debug(f"{player.name} has locked the game.")
+            # Here we tell the player that they have the key
             yield True
             if len(set(self.cards_to_fall)) != len(self.cards_to_fall):
                 print(f"Game log {self.log_file} failed, DUPLICATE CARD")
@@ -363,6 +361,9 @@ class MoskaGame:
             self.lock_holder = None
         if isinstance(player, AbstractPlayer):
             self.glog.debug(f"{player.name} has unlocked the game.")
+            # Sleep a random time between 0 and 100 ms
+            sleep_time = random.random()/10
+            time.sleep(sleep_time)
         return
     
     def _reduce_logging_wrapper(self,func) -> Callable:
