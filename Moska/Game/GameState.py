@@ -1,4 +1,5 @@
 import copy
+import json
 from typing import Dict, List, TYPE_CHECKING, Tuple
 import warnings
 from .Deck import Card
@@ -228,36 +229,6 @@ class FullGameState:
             # The index of the card in the reference deck is set to the number of
             # cards that the card can fall OR -1 if the card is not in the game.
             out[REFERENCE_DECK.index(card)] = encoding_value
-        return out
-    
-    def as_full_information_vector(self):
-        raise NotImplementedError("This method is not implemented correctly yet.")
-        out = []
-        # How many cards are left in the deck
-        out += [len(self.deck.cards)]
-        # How many cards each player has in their hand
-        out += [len(hand) for hand in self.known_player_cards]
-        # Which cards are still in the game, and encoded as how many cards they can fall.
-        out += self.encode_cards(REFERENCE_DECK)
-        # Which cards are on the table, waiting to be fell
-        out += self.encode_cards(self.cards_to_fall)
-        # Which cards have fallen during this turn
-        out += self.encode_cards(self.fell_cards)
-        # Whether each player is ready, ordered by pid. This tells whether the player might play new cards to the current table.
-        out += [1 if ready else 0 for ready in self.players_ready]
-        # Whether each player is in the game, ordered by pid. This tells whether the player is still in the game.
-        out += [1 if in_game else 0 for in_game in self.players_in_game]
-        # Whether there is kopled card on the table
-        out += 1 if any([card.kopled for card in self.cards_to_fall]) else 0
-        # Add a vector of the order of the cards in the deck, encoded as the number of cards that the card can fall.
-        deck_order = [0 for _ in range(52)]
-        for i,card in enumerate(self.deck.cards):
-            deck_order[i] = self.cards_fall_dict[card]
-        out += deck_order
-        
-        # Full information about the cards in each player's hand
-        for cards in self.full_player_cards:
-            out += self.encode_cards(cards)
         return out
     
     def _as_perspective_bitmap_vector(self,player : 'AbstractPlayer') -> List[int]:
