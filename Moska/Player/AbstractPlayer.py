@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import os
 import random
 import numpy as np
@@ -366,6 +367,23 @@ class AbstractPlayer(ABC):
                 playable.remove("InitialPlay")
         assert bool(playable), f"There must be something to play"
         return playable
+    
+    def as_json(self) -> dict:
+        """ Returns the player as a json serializable dictionary
+
+        Returns:
+            dict: The player as a dictionary
+        """
+        json_dict = {
+            "name":self.name,
+            "pid":self.pid,
+            "rank":self.rank,
+            "ready":self.ready,
+            "finished":self.EXIT_STATUS,
+            "last_evaluation" : self.moskaGame.player_evals_data.get(self.pid,[-1])[-1],
+            "cards" : [c.as_str(symbol=False) for c in self.hand.cards],
+            }
+        return json.dumps(json_dict,indent=0)
     
     def _start(self) -> int:
         """ Initializes the players thread, starts the thread and returns the threads native identification """

@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import json
 import os
 import time
 from Moska.Game.GameState import FullGameState
@@ -283,20 +284,6 @@ class MoskaGame:
             pl.moskaGame = self
         self.turnCycle = utils.TurnCycle(players)
         return
-        
-    @classmethod
-    def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[AbstractPlayer]:
-        """ Get a list of AbstractPlayer  subclasses.
-        """
-        raise NotImplementedError("This is not confirmed to work!! See Play/Utils.py for getting random players.")
-        players = []
-        if not player_types:
-            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, MoskaBot3, RandomPlayer, HeuristicEvaluatorBot, NNEvaluatorBot, NNHIFEvaluatorBot]
-        for i in range(n):
-            rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int]()
-            players.append(player)
-        return players
     
     def _set_glogger(self,log_file : str) -> None:
         """Set the games logger `glog`.
@@ -490,6 +477,21 @@ class MoskaGame:
         # Return the new_state
         return new_state
     
+    def _basic_json_repr(self) -> str:
+        """ Return a json representation of the game state.
+        """
+        json_dict = {
+            "trump_card" : self.trump_card.as_str(symbol=False),
+            "deck_left" : len(self.deck.cards),
+            "cards_to_kill" : [c.as_str(symbol=False) for c in self.cards_to_fall],
+            "killed_cards" : [c.as_str(symbol=False) for c in self.fell_cards],
+            "target" : self.get_target_player().name,
+            "initiator" : self.get_initiating_player().name,
+            # Load players dictionaires from jsons
+            "players" : [json.loads(pl.as_json()) for pl in self.players]
+        }
+        return json.dumps(json_dict,indent=4)
+    
     def _basic_repr(self) -> str:
         """ Print the current state of the game,
         showing number of cards left in the deck, the trump card, target,
@@ -622,6 +624,8 @@ class MoskaGame:
             return self._basic_repr_with_all_evals_and_cards()
         elif self.print_format == "human":
             return self._basic_repr_with_human_evals()
+        elif self.print_format == "json":
+            return self._basic_json_repr()
         else:
             raise NameError(f"Argument 'print_format' was not recognized. Given argument: {self.print_format}")
     
