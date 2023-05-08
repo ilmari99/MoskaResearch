@@ -315,6 +315,8 @@ class AbstractPlayer(ABC):
         Returns:
             list[str]: List of playable move identifiers
         """
+        if self.name != self.moskaGame.get_turn_player_name():
+            return []
         playable = list(self.moves.keys())
         # If the player has already played the desired cards, and he is not the target
         # If the player is the target, he might not want to play all cards at one turn, since others can then put same value cards to the table
@@ -382,6 +384,7 @@ class AbstractPlayer(ABC):
             "finished":self.EXIT_STATUS,
             "last_evaluation" : self.moskaGame.player_evals_data.get(self.pid,[-1])[-1],
             "cards" : [c.as_str(symbol=False) for c in self.hand.cards],
+            "playable_moves" : self._playable_moves(),
             }
         return json.dumps(json_dict,indent=0)
     
