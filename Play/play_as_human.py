@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+import time
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import sys
@@ -63,7 +64,7 @@ def get_test_human_players(model_path : str = "./model.tflite",
     This is used for testing purposes.
     """
     shared_kwargs = {"log_level" : logging.INFO,
-                     "delay":0.1,
+                     "delay":0,
                      "requires_graphic":True,
                      "max_num_states":8000,
                      "max_num_samples":1000,
@@ -130,8 +131,9 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
         "timeout" : 2000,
         "model_paths":[os.path.abspath(path) for path in [model_path]],
         "player_evals" : "plot",
-        "print_format" : "human",
-        "to_console" : True,
+        "print_format" : "basic",
+        "in_console" : True,
+        "in_web" : False
     }
     # Convert general game arguments to game specific arguments (replace '{x}' with game_id)
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
@@ -143,4 +145,6 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
     return out
 
 if __name__ == "__main__":
+    start_time = time.time()
     play_as_human(model_path="./Models/Model-nn1-BB/model.tflite", pred_format="bitmap",test=False, all_against_human=False)
+    print("Time taken:",time.time() - start_time)
