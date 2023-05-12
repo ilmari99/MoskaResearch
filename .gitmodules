@@ -1,0 +1,3 @@
+[submodule "Front"]
+	path = Front
+	url = https://github.com/LeeviKamarainen/Moska.git
