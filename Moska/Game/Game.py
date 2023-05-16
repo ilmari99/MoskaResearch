@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import json
 import os
 import time
 from Moska.Game.GameState import FullGameState
@@ -79,7 +80,8 @@ class MoskaGame:
                  model_paths : List[str] = [""],
                  player_evals : str = "", # Either 'save', or 'plot' or ''
                  print_format : str = "basic", # Either 'basic', 'with_cards', 'with_evals', 'human'
-                 to_console : bool = False,
+                 in_console : bool = False,
+                 in_web : bool = False,
                  ):
         """Initialize the game, by setting the deck, models, players, card monitor and some other variables.
         Args:
@@ -94,7 +96,11 @@ class MoskaGame:
             model_paths (List[str], optional): The paths to the models to use. Defaults to [""]. If the paths are empty, no neural network based models can be used.
         """
         self.nturns = 0
-        self.to_console = to_console
+        if in_console and in_web:
+            raise ValueError("Cannot be in both console and web")
+        self.in_console = in_console
+        self.in_web = in_web
+        self.has_graphics = in_console or in_web
         self.GATHER_DATA = gather_data
         self.IS_RUNNING = False
         # This plotting data is used if atleast one of the players requires graphic
@@ -283,20 +289,6 @@ class MoskaGame:
             pl.moskaGame = self
         self.turnCycle = utils.TurnCycle(players)
         return
-        
-    @classmethod
-    def _get_random_players(cls,n, player_types : List[Callable] = [],**plkwargs) -> List[AbstractPlayer]:
-        """ Get a list of AbstractPlayer  subclasses.
-        """
-        raise NotImplementedError("This is not confirmed to work!! See Play/Utils.py for getting random players.")
-        players = []
-        if not player_types:
-            player_types = [MoskaBot0,MoskaBot1, MoskaBot2, MoskaBot3, RandomPlayer, HeuristicEvaluatorBot, NNEvaluatorBot, NNHIFEvaluatorBot]
-        for i in range(n):
-            rand_int = random.randint(0, len(player_types)-1)
-            player = player_types[rand_int]()
-            players.append(player)
-        return players
     
     def _set_glogger(self,log_file : str) -> None:
         """Set the games logger `glog`.
@@ -415,20 +407,28 @@ class MoskaGame:
 
         TODO: Change AssertioErrors to custom errors.
         """
+        # If the lock holder isn't correct, raise an error
         if self.lock_holder != threading.get_native_id():
             raise threading.ThreadError(f"Making moves is supposed to be implicit and called in a context manager after acquiring the games lock")
+        # If incorrect move, raise an error
         if move not in self.turns.keys():
             raise NameError(f"Attempted to make move '{move}' which is not recognized as a move in Turns.py")
+        # Find the function for the move
         move_call = self.turns[move]
+        # Find the calling player
         player = self.threads[self.lock_holder]
+        # If the move isn't a mock move, increment the turn counter
         if not mock:
             self.nturns += 1
-            if self.to_console:
+            # If we have either console or web graphics, print the move
+            if self.has_graphics:
                 def _print_fmt(x):
                     if isinstance(x,AbstractPlayer):
                         return x.name
                     elif isinstance(x,Callable):
                         return ""
+                    if self.in_web and isinstance(x,(list,tuple)) and len(x)>0 and isinstance(x[0],Card):
+                        return [c.as_str(symbol=False) for c in x]
                     else:
                         return x
                 self.glog.info(f"Turn number: {self.nturns}: '{player.name}' called '{move}' with args {[_print_fmt(a) for a in args]}")
@@ -451,12 +451,19 @@ class MoskaGame:
                     self.player_evals_data[pl.pid] = []
                 self.player_evals_data[pl.pid].append(pl_eval)
         if not mock:
-            if self.log_level == logging.DEBUG:
-                self.glog.info(f"{self._basic_repr_with_all_evals_and_cards()}")
-            elif self.log_level == logging.INFO:
-                self.glog.info(f"{self._basic_repr_with_cards()}")
-            if self.to_console and move != "Skip":
+            #if self.log_level == logging.DEBUG:
+            #    self.glog.info(f"{self._basic_repr_with_all_evals_and_cards()}")
+            #elif self.log_level == logging.INFO:
+            #    self.glog.info(f"{self._basic_repr_with_cards()}")
+            if self.in_console and move != "Skip":
                 print(f"{self._basic_repr_with_human_evals()}")
+            elif self.in_web:
+                # Print the full json in one line
+                s = self._basic_json_repr()
+                s = s.replace("\n","")
+                s = s.replace(" ","")
+                s = s.replace("\t","")
+                print(s)
         # If the move is something else than Skip, have all players play again, except the player who just played
         # The target player can only end their turn, after every opponent has played a Skip move. Kind of like checking in poker.
         if move != "Skip":
@@ -489,6 +496,33 @@ class MoskaGame:
             raise AssertionError(f"Mock move failed: {msg}")
         # Return the new_state
         return new_state
+    
+    def get_turn_player_name(self) -> AbstractPlayer:
+        """ Return player who is the lock holder.
+        """
+        try:
+            return self.threads[self.lock_holder].name
+        except KeyError:
+            self.glog.warning(f"Could not find player with thread id {self.lock_holder}")
+            return None
+        except AttributeError:
+            self.glog.warning(f"Lock holder is not a player")
+    
+    def _basic_json_repr(self) -> str:
+        """ Return a json representation of the game state.
+        """
+        json_dict = {
+            "trump_card" : self.trump_card.as_str(symbol=False),
+            "deck_left" : len(self.deck.cards),
+            "cards_to_kill" : [c.as_str(symbol=False) for c in self.cards_to_fall],
+            "killed_cards" : [c.as_str(symbol=False) for c in self.fell_cards],
+            "target" : self.get_target_player().name,
+            "initiator" : self.get_initiating_player().name,
+            "turn" : self.get_turn_player_name(),
+            # Load players dictionaires from jsons
+            "players" : [json.loads(pl.as_json()) for pl in self.players]
+        }
+        return json.dumps(json_dict,indent=4)
     
     def _basic_repr(self) -> str:
         """ Print the current state of the game,
@@ -622,6 +656,8 @@ class MoskaGame:
             return self._basic_repr_with_all_evals_and_cards()
         elif self.print_format == "human":
             return self._basic_repr_with_human_evals()
+        elif self.print_format == "json":
+            return self._basic_json_repr()
         else:
             raise NameError(f"Argument 'print_format' was not recognized. Given argument: {self.print_format}")
     
@@ -723,7 +759,7 @@ class MoskaGame:
             p_with_2.hand.add([trump_card])
             trump_card = p_with_2.hand.pop_cards(cond = lambda x : x.suit == self.trump and x.value == 2)[0]
             self.glog.info(f"Removed {trump_card} from {p_with_2.name}")
-            if self.to_console:
+            if self.has_graphics:
                 print(f"Player {p_with_2.name} had trump 2 in hand. Swapping {self._orig_trump_card} with {trump_card}")
         self.trump_card = trump_card
         self.deck.place_to_bottom(self.trump_card)
@@ -806,7 +842,7 @@ class MoskaGame:
         state_results = []
         # If gathering data, save the data to a file
         if self.GATHER_DATA:
-            balance, shuffle = (False, False) if self.to_console else (True, True)
+            balance, shuffle = (False, False) if self.has_graphics else (True, True)
             state_results = self.get_player_state_vectors(shuffle = shuffle, balance = balance)
             with open("Vectors/"+self.get_random_file_name(),"w") as f:
                 data = str(state_results).replace("], [","\n").replace(" ","")

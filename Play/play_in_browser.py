@@ -9,6 +9,7 @@ from Moska.Game.Game import MoskaGame
 from Moska.Player.HumanBrowserPlayer import HumanBrowserPlayer
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 from Moska.Player.NNHIFEvaluatorBot import NNHIFEvaluatorBot
+from Moska.Player.HumanJsonPlayer import HumanJsonPlayer
 from Utils import args_to_gamekwargs, make_log_dir,get_random_players, replace_setting_values
 from PlayerWrapper import PlayerWrapper
 from argparse import ArgumentParser
@@ -31,7 +32,7 @@ def get_human_players(model_path : str = "model.tflite",
                      "delay":0.1,
                      "requires_graphic":True}
     players : List[PlayerWrapper] = []
-    players.append(PlayerWrapper(HumanBrowserPlayer, {**shared_kwargs, **{"name":human_name,"log_file":"Game-{x}-" +f"{human_name}" + ".log"}}))
+    players.append(PlayerWrapper(HumanJsonPlayer, {**shared_kwargs, **{"name":human_name,"log_file":"Game-{x}-" +f"{human_name}" + ".log"}}))
     players.append(PlayerWrapper(NNHIFEvaluatorBot, {**shared_kwargs,**{"name" : "NN2-HIF1",
                                             "log_file":"Game-{x}-NNEV1.log", 
                                             "max_num_states":8000,
@@ -133,7 +134,9 @@ def play_as_human(model_path = "./Models/Model-nn1-fuller/model.tflite",
         "model_paths":[os.path.abspath(path) for path in [model_path]],
         "player_evals" : "save",
         "print_format" : "basic_with_card_symbols",
-        "to_console" : True,
+        # XOR of these should be true; either but not both
+        "in_console" : False,
+        "in_web" : True,
     }
     # Convert general game arguments to game specific arguments (replace '{x}' with game_id)
     game_args = args_to_gamekwargs(gamekwargs,players,gameid = game_id,shuffle = True)
