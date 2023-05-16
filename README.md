@@ -1,5 +1,9 @@
 # Moska Card game simulator
 
+![moska-online](moska-online.png)
+
+*https://moska-online.com/*
+
 ## **General** <!-- omit in toc -->
 This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players. Moska is a (distant) cousin to the more popular russian card game "Durak", but played with a full deck, and a quite big variation of the rules.
 
