@@ -4,7 +4,9 @@
 
 *https://moska-online.com/*
 
-The thesis, that is based on this repository can be found from: https://urn.fi/URN:NBN:fi-fe2023051644576
+**NOTE1**: If you're thinking of developing something with Moska or want to try creating agents yourself; See Moska Python library: https://github.com/ilmari99/MoskaEngine
+
+**NOTE2**: The thesis, that is based on this repository can be found from: https://urn.fi/URN:NBN:fi-fe2023051644576
 
 ## **General** <!-- omit in toc -->
 This repository is about a hidden information, non-sequential multiplayer game called 'Moska', which is popular in some parts of Finland. This repository contains a game engine, abstract player interfaces and implemented players. Moska is a (distant) cousin to the more popular russian card game "Durak", but played with a full deck, and a quite big variation of the rules.
