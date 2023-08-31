@@ -27,8 +27,8 @@ def simulate_fully_random_dataset(number_of_rounds = 100,
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Simulate a fully random dataset.")
-    parser.add_argument("--number_of_rounds", help="Number of rounds to simulate",default=2, type=int)
-    parser.add_argument("--number_of_games", help="Number of games to simulate",default=5, type=int)
+    parser.add_argument("--number_of_rounds", help="Number of rounds to simulate",default=100, type=int)
+    parser.add_argument("--number_of_games", help="Number of games to simulate",default=100, type=int)
     parser.add_argument("--folder", help="Folder to save the dataset in",default="FullyRandomDataset", type=str)
     parser.add_argument("--cpus", help="Number of cpus to use",default=None, type=int)
     parser.add_argument("--chunksize", help="Chunksize for multiprocessing",default=None, type=int)

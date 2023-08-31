@@ -1,5 +1,10 @@
 MoskaEngine/
 .venv
+model*.h5
+model*.tflite
+FullyRandomDataset*/
+tensorboard*/
+histories.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

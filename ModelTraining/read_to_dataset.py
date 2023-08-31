@@ -8,7 +8,7 @@ import tensorflow as tf
 MISC_PARTS = list(range(0,5)) + list(range(161,170))
 CARD_PARTS = list((n for n in range(0,430) if n not in MISC_PARTS))
 
-def create_dataset(paths, add_channel = False, shuffle_files = True, return_n_files = False) -> tf.data.Dataset:
+def read_to_dataset(paths, add_channel = False, shuffle_files = True, return_n_files = False) -> tf.data.Dataset:
     """ Create a tf dataset from a folder of files"""
     if not isinstance(paths, (list, tuple)):
         paths = [paths]
