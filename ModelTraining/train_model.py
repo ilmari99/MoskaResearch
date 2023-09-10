@@ -25,8 +25,48 @@ def get_model(input_shape):
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00005),
             loss='binary_crossentropy',
             metrics=['accuracy'])
-    
     return model
+
+def get_branched_model(input_shape):
+    """
+    This model is a branched neural network, where we use a convolutional network to extract features from the cards,
+    and a dense network to extract features from the game info.
+    Finally we concatenate the outputs of the two networks and feed them into a dense network.
+    """
+    info_indices = list(range(0,26))
+    card_indices = list(range(26,442))
+    inputs = tf.keras.Input(shape=input_shape)
+    info = tf.keras.layers.Lambda(lambda x: tf.gather(x, info_indices, axis=1))(inputs)
+    cards = tf.keras.layers.Lambda(lambda x: tf.gather(x, card_indices, axis=1))(inputs)
+    
+    # Information network (26)
+    infox = tf.keras.layers.BatchNormalization()(info)
+    
+    # Card network (must add a channel dimension) (416 elems)
+    cards = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1))(cards)
+    cardsx = tf.keras.layers.Conv1D(filters=16, kernel_size=3, strides=1, activation="relu")(cards)
+    cardsx = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=1, activation="relu")(cardsx)
+    cardsx = tf.keras.layers.Conv1D(filters=16, kernel_size=8, strides=1, activation="relu")(cardsx)
+    cardsx = tf.keras.layers.Conv1D(filters=16, kernel_size=5, strides=1, activation="relu")(cardsx)
+    cardsx = tf.keras.layers.Flatten()(cardsx)
+    cardsx = tf.keras.layers.Dense(75, activation="relu")(cardsx)
+    cardsx = tf.keras.layers.Dropout(rate=0.4)(cardsx)
+    cardsx = tf.keras.layers.Dense(75, activation="relu")(cardsx)
+    
+    combinedx = tf.keras.layers.concatenate([infox, cardsx])
+    combinedx = tf.keras.layers.Dense(120, activation="relu")(combinedx)
+    combinedx = tf.keras.layers.Dropout(rate=0.4)(combinedx)
+    combinedx = tf.keras.layers.Dense(100, activation="relu")(combinedx)
+    combinedx = tf.keras.layers.Dropout(rate=0.4)(combinedx)
+    combinedx = tf.keras.layers.Dense(100, activation="relu")(combinedx)
+    combinedx = tf.keras.layers.Dense(units=1, activation="sigmoid")(combinedx)
+    
+    model = tf.keras.Model(inputs=inputs, outputs=combinedx)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00005),
+            loss='binary_crossentropy',
+            metrics=['accuracy'])
+    return model
+    
 
 
 if __name__ == "__main__":
@@ -36,33 +76,35 @@ if __name__ == "__main__":
     parser.add_argument("--input_shape", help="The input shape of the model", default="(442,)")
     parser.add_argument("--batch_size", help="The batch size", default="4096")
     parser = parser.parse_args()
-    DATA_FOLDERS = ["./FullyRandomDataset-V1/Vectors"]
+    DATA_FOLDERS = ["./NotRandomDataset_1/Vectors"]
     INPUT_SHAPE = eval(parser.input_shape)
     BATCH_SIZE = int(parser.batch_size)
     print("Data folders: ",DATA_FOLDERS)
     print("Input shape: ",INPUT_SHAPE)
     print("Batch size: ",BATCH_SIZE)
     
-    all_dataset, n_files = create_dataset(DATA_FOLDERS,
+    all_dataset, n_files = read_to_dataset(DATA_FOLDERS,
         add_channel= True if INPUT_SHAPE[-1] == 1 else False,
         shuffle_files=True,
         return_n_files=True,
     )
     
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
-    model = get_model(INPUT_SHAPE)
+    #model = get_model(INPUT_SHAPE)
+    model = get_branched_model(INPUT_SHAPE)
     
     print(model.summary())
     
     approx_num_states = 80 * n_files
     
-    VALIDATION_LENGTH = int(0.06 * approx_num_states)
-    TEST_LENGTH = int(0.06 * approx_num_states)
-    BATCH_SIZE = 4096
+    VALIDATION_LENGTH = int(0.08 * approx_num_states)
+    TEST_LENGTH = int(0.08 * approx_num_states)
+    print(f"Validation length: {VALIDATION_LENGTH}")
+    BATCH_SIZE = 4*4096
     SHUFFLE_BUFFER_SIZE = 4*BATCH_SIZE
-    tensorboard_log = "tensorboard-log/"
+    tensorboard_log = "model_convV3_tensorboard/"
     checkpoint_filepath = './model-checkpoints/'
-    model_file = "model.h5" 
+    model_file = "model_convV3.h5" 
     if len(sys.argv) > 1:
            to_dir = sys.argv[1]
            tensorboard_log = os.path.join(to_dir,tensorboard_log)
@@ -71,16 +113,16 @@ if __name__ == "__main__":
     print("Tensorboard log directory: ",tensorboard_log)
     print("Checkpoint directory: ",checkpoint_filepath)
     print("Model file: ",model_file)
-    all_dataset = all_dataset.shuffle(SHUFFLE_BUFFER_SIZE, reshuffle_each_iteration=True)
+    #all_dataset = all_dataset.shuffle(SHUFFLE_BUFFER_SIZE, reshuffle_each_iteration=True)
     validation_ds = all_dataset.take(VALIDATION_LENGTH).batch(BATCH_SIZE)
     test_ds = all_dataset.skip(VALIDATION_LENGTH).take(TEST_LENGTH).batch(BATCH_SIZE)
-    train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    train_ds = all_dataset.skip(VALIDATION_LENGTH+TEST_LENGTH).shuffle(SHUFFLE_BUFFER_SIZE, reshuffle_each_iteration=True).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     
     if os.path.exists(tensorboard_log):
         warnings.warn("Tensorboard log directory already exists!")
     
-    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=10, restore_best_weights=True, start_from_epoch=5)
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=5)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(min_delta=0, patience=5, restore_best_weights=True, start_from_epoch=0)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_log,histogram_freq=1)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
         save_weights_only=False,
