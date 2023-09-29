@@ -10,6 +10,7 @@ void combine_files(const char *path, const char *output, int max_num_files) {
     char file_path[1024];
     char data[1024];
     int fileno = 0;
+    int file_had_data = 0;
     // Open the output file for writing
     f = fopen(output, "w");
     if (f == NULL) {
@@ -35,21 +36,24 @@ void combine_files(const char *path, const char *output, int max_num_files) {
             perror("Error opening file");
             continue;
         }
-        if (fileno%100 == 0){
+        if (fileno%100 == 0 && fileno != 0){
             printf("%d files combined.\n",fileno);
         }
         fileno++;
         // Read the contents of the file and write it to the output file
         while (fgets(data, sizeof(data), f2) != NULL) {
             fputs(data, f);
+            file_had_data = 1;
         }
-        // Add a newline to the output file
-
-        fputs("\n", f);
+        if (file_had_data == 1){
+            fputs("\n", f);
+        }
+        file_had_data = 0;
 
         // Close the file
         fclose(f2);
     }
+    printf("%d files combined.\n",fileno);
 
     // Close the directory
     closedir(dir);
