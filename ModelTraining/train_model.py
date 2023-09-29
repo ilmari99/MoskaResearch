@@ -7,21 +7,20 @@ import ast
 import argparse
 from read_to_dataset import read_to_dataset
 
-def get_model(input_shape):
+def get_base_model(input_shape):
+    """ Same model used in the original study
+    """
     inputs = tf.keras.Input(shape=input_shape)
     x = tf.keras.layers.BatchNormalization()(inputs)
     x = tf.keras.layers.Dense(600, activation="relu")(x)
     x = tf.keras.layers.Dropout(rate=0.4)(x)
-    
     x = tf.keras.layers.Dense(550, activation="relu")(x)
     x = tf.keras.layers.Dropout(rate=0.4)(x)
-    
     x = tf.keras.layers.Dense(500, activation="relu")(x)
     x = tf.keras.layers.Dropout(rate=0.35)(x)
-    
     x = tf.keras.layers.Dense(450, activation="relu")(x)
-    x = tf.keras.layers.Dense(units=1, activation="sigmoid")(x)
-    model = tf.keras.Model(inputs=inputs, outputs=x)
+    outputs = tf.keras.layers.Dense(units=1, activation="sigmoid")(x)
+    model = tf.keras.Model(inputs=inputs, outputs=outputs)
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00005),
             loss='binary_crossentropy',
             metrics=['accuracy'])
@@ -68,7 +67,6 @@ def get_branched_model(input_shape):
     return model
     
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train a model")
     # Datafolders is a list of strings, so we need to evaluate it as a list of strings
@@ -76,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_shape", help="The input shape of the model", default="(442,)")
     parser.add_argument("--batch_size", help="The batch size", default="4096")
     parser = parser.parse_args()
-    DATA_FOLDERS = ["./NotRandomDataset_1/Vectors"]
+    DATA_FOLDERS = ["./NotRandomDataset_1/Vectors", "./Dataset/Vectors", "./FullyRandomDataset300k/Vectors"]
     INPUT_SHAPE = eval(parser.input_shape)
     BATCH_SIZE = int(parser.batch_size)
     print("Data folders: ",DATA_FOLDERS)
@@ -84,27 +82,25 @@ if __name__ == "__main__":
     print("Batch size: ",BATCH_SIZE)
     
     all_dataset, n_files = read_to_dataset(DATA_FOLDERS,
-        add_channel= True if INPUT_SHAPE[-1] == 1 else False,
+        add_channel = True if INPUT_SHAPE[-1] == 1 else False,
         shuffle_files=True,
         return_n_files=True,
     )
-    
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
-    #model = get_model(INPUT_SHAPE)
     model = get_branched_model(INPUT_SHAPE)
     
     print(model.summary())
     
     approx_num_states = 80 * n_files
     
-    VALIDATION_LENGTH = int(0.08 * approx_num_states)
-    TEST_LENGTH = int(0.08 * approx_num_states)
+    VALIDATION_LENGTH = int(0.05 * approx_num_states)
+    TEST_LENGTH = int(0.05 * approx_num_states)
     print(f"Validation length: {VALIDATION_LENGTH}")
     BATCH_SIZE = 4*4096
     SHUFFLE_BUFFER_SIZE = 4*BATCH_SIZE
-    tensorboard_log = "model_convV3_tensorboard/"
-    checkpoint_filepath = './model-checkpoints/'
-    model_file = "model_convV3.h5" 
+    tensorboard_log = "model-conv-tensorboard/"
+    checkpoint_filepath = './model-conv-checkpoints/'
+    model_file = "model-conv.h5"
     if len(sys.argv) > 1:
            to_dir = sys.argv[1]
            tensorboard_log = os.path.join(to_dir,tensorboard_log)
