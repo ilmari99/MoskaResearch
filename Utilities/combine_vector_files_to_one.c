@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <stdlib.h>
 
-void combine_files(const char *path, const char *output) {
+void combine_files(const char *path, const char *output, int max_num_files) {
     FILE *f;
     DIR *dir;
     struct dirent *ent;
@@ -22,9 +23,8 @@ void combine_files(const char *path, const char *output) {
         perror("Error opening directory");
         return;
     }
-
     // Loop through all the files in the directory
-    while ((ent = readdir(dir)) != NULL) {
+    while ((ent = readdir(dir)) != NULL && fileno < max_num_files) {
         // Construct the full path of the file
         strcpy(file_path, path);
         strcat(file_path, ent->d_name);
@@ -59,13 +59,13 @@ void combine_files(const char *path, const char *output) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printf("Usage: %s <input folder> <output file>\n", argv[0]);
+    if (argc < 4) {
+        printf("Usage: %s <input folder> <output file> <max_num_files>\n", argv[0]);
         return 1;
     }
 
     // Call the combine_files function with the input folder and output file name
-    combine_files(argv[1], argv[2]);
+    combine_files(argv[1], argv[2], atoi(argv[3]));
 
     return 0;
 }
