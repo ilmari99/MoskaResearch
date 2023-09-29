@@ -2,8 +2,8 @@ MoskaEngine/
 .venv
 model*.h5
 model*.tflite
-FullyRandomDataset*/
 tensorboard*/
+Datasets/
 histories.txt
 
 # Byte-compiled / optimized / DLL files
