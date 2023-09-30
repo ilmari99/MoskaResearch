@@ -54,9 +54,10 @@ if __name__ == "__main__":
     parser.add_argument("--cpus", help="The number of cpus to use", default=15)
     parser.add_argument("--chunksize", help="The chunksize to use", default=3)
     parser = parser.parse_args()
-    MODEL_PATHS = ["./Models/model-basic-from-1M-games.tflite",
+    MODEL_PATHS = ["./Models/model-basic-from-1000k-games.tflite",
                    "./Models/model-basic-from-700k-games.tflite",
                    "./Models/model-conv-from-500k-random-games.tflite",
+                   "./Models/model-basic-from-1300k-games.tflite",
                    ]
     NROUNDS = int(parser.nrounds)
     NGAMES = int(parser.ngames)
