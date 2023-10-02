@@ -1,7 +1,10 @@
 MoskaEngine/
 .venv
-model*.h5
-model*.tflite
+
+*.zip
+*.h5
+
+
 tensorboard*/
 Datasets/
 histories.txt
@@ -17,8 +20,7 @@ Data/
 *.out
 *.csv
 tensorboard-log/
-# Models
-Models/
+
 model-checkpoints/
 # Private files
 firebase_config.json
