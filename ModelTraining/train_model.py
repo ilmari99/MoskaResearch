@@ -74,7 +74,12 @@ if __name__ == "__main__":
     parser.add_argument("--input_shape", help="The input shape of the model", default="(442,)")
     parser.add_argument("--batch_size", help="The batch size", default="4096")
     parser = parser.parse_args()
-    DATA_FOLDERS = ["./NotRandomDataset_1/Vectors", "./Dataset/Vectors", "./FullyRandomDataset300k/Vectors"]
+    DATA_FOLDERS = ["Datasets/NotRandomDataset_1/Vectors",
+                    "Datasets/Dataset/Vectors",
+                    "Datasets/NNDataset/Vectors",
+                    #"Datasets/FullyRandomDataset300k/Vectors",
+                    "Datasets/NNDataset400kV2Random1/Vectors",
+                    ]
     INPUT_SHAPE = eval(parser.input_shape)
     BATCH_SIZE = int(parser.batch_size)
     print("Data folders: ",DATA_FOLDERS)
@@ -87,7 +92,7 @@ if __name__ == "__main__":
         return_n_files=True,
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
-    model = get_branched_model(INPUT_SHAPE)
+    model = get_base_model(INPUT_SHAPE)
     
     print(model.summary())
     
@@ -98,9 +103,9 @@ if __name__ == "__main__":
     print(f"Validation length: {VALIDATION_LENGTH}")
     BATCH_SIZE = 4*4096
     SHUFFLE_BUFFER_SIZE = 4*BATCH_SIZE
-    tensorboard_log = "model-conv-tensorboard/"
-    checkpoint_filepath = './model-conv-checkpoints/'
-    model_file = "model-conv.h5"
+    tensorboard_log = "model-basic-from-1400k-nrnd-tensorboard/"
+    checkpoint_filepath = './model-basic-from-1400k-nrnd-checkpoints/'
+    model_file = "model-basic-from-1400k-games-nrnd.h5"
     if len(sys.argv) > 1:
            to_dir = sys.argv[1]
            tensorboard_log = os.path.join(to_dir,tensorboard_log)

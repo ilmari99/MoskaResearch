@@ -3,13 +3,13 @@ from MoskaEngine.Play.benchmark import BENCH3, clean_up
 from MoskaEngine.Play.PlayerWrapper import PlayerWrapper
 from MoskaEngine.Player.NNEvaluatorBot import NNEvaluatorBot
 
-good_pl_args = {"model_id":os.path.abspath(f"./Models/model-basic-from-1000k-games.tflite"),
+good_pl_args = {"model_id":os.path.abspath(f"./Models/model-basic-from-1400k-nrnd-games.tflite"),
                 "max_num_states" : 1000,
                 "pred_format" : "bitmap",
                 }
 
 game_kwargs = {
-        "model_paths" : [os.path.abspath(f"./Models/model-basic-from-1000k-games.tflite")],
+        "model_paths" : [os.path.abspath(f"./Models/model-basic-from-1400k-nrnd-games.tflite")],
 }
 
 print(good_pl_args)
