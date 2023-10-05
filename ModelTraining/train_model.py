@@ -73,12 +73,14 @@ if __name__ == "__main__":
     parser.add_argument("data_folders", help="The data folders to train on", default="./FullyRandomDataset-V1/",nargs='?')
     parser.add_argument("--input_shape", help="The input shape of the model", default="(442,)")
     parser.add_argument("--batch_size", help="The batch size", default="4096")
+    parser.add_argument("--model_file", help="The file to save the model to", default="")
     parser = parser.parse_args()
-    DATA_FOLDERS = ["Datasets/NotRandomDataset_1/Vectors",
-                    "Datasets/Dataset/Vectors",
+    DATA_FOLDERS = [#"Datasets/NotRandomDataset_1/Vectors",
+                    #"Datasets/Dataset/Vectors",
                     "Datasets/NNDataset/Vectors",
                     #"Datasets/FullyRandomDataset300k/Vectors",
                     "Datasets/NNDataset400kV2Random1/Vectors",
+                    "Datasets/NNDataset400kV3Random1/Vectors",
                     ]
     INPUT_SHAPE = eval(parser.input_shape)
     BATCH_SIZE = int(parser.batch_size)
@@ -92,7 +94,9 @@ if __name__ == "__main__":
         return_n_files=True,
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
-    model = get_base_model(INPUT_SHAPE)
+    #model = get_base_model(INPUT_SHAPE)
+    model = get_branched_model(INPUT_SHAPE)
+    #model = tf.keras.models.load_model("model-basic-from-1000k-games-only-NN-games.h5")
     
     print(model.summary())
     
@@ -103,9 +107,11 @@ if __name__ == "__main__":
     print(f"Validation length: {VALIDATION_LENGTH}")
     BATCH_SIZE = 4*4096
     SHUFFLE_BUFFER_SIZE = 4*BATCH_SIZE
-    tensorboard_log = "model-basic-from-1400k-nrnd-tensorboard/"
-    checkpoint_filepath = './model-basic-from-1400k-nrnd-checkpoints/'
-    model_file = "model-basic-from-1400k-games-nrnd.h5"
+    model_file = parser.model_file if parser.model_file else "model-basic-from-1400k-only-NN-games.h5"
+    model_main_name = os.path.splitext(os.path.basename(model_file))[0]
+    model_file_path = f"ModelH5Files/{model_file}"
+    tensorboard_log = f"Tensorboard-logs/{model_main_name}"
+    checkpoint_filepath = f"NNCheckpoints/{model_main_name}"
     if len(sys.argv) > 1:
            to_dir = sys.argv[1]
            tensorboard_log = os.path.join(to_dir,tensorboard_log)
@@ -131,8 +137,9 @@ if __name__ == "__main__":
         mode='min',
         save_best_only=True)
     
-    model.fit(x=train_ds, 
-              validation_data=validation_ds, 
+    model.fit(x=train_ds,
+              validation_data=validation_ds,
+              initial_epoch=0,
               epochs=50, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
