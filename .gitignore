@@ -4,6 +4,11 @@ MoskaEngine/
 *.zip
 *.h5
 
+Tensorboard-logs/
+NNCheckpoints/
+.MoskaResearchOld/
+ModelTfliteFiles/
+ModelH5Files/
 
 tensorboard*/
 Datasets/
