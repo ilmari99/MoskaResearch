@@ -7,7 +7,6 @@ MoskaEngine/
 Tensorboard-logs/
 NNCheckpoints/
 .MoskaResearchOld/
-ModelTfliteFiles/
 ModelH5Files/
 
 tensorboard*/
