@@ -78,12 +78,14 @@ if __name__ == "__main__":
     parser.add_argument("--model_file", help="The file to save the model to", default="")
     parser = parser.parse_args()
     DATA_FOLDERS = [
-        "Datasets/Dataset400kV3Random1",
+        #"Datasets/Dataset400kV3Random1",
         #"Datasets/Dataset400kV4Random1",
         #"Datasets/Dataset400kV5Random1",
         #"Datasets/Dataset400kV6Random0",
-        #"Datasets/Dataset400kV7Random0",
-        #"Datasets/Dataset400kV7-1Random3",
+        "Datasets/Dataset400kV7Random0",
+        "Datasets/Dataset400kV7-1Random3",
+        "Datasets/Dataset400kV8Random2",
+        "Datasets/Dataset400kV9Random2",
     ]
     #"Vectors" folder
     DATA_FOLDERS = [path + os.sep + "Vectors" for path in DATA_FOLDERS]
@@ -104,10 +106,9 @@ if __name__ == "__main__":
         return_n_files=True,
     )
     print(all_dataset.take(1).as_numpy_iterator().next()[0].shape)
-    all_dataset = all_dataset.take(10000)
     #model = get_base_model(INPUT_SHAPE)
     #model = get_branched_model(INPUT_SHAPE)
-    model = tf.keras.models.load_model("/home/ilmari/python/MoskaResearch/ModelH5Files/model-basic-from-1000k-games-only-NN-games.h5")
+    model = tf.keras.models.load_model("/home/ilmari/python/MoskaResearch/ModelH5Files/0910_basic_top_V6V7V7-1_5668.h5")
     from_loaded_model = True
     #is_conv = True
     
@@ -115,10 +116,8 @@ if __name__ == "__main__":
     
     approx_num_states = 80 * n_files
     
-    VALIDATION_LENGTH = int(0.07 * approx_num_states)
+    VALIDATION_LENGTH = int(0.05 * approx_num_states)
     TEST_LENGTH = int(0.05 * approx_num_states)
-    VALIDATION_LENGTH = 10
-    TEST_LENGTH = 10
     print(f"Validation length: {VALIDATION_LENGTH}")
     BATCH_SIZE = 4*4096
     SHUFFLE_BUFFER_SIZE = 2*BATCH_SIZE
@@ -173,7 +172,7 @@ if __name__ == "__main__":
     model.fit(x=train_ds,
               validation_data=validation_ds,
               initial_epoch=0,
-              epochs=1, 
+              epochs=50, 
               callbacks=[early_stopping_cb, tensorboard_cb, model_checkpoint_callback],
               )
     
