@@ -15,18 +15,20 @@ def get_players(model_paths, nrandom=1):
     random_players = [PlayerWrapper(NewRandomPlayer, {}, infer_log_file=True, number=i) for i in range(nrandom)]
     # Create two versions of each model, one with noise and one without
     nn_players = []
-    for i, model_path in enumerate(model_paths):
-        nn_players.append(PlayerWrapper(NNEvaluatorBot, {"model_id":os.path.abspath(model_path),
+    
+    get_player = lambda model_path, number: PlayerWrapper(NNEvaluatorBot, {"model_id":os.path.abspath(model_path),
                                                              "max_num_states" : 1000,
                                                              "pred_format" : "bitmap",
-                                                             "noise_level" : 0,
-                                                             }, infer_log_file=True, number=i))
-        nn_players.append(PlayerWrapper(NNEvaluatorBot, {"model_id":os.path.abspath(model_path),
-                                                                "max_num_states" : 1000,
-                                                                "pred_format" : "bitmap",
-                                                                "noise_level" : 0.1,
-                                                                }, infer_log_file=True, number=i+len(model_paths)))
+                                                             "top_p_play" : 1,
+                                                             "top_p_weights" : "weighted",
+                                                             }, infer_log_file=True, number=number)
     
+    total_num_players = sum([model_paths[model_path] for model_path in model_paths]) + nrandom
+    for i, model_path in enumerate(model_paths):
+        num_players = model_paths[model_path]
+        # Can't have same number
+        nn_players += [get_player(model_path, j + len(nn_players)) for j in range(num_players)]
+        
     players = random_players + nn_players
     print("Players: ",players)
     return players
@@ -54,16 +56,10 @@ if __name__ == "__main__":
     parser.add_argument("--cpus", help="The number of cpus to use", default=15)
     parser.add_argument("--chunksize", help="The chunksize to use", default=3)
     parser = parser.parse_args()
-    MODEL_PATHS = [#"./Models/model-basic-from-1000k-games.tflite",
-                   #"./Models/model-basic-from-700k-games.tflite",
-                   #"./Models/model-conv-from-500k-random-games.tflite",
-                   #"./Models/model-basic-from-1300k-games.tflite",
-                   #"./Models/model-conv-from-1000k-nrnd-games.tflite",
-                   #"./Models/model-basic-from-1400k-nrnd-games.tflite",
-                   #"/home/ilmari/python/MoskaResearch/MoskaEngine/MoskaEngine/Models/ModelNN1/model.tflite",
-                   "/home/ilmari/python/MoskaResearch/MoskaEngine/MoskaEngine/Models/Model-nn1-BB/model.tflite",
-                   "/home/ilmari/python/MoskaResearch/MoskaEngine/MoskaEngine/Models/Model-nn1-BB/model.tflite",
-                   ]
+    MODEL_PATHS = {"./ModelTfliteFiles/0311_basic_top_V5V7-1V10V11_5109.tflite" : 3,
+                   "./ModelTfliteFiles/2810_basic_notop_V8V9V10V11_4825.tflite" : 3,
+                   "./ModelTfliteFiles/0910_basic_top_V6V7V7-1_5668.tflite" : 3,
+    }
     NROUNDS = int(parser.nrounds)
     NGAMES = int(parser.ngames)
     FOLDER = parser.folder
