@@ -33,10 +33,10 @@ void combine_files(const char *path, const char *output, int max_num_files) {
         // Open the file for reading
         FILE *f2 = fopen(file_path, "r");
         if (f2 == NULL) {
-            perror("Error opening file");
+            printf("Error opening file %s\n", file_path);
             continue;
         }
-        if (fileno%100 == 0 && fileno != 0){
+        if (fileno%1000 == 0 && fileno != 0){
             printf("%d files combined.\n",fileno);
         }
         fileno++;
