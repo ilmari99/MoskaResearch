@@ -3,6 +3,7 @@ import random
 import tensorflow as tf
 from tqdm import tqdm
 import multiprocessing as mp
+import argparse
 
 """ Create a TensorFlow dataset from (multiple) folders of vector files.
 """
@@ -72,7 +73,7 @@ def combine_folder(files, dest_folder = "combined", ind=0, restore_files=True):
 def combine_folder_mp_wrap(args):
     return combine_folder(*args)
 
-def combine_folders_to_n_files(folders, n_files = 20, name="CombinedFiles"):
+def combine_folders_to_n_files(folders, n_files = 20, name="CombinedFiles", keep_original_files=True):
     """ Combine all files, that are in the folders
     and merge them to create n_files files.
     """
@@ -86,7 +87,7 @@ def combine_folders_to_n_files(folders, n_files = 20, name="CombinedFiles"):
         
     
     # Create arguments: The arguments is a list of files, and the index of the combined file
-    args = [(all_files[i::n_files], name, i) for i in range(n_files)]
+    args = [(all_files[i::n_files], name, i, keep_original_files) for i in range(n_files)]
     with mp.Pool(20) as pool:
         pool.map(combine_folder_mp_wrap, args, chunksize=1)
     print("Done combining files")
@@ -95,33 +96,18 @@ def combine_folders_to_n_files(folders, n_files = 20, name="CombinedFiles"):
 
         
 if __name__ == "__main__":
-    combine_folders_to_n_files(["/home/ilmari/python/MoskaResearch/Datasets/FullyRandomDataset300k/Vectors/"], 20,name="FullyRandomDataset300kSharded")
-    exit()
-    # Load the saved ds
-    #if os.path.exists("./data.tfrecord") and True:
-    #    ds = tf.data.Dataset.load("./data.tfrecord")
-
-    #    print("Counting elements")
-    #    print(ds.reduce(0, lambda x,_: x+1).numpy())
-    #    exit()
+    parser = argparse.ArgumentParser(description='Combine files')
     
-    ds, total = read_to_dataset(**{"paths": ["/home/ilmari/python/MoskaResearch/Datasets/FullyRandomDataset300k/Vectors/"],
-                                 "add_channel": False,
-                                 "shuffle_files": True}
-                                )
+    parser.add_argument("--folders", nargs="*", type=str, help="The folders to combine", required=True)
+    parser.add_argument("--n_files", type=int, help="The number of files to combine to", default=20)
+    parser.add_argument("--output_folder", type=str, help="The name of the combined files", default="CombinedFiles")
+    parser.add_argument("--keep_original_files", action="store_true", help="Keep the original files", default=True)
     
-    step_counter = tf.Variable(0, trainable=False)
-    checkpoint_prefix = "./data_checkpoint"
-    path = "./data.tfrecord"
-    checkpoint_args = {
-        "checkpoint_interval": 300000,
-        "step_counter": step_counter,
-        "directory": checkpoint_prefix,
-        "max_to_keep": 5,
-    }
+    folders = parser.datasets
+    #"Vectors" folder
+    folders = [path + os.sep + "Vectors" for path in folders if not path.endswith("Vectors")]
     
-    tf.data.Dataset.save(ds, path, compression=None, shard_func=None, checkpoint_args=checkpoint_args)
-
+    combine_folders_to_n_files(folders, n_files = parser.n_files, name=parser.output_folder, keep_original_files=parser.keep_original_files)
 
 
 
