@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import os
 import warnings
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import tensorflow as tf
-import sys
-import ast
 import argparse
 from read_to_dataset import read_to_dataset#_old as read_to_dataset
 import re
