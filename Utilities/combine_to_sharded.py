@@ -47,7 +47,7 @@ def combine_folders_to_n_files(folders, n_files = 20, name="CombinedFiles", keep
     
     # Create arguments: The arguments is a list of files, and the index of the combined file
     args = [(all_files[i::n_files], name, i, keep_original_files) for i in range(n_files)]
-    with mp.Pool(20) as pool:
+    with mp.Pool(min(n_files, mp.cpu_count())) as pool:
         pool.map(combine_folder_mp_wrap, args, chunksize=1)
     print("Done combining files")
 
