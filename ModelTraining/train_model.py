@@ -2,7 +2,7 @@
 import os
 import sys
 import warnings
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf
 import argparse
 from read_to_dataset import read_to_dataset#_old as read_to_dataset
@@ -75,7 +75,12 @@ if __name__ == "__main__":
     is_conv = False if len(INPUT_SHAPE) == 1 else True
     PATIENCE = int(parser.patience)
     
-    strategy = tf.distribute.MirroredStrategy(devices=[g.name.replace("physical_device:", "") for g in tf.config.list_physical_devices('GPU')])
+    # If many GPUS are available, use them all
+    if len(tf.config.list_physical_devices('GPU')) > 1:
+        strategy = tf.distribute.MirroredStrategy(devices=[g.name.replace("physical_device:", "") for g in tf.config.list_physical_devices('GPU')])
+    else:
+        print("Using single GPU stretegy.")
+        strategy = tf.distribute.OneDeviceStrategy(device="/GPU:0")
     
     with strategy.scope():
 
