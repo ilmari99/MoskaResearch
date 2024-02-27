@@ -60,7 +60,7 @@ if __name__ == "__main__":
     parser.add_argument("--folders", nargs="*", type=str, help="The folders to combine", required=True)
     parser.add_argument("--n_files", type=int, help="The number of files to combine to", default=20)
     parser.add_argument("--output_folder", type=str, help="The name of the combined files", default="CombinedFiles")
-    parser.add_argument("--remove_original_files", action="store_false", help="Remove the original files", default=False)
+    parser.add_argument("--remove_original_files", action="store_true", help="Remove the original files", default=False)
     parser = parser.parse_args()
     
     folders = parser.folders
