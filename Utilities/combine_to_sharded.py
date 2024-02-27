@@ -60,8 +60,9 @@ if __name__ == "__main__":
     parser.add_argument("--n_files", type=int, help="The number of files to combine to", default=20)
     parser.add_argument("--output_folder", type=str, help="The name of the combined files", default="CombinedFiles")
     parser.add_argument("--keep_original_files", action="store_true", help="Keep the original files", default=True)
+    parser = parser.parse_args()
     
-    folders = parser.datasets
+    folders = parser.folders
     #"Vectors" folder
     folders = [path + os.sep + "Vectors" for path in folders if not path.endswith("Vectors")]
     
