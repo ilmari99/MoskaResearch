@@ -17,7 +17,8 @@ def combine_folder(files, dest_folder = "combined", ind=0, restore_files=True):
     
     # Combine the files
     print(f"Running: ./Utilities/combine_vector_files_to_one {temp_folder}/ {dest_folder}/data{ind}.csv {len(files)}")
-    os.system(f"./Utilities/combine_vector_files_to_one {temp_folder}/ {dest_folder}/data{ind}.csv {len(files)}")
+    success = os.system(f"./Utilities/combine_vector_files_to_one {temp_folder}/ {dest_folder}/data{ind}.csv {len(files)}")
+    print(f"Success (i={ind}): {success}")
     
     if restore_files:
         # Move the files back to the original folder
@@ -59,11 +60,16 @@ if __name__ == "__main__":
     parser.add_argument("--folders", nargs="*", type=str, help="The folders to combine", required=True)
     parser.add_argument("--n_files", type=int, help="The number of files to combine to", default=20)
     parser.add_argument("--output_folder", type=str, help="The name of the combined files", default="CombinedFiles")
-    parser.add_argument("--keep_original_files", action="store_true", help="Keep the original files", default=True)
+    parser.add_argument("--remove_original_files", action="store_false", help="Remove the original files", default=False)
     parser = parser.parse_args()
     
     folders = parser.folders
     #"Vectors" folder
-    folders = [path + os.sep + "Vectors" for path in folders if not path.endswith("Vectors")]
-    
-    combine_folders_to_n_files(folders, n_files = parser.n_files, name=parser.output_folder, keep_original_files=parser.keep_original_files)
+    for i, p in enumerate(folders):
+        if not p.endswith("Vectors"):
+            p += os.sep + "Vectors"
+            folders[i] = p
+    #folders = [path + os.sep + "Vectors" for path in folders if not path.endswith("Vectors")]
+    print(f"Combining folders: {folders}")
+    #exit()
+    combine_folders_to_n_files(folders, n_files = parser.n_files, name=parser.output_folder, keep_original_files=not parser.remove_original_files)
